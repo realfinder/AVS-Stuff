@@ -1,0 +1,1371 @@
+# AVS S Shared Functions V1.01
+# Collections of Functions
+
+
+#################################################
+
+# Original:- By Vampiredom, Gavino, IanB
+# Repeated, string replacements
+
+Function sh_StrReplace(string s, string find, string replace)
+{
+ AvsPlusVersionNumber > 2347 ? ReplaceStr(s,find,replace) : eval("""i = s.FindStr(find) Chr(3) i ==0 || Replace=="" ? s : (s.LeftStr(i-1)+replace+s.MidStr(Strlen(find)+i)).StrReplace(find, replace)""")
+}
+
+
+# =======  MOD4-and-atleast-16 helper function  =======
+
+function m4_sh(float x, int "mode") {
+mode  = default(mode,  0 ) #0=any 1=NTSC 2=PAL
+nx = mode!=0 || VersionNumber() < 2.6 ? x<16?16:int(round(x/(mode!=1 ? 4.0 : 5.0))*(mode!=1 ? 4 : 12)) : round(x)
+return(nx)
+}
+
+
+# =======  Modified sharpening function  =======
+
+function sh_sharpen2(clip clp, float strength, float power, float zp, float lodmp, float hidmp, int rgmode, bool "sharpen22") 
+{
+sisavs26= !(VersionNumber() < 2.60)
+STR  = string( strength )
+PWR  = string( 1.0/float(power) )
+ZRP  = string(    ZP    )
+DMP  = string(   lodmp  )
+HDMP = (hidmp==0) ? "1" : sisavs26 ? "1 scaleb x y - abs "+string(hidmp)+" / 4 ^ +" : "1 x y - abs "+string(hidmp)+" / 4 ^ +"
+sharpen22 = default(sharpen22, false )
+!sharpen22 ? Assert(power>0,"SeeSaw::sh_sharpen2: Power must be value 1 or more") : nop()
+
+sisavs26 ? mt_lutxy( clp, clp.RemoveGrain(rgmode,-1,-1), \
+           "x y == x x x y - abs "+ZRP+" / "+PWR+" ^ "+ZRP+" * "+STR+" * x y - 2 ^ x y - 2 ^ "+DMP+" scalef + / * x y - x y - abs / * "+HDMP+" / + ?",chroma="copy first",use_expr=1) : \
+mt_lutxy( clp, clp.RemoveGrain(rgmode,-1,-1), \
+           "x y == x x x y - abs "+ZRP+" / "+PWR+" ^ "+ZRP+" * "+STR+" * x y - 2 ^ x y - 2 ^ "+DMP+" + / * x y - x y - abs / * "+HDMP+" / + ?",chroma="copy first")
+return( last )
+}
+
+
+# =======  Soothe() function to stabilze sharpening  =======
+
+function sh_SootheSS(clip sharp, clip orig, int "sootheT", int "sootheS", bool "SootheSS2", int "uv")
+{
+sisavs26   = !(VersionNumber() < 2.60)
+sootheT  = default(sootheT, 25 )
+sootheS  = default(sootheS,  0 )
+sootheT  = (sootheT > 100) ? 100 : (sootheT < -100) ? -100 : sootheT
+sootheS  = (sootheS > 100) ? 100 : (sootheS < 0) ? 0 : sootheS
+ST    = string( 100 - abs(sootheT))
+SSPT  = string( 100 - abs(sootheS))
+SootheSS2 = default(SootheSS2, false)
+
+mt_makediff(orig,sharp)
+
+(sootheS==0) ? last
+ \           : sisavs26 ? mt_lutxy( last, last.removegrain(SootheSS2 ? 1 : 20,-1,-1),
+ \             "x range_half - y range_half - * 0 < x range_half - 100 / "+SSPT+" * range_half + x range_half - abs y range_half - abs > x "+SSPT+" * y 100 "+SSPT+" - * + 100 / x ? ?", chroma="ignore",use_expr=1) : \
+mt_lutxy( last, last.removegrain(SootheSS2 ? 1 : 20,-1,-1),
+ \             "x 128 - y 128 - * 0 < x 128 - 100 / "+SSPT+" * 128 + x 128 - abs y 128 - abs > x "+SSPT+" * y 100 "+SSPT+" - * + 100 / x ? ?", chroma="ignore")
+ 
+(sootheT==0) ? last
+ \           : sisavs26 ? mt_lutxy( last, last.temporalsoften(1,255,0,32,2),
+ \           "x range_half - y range_half - * 0 < x range_half - 100 / "+ST+" * range_half + x range_half - abs y range_half - abs > x "+ST+" * y 100 "+ST+" - * + 100 / x ? ?", chroma="ignore",use_expr=1) : \
+mt_lutxy( last, last.temporalsoften(1,255,0,32,2),
+ \           "x 128 - y 128 - * 0 < x 128 - 100 / "+ST+" * 128 + x 128 - abs y 128 - abs > x "+ST+" * y 100 "+ST+" - * + 100 / x ? ?", chroma="ignore")
+
+(sootheT > -1) ? last 
+ \             : sisavs26 ? mt_lutxy( last, last.temporalsoften(1,255,0,32,2),
+ \             "x range_half - y range_half - * 0 < x range_half - 100 / "+ST+" * range_half + x range_half - abs y range_half - abs > x "+ST+" * y 100 "+ST+" - * + 100 / x ? ?",chroma="ignore",use_expr=1) : \
+mt_lutxy( last, last.temporalsoften(1,255,0,32,2),
+ \             "x 128 - y 128 - * 0 < x 128 - 100 / "+ST+" * 128 + x 128 - abs y 128 - abs > x "+ST+" * y 100 "+ST+" - * + 100 / x ? ?",chroma="ignore")
+
+mt_makediff(orig,last,u=uv,v=uv)
+return( last )
+}
+
+
+# filtering with black borders by A.SONY
+Function filtering_wbb (clip src, string "filter", int "oneborder", clip "linesm", clip "clip4lines", int "mmy", bool "mmLuma", int "mmuv", bool "minflate")
+{
+filtering_wsb(src,filter,oneborder,linesm,clip4lines,mmy,mmLuma,mmuv,minflate)
+}
+
+
+# black lines mask by A.SONY
+Function slinesm (clip i, float "thr", float "thr2", bool "analog", bool "autogain", val "edgesm", int "useMedianBlur", bool "noedges", float "mblur", float "thrfade", bool "honly", bool "lumaonly")
+{
+analog        = Default(analog,   true)
+autogain      = Default(autogain, true)
+noedges       = Default(noedges,  false)
+mblur         = Default(mblur, 0.1)
+thr           = Default(thr, mblur==0 ? 100 : 200)
+thr2          = Default(thr2, 170)
+thrfade       = Default(thrfade, 2.46)
+useMedianBlur = default(useMedianBlur, -1)
+lumaonly      = default(lumaonly, true)
+
+sisavs26 = !(VersionNumber() < 2.6)
+sisphbd = AvsPlusVersionNumber > 2294
+
+oi          = autogain ? i.ColorYUV(autogain=true) : i
+sislumaonly = sisphbd ? oi.isy() : !sisavs26 ? true : oi.isy8()
+i = sislumaonly || !lumaonly ? oi : sisphbd ? oi.converttoy() : oi.converttoy8()
+
+edgesm     = !noedges ? defined(edgesm) ? isclip(edgesm) ? edgesm : eval("i." + edgesm) : i.Camembert_dhh(useMedianBlur,honly,lumaonly) : nop()
+
+edgesm     = !noedges ? defined(edgesm) ? isclip(edgesm) ? edgesm : eval("i." + edgesm) : i.Camembert_dhh(useMedianBlur) : nop()
+
+LineDarkenclip = thr==0 ? nop() : mblur==0 ? i.FastLineDarkenMOD3_dhh(thr) : i.FastLineDarkenMOD3_dhh(thr).blur(mblur)
+LineDarkenclip = thr==0 ? i : LineDarkenclip.FastLineDarkenMOD3_dhh(250,1,250,-2)
+
+thr1 = analog ? thr2/thrfade : nop()
+lut4dark   = analog ? !sisavs26 ? LineDarkenclip.mt_lut("x "+String(thr1)+" < 255 x "+String(thr2)+" > 0 255 x "+String(thr1)+" - 255 "+String(thr2)+" "+String(thr1)+" - / * - ? ?",u=1,v=1) : LineDarkenclip.mt_lut("x "+String(thr1)+" scalef < range_max x "+String(thr2)+" scalef > 0 range_max x "+String(thr1)+" scalef - range_max "+String(thr2)+" scalef "+String(thr1)+" scalef - / * - ? ?", use_expr=2,u=1,v=1) : 
+                    \ LineDarkenclip.mt_binarize(70, mode="0 255")
+
+noedges ? lut4dark : 
+        \ mt_merge(i.mt_edge(mode="min/max", thY1=255, thY2=255), edgesm, lut4dark)
+sislumaonly ? last : sisphbd ? CombinePlanes(last,oi,planes="YUV",sample_clip=oi) : YToUV(oi.UToY8(),oi.VToY8(),last)
+}
+
+
+# tophf lines mask
+function t_linemask( clip c, int "blur", float "thresh", float "str" )
+{
+	sisavs26 = !(VersionNumber() < 2.6)
+	blur=default(blur,5)
+	thresh=default(thresh,4)
+	str=default(str,16)
+	!sisavs26 ? mt_lutxy(c,c.binomialblur(blur,u=1,v=1),"x "+string(thresh)+" + y < y x - "+string(str)+" * 0 ?")
+        \                     : mt_lutxy(c,c.binomialblur(blur,u=1,v=1),"x "+string(thresh)+" scalef + y < y x - "+string(str)+" * 0 ?", clamp_float=true, use_expr=2)
+}
+
+
+# white lines mask by A.SONY
+Function swlinesm (clip i, float "thr", float "thr2", bool "analog", bool "autogain", val "edgesm", int "useMedianBlur", bool "noedges", float "mblur", float "thrfade", float "bthr", bool "honly", bool "lumaonly")
+{
+analog        = Default(analog,   true)
+autogain      = Default(autogain, true)
+noedges       = Default(noedges,  false)
+mblur         = Default(mblur, 0.1)
+thr           = Default(thr, mblur==0 ? 100 : 200)
+bthr          = Default(bthr, thr)
+thr2          = Default(thr2, 200)
+thrfade       = Default(thrfade, 2.46)
+useMedianBlur = default(useMedianBlur, -1)
+lumaonly      = default(lumaonly, true)
+
+sisavs26 = !(VersionNumber() < 2.6)
+sisphbd = AvsPlusVersionNumber > 2294
+
+oi          = autogain ? i.ColorYUV(autogain=true) : i
+sislumaonly = sisphbd ? oi.isy() : !sisavs26 ? true : oi.isy8()
+i = sislumaonly || !lumaonly ? oi : sisphbd ? oi.converttoy() : oi.converttoy8()
+
+edgesm     = !noedges ? defined(edgesm) ? isclip(edgesm) ? edgesm : eval("i." + edgesm) : i.Camembert_dhh(useMedianBlur,honly,lumaonly) : nop()
+
+LineDarkenclip = bthr==0 ? i : mblur==0 ? i.FastLineDarkenMOD3_dhh(bthr) : i.FastLineDarkenMOD3_dhh(bthr).blur(mblur)
+Linewhitenclip = thr==0 ? nop() : mblur==0 ? LineDarkenclip.mt_invert().FastLineDarkenMOD3_dhh(thr) : LineDarkenclip.mt_invert().FastLineDarkenMOD3_dhh(thr).blur(mblur)
+Linewhitenclip = thr==0 ? i : Linewhitenclip.FastLineDarkenMOD3_dhh(250,1,250,-2).mt_invert()
+
+thr1 = analog ? thr2/thrfade : nop()
+lut4whit   = analog ? !sisavs26 ? Linewhitenclip.mt_lut("x "+String(thr2)+" > 255 x "+String(thr1)+" < 0 255 x "+String(thr1)+" - 255 "+String(thr2)+" "+String(thr1)+" - / * - ? ?",u=1,v=1) : Linewhitenclip.mt_lut("x "+String(thr2)+" scalef > range_max x "+String(thr1)+" scalef < 0 range_max x "+String(thr1)+" scalef - range_max "+String(thr2)+" scalef "+String(thr1)+" scalef - / * - ? ?",use_expr=2,u=1,v=1) : 
+                    \ Linewhitenclip.mt_binarize(128, mode="255 0")
+
+noedges ? lut4whit : 
+        \ mt_merge(i.mt_edge(mode="min/max", thY1=255, thY2=255), edgesm, lut4whit)
+sislumaonly ? last : sisphbd ? CombinePlanes(last,oi,planes="YUV",sample_clip=oi) : YToUV(oi.UToY8(),oi.VToY8(),last)
+}
+
+
+function GreyCenteredToMask_dhh(clip input) {
+# Levels will convert to lut in avs26 by this "x input_low - input_high input_low - / 1 gamma / ^ output_high output_low - * output_low +"
+VersionNumber() < 2.6 ? input.Levels(128, 1, 255, 0, 255, false) : input.mt_lut("x range_half - range_max range_half - / range_max 0 - * 0 +", use_expr=2)
+one = last
+VersionNumber() < 2.6 ? input.Levels(0, 1, 128, 255, 0, false) : input.mt_lut("x 0 - range_half 0 - / 0 range_max - * range_max +", use_expr=2)
+two = last
+Overlay(one, two, mode="lighten")
+}
+
+
+function Camembert_dhh(clip input, int "useMedianBlur", bool "honly", bool "lumaonly") {
+
+lumaonly = default(lumaonly, false)
+useMedianBlur = default(useMedianBlur, lumaonly ? -1 : 0)
+honly = default(honly, false)
+
+sisphbd = AvsPlusVersionNumber > 2294
+sisavs26 = !(VersionNumber() < 2.6)
+sislumaonly = sisphbd ? input.isy() : !sisavs26 ? true : input.isy8()
+
+useMedianBlur = sislumaonly && !(VersionNumber() < 2.6) ? -1 : useMedianBlur
+
+c = sislumaonly || !lumaonly ? input : sisphbd ? input.converttoy() : input.converttoy8()
+
+c
+useMedianBlur==0 ? SmoothUV(3,200,false) : useMedianBlur>0 ? MedianBlur(0,useMedianBlur,useMedianBlur) : last
+Overlay(last, Blur(1,honly ? 0 : 1).Blur(1,honly ? 0 : 1), mode="difference")
+grsc=sislumaonly ? nop() : GreyCenteredToMask_dhh().greyscale()
+sislumaonly ? GreyCenteredToMask_dhh() : sisphbd ? grsc.converttoy() : grsc.converttoy8()
+!sisavs26 ? greyscale() : last
+!sisavs26 ? Levels(0, 1, 115, 0, 255, false) : mt_lut("x 0 - 155 scalef 0 - / range_max 0 - * 0 +", use_expr=2)
+Blur(1,honly ? 0 : 1)
+!sisavs26 ? Levels(0, 0.4, 64, 0, 255, false) : mt_lut("x 0 - 64 scalef 0 - / 1 0.4 / ^ range_max 0 - * 0 +", use_expr=2)
+Blur(1,honly ? 0 : 1).Blur(1,honly ? 0 : 1)
+!sisavs26 ? Levels(0, 1, 30, 0, 255, false).Blur(1,honly ? 0 : 1) : mt_lut("x 0 - 30 scalef 0 - / range_max 0 - * 0 +", use_expr=2,u=3,v=3).Blur(1,honly ? 0 : 1)
+sislumaonly ? last : sisphbd ? CombinePlanes(last,lumaonly ? input : grsc,planes="YUV",sample_clip=lumaonly ? input : grsc) : YToUV(lumaonly ? input.UToY8() : grsc.UToY8(),lumaonly ? input.VToY8() : grsc.VToY8(),last)
+}
+
+
+function Camembert_dhhMod(clip input, int "useMedianBlur", bool "honly", bool "lumaonly")
+{
+ EM1=input.Camembert_dhh(useMedianBlur,honly,lumaonly)
+ EM2=input.mt_edge(mode="min/max", thY1=1, thY2=255, thC1=10, thC2=10, chroma="process").mt_inflate().blur(1.5).blur(1.5).invert()
+ return mt_logic(EM1, EM2, "and")
+}
+
+
+Function EMask_dhh(clip oi, int "mode", float "trh", bool "analog", float "trh2", int "useMedianBlur", bool "honly", bool "lumaonly")
+{
+analog        = Default(analog, false)
+trh2          = Default(trh2, 170)
+lumaonly      = default(lumaonly, false)
+useMedianBlur = default(useMedianBlur, lumaonly ? -1 : 0)
+honly         = default(honly, false)
+
+sisphbd = AvsPlusVersionNumber > 2294
+sisavs26 = !(VersionNumber() < 2.6)
+sislumaonly = sisphbd ? oi.isy() : !sisavs26 ? true : oi.isy8()
+
+i = sislumaonly || !lumaonly ? oi : sisphbd ? oi.converttoy() : oi.converttoy8()
+
+mode3thr1     = mode == 3 && analog ? trh2/2.46 : nop()
+mode3dark     = mode == 3 ? trh != 0 ? i.FastLineDarkenMOD3_dhh(trh).blur(0.5).FastLineDarkenMOD3_dhh(250,1,250,-2) : i : nop()
+mode3lut      = mode == 3 && analog ? !sisavs26 ? "x "+String(mode3thr1)+" < 255 x "+String(trh2)+" > 0 255 x "+String(mode3thr1)+" - 255 "+String(trh2)+" "+String(mode3thr1)+" - / * - ? ?"
+                                      \                     : "x "+String(mode3thr1)+" scalef < range_max x "+String(trh2)+" scalef > 0 range_max x "+String(mode3thr1)+" scalef - range_max "+String(trh2)+" scalef "+String(mode3thr1)+" scalef - / * - ? ?" : nop()
+e_mask = mode == 1 ? mt_makediff(i.blur(1.58).blur(1.58),i).mt_binarize(threshold=trh).mt_inflate().mt_inflate() :
+     \   mode == 2 ? mt_logic(i.mt_binarize(105,upper=true).mt_expand(),i.mt_binarize(110,upper=false).mt_expand(),"and").mt_deflate() :
+     \   mode == 3 ? analog ? mt_merge(i.mt_edge(mode="min/max", thY1=255, thY2=255), i.Camembert_dhh(useMedianBlur,honly,lumaonly), !sisavs26 ? mode3dark.mt_lut(mode3lut,u=1,v=1) : mode3dark.mt_lut(mode3lut,use_expr=2,u=1,v=1)) :
+                            \ mt_merge(i.mt_edge(mode="min/max", thY1=255, thY2=255), i.Camembert_dhh(useMedianBlur,honly,lumaonly), mode3dark.mt_binarize(70, mode="0 255")) : NOP()
+e_mask = sislumaonly ? e_mask : sisphbd ? CombinePlanes(e_mask,oi,planes="YUV",sample_clip=oi) : YToUV(oi.UToY8(),oi.VToY8(),e_mask)
+return e_mask
+}
+
+
+Function spasses(clip i, int "pass", string "filter")
+{
+return pass > 0 ? eval("spasses(i." + filter + ", pass-1, filter)") : i
+}
+
+
+Function sminideen(clip input, int "radius", int "thrY", int "thrUV", int "Y", int "U", int "V")
+{
+try { input.minideen(radius, thrY, thrUV, Y, U, V) } catch(error_msg) { input.deen("a2d", radius, thrY, thrUV)  }
+}
+
+
+function DarkPreserve_function(clip "filtered", clip "original", bool "merge16_8", int "u", int "v", bool "lsb", bool "lsb_in", bool "lsb_out") {
+lsb_in    = default (lsb_in                       , false) #for original
+F_lsb_in  = lsb_in ? (Height(filtered)) == (Height(original)) : (Height(filtered)) == (Height(original)*2)
+lsb_out   = default (lsb_out         , F_lsb_in || lsb_in)
+lsb       = default (lsb ,  lsb_in || lsb_out || F_lsb_in)
+merge16_8 = default (merge16_8                     , true)
+sisphbd = AvsPlusVersionNumber > 2294
+sisavs26 = !(VersionNumber() < 2.6)
+sislumaonly = sisphbd ? original.isy() : !sisavs26 ? nop() : original.isy8()
+u         = default (u                                , !sisavs26 ? 3 : sislumaonly ? 1 : 3)
+v         = default (v                                , u)
+chroma    = !(u != 3 && v != 3)
+
+F_lsb_in        ? Assert(lsb,                          "16stacked filtered clip requires: lsb=true")                : nop()
+lsb_in          ? Assert(lsb,                          "lsb_in  requires: lsb=true")                                : nop()
+lsb_out         ? Assert(lsb,                          "lsb_out requires: lsb=true")                                : nop()
+
+dp_lut = lsb_in ? original.Dither_lut16("x 4096 < 65535 x 19200 > 0 65535 x 4096 - 4.338916843220339 * - ? ?",u=1,v=1) : !sisavs26 < 2.6 ? original.mt_lut("x 16 < 255 x 75 > 0 255 x 16 - 4.322033898305085 * - ? ?",u=1,v=1)
+         														 \		       : original.mt_lut("x 16 scalef < range_max x 75 scalef > 0 range_max x 16 scalef - range_max 75 scalef 16 scalef - / * - ? ?",use_expr=2,u=1,v=1)
+
+dp_lut = lsb_in && merge16_8 ? dp_lut.Ditherpost(mode=6, slice=false, u=1, v=1) : dp_lut
+
+dp_merge = lsb ? merge16_8 ? Dither_merge16_8(F_lsb_in ? filtered : filtered.Dither_convert_8_to_16(), lsb_in ? original : original.Dither_convert_8_to_16(), dp_lut, luma=chroma, u=u,v=v) : \
+                             Dither_merge16(F_lsb_in ? filtered : filtered.Dither_convert_8_to_16(), lsb_in ? original : original.Dither_convert_8_to_16(), dp_lut, luma=chroma, u=u,v=v) : \
+                             mt_merge(filtered, original, dp_lut, luma=chroma, u=u,v=v)
+lsb ? lsb_out ? dp_merge : dp_merge.Ditherpost(mode=7, slice=false) : dp_merge
+}
+
+
+function lightPreserve_function(clip "filtered", clip "original", bool "merge16_8", int "u", int "v", bool "lsb", bool "lsb_in", bool "lsb_out") {
+lsb_in    = default (lsb_in                       , false) #for original
+F_lsb_in  = lsb_in ? (Height(filtered)) == (Height(original)) : (Height(filtered)) == (Height(original)*2)
+lsb_out   = default (lsb_out         , F_lsb_in || lsb_in)
+lsb       = default (lsb ,  lsb_in || lsb_out || F_lsb_in)
+merge16_8 = default (merge16_8                     , true)
+sisphbd = AvsPlusVersionNumber > 2294
+sisavs26 = !(VersionNumber() < 2.6)
+sislumaonly = sisphbd ? original.isy() : !sisavs26 ? nop() : original.isy8()
+u         = default (u                                , !sisavs26 ? 3 : sislumaonly ? 1 : 3)
+v         = default (v                                , u)
+chroma    = !(u != 3 && v != 3)
+
+F_lsb_in        ? Assert(lsb,                          "16stacked filtered clip requires: lsb=true")                : nop()
+lsb_in          ? Assert(lsb,                          "lsb_in  requires: lsb=true")                                : nop()
+lsb_out         ? Assert(lsb,                          "lsb_out requires: lsb=true")                                : nop()
+
+dp_lut = lsb_in ? original.Dither_lut16("x 60160 > 65535 x 45056 < 0 65535 60160 x - 4.338916843220339 * - ? ?",u=1,v=1) : !sisavs26 ? original.mt_lut("x 235 > 255 x 176 < 0 255 235 x - 4.322033898305085 * - ? ?",u=1,v=1)
+         														   \		         : original.mt_lut("x 235 scalef > range_max x 176 scalef < 0 range_max x 235 scalef - range_max 176 scalef 235 scalef - / * - ? ?",use_expr=2,u=1,v=1)
+
+dp_lut = lsb_in && merge16_8 ? dp_lut.Ditherpost(mode=6, slice=false, u=1, v=1) : dp_lut
+
+dp_merge = lsb ? merge16_8 ? Dither_merge16_8(F_lsb_in ? filtered : filtered.Dither_convert_8_to_16(), lsb_in ? original : original.Dither_convert_8_to_16(), dp_lut, luma=chroma, u=u,v=v) : \
+                             Dither_merge16(F_lsb_in ? filtered : filtered.Dither_convert_8_to_16(), lsb_in ? original : original.Dither_convert_8_to_16(), dp_lut, luma=chroma, u=u,v=v) : \
+                             mt_merge(filtered, original, dp_lut, luma=chroma, u=u,v=v)
+lsb ? lsb_out ? dp_merge : dp_merge.Ditherpost(mode=7, slice=false) : dp_merge
+}
+
+
+# Padding by Didée
+function sh_Padding(clip c, int left, int top, int right, int bottom, int "threads")
+{
+threads = Default(threads, 0)
+w = c.width()
+h = c.height()
+threads!=1 ? Eval("try { pointresizemt(w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom+0.0001, threads=threads) } catch(error_msg) { c.pointresize( w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom+0.0001 ) }") : c.pointresize( w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom+0.0001 )
+}
+
+
+function sTryFTurnRight(clip c, bool "chroma", int "bitdepth", bool "mt") {
+bitdepth=Default(bitdepth, 8)
+bitdepth==8 ? eval("""
+try {
+    IsAvsPlus ? dontdoft : nop()
+    return c.FTurnRight(chroma=chroma,mt=mt)
+    }
+catch(err_msg) {
+    return c.TurnRight()
+    }
+    """) : BitdepthMsbLsb(c.BitdepthMsb(bitdepth=bitdepth).sTryFTurnRight(chroma,mt=mt), c.BitdepthLsb(bitdepth=bitdepth).sTryFTurnRight(chroma,mt=mt), bitdepth=bitdepth)
+}
+
+
+function sTryFTurnLeft(clip c, bool "chroma", int "bitdepth", bool "mt") {
+bitdepth=Default(bitdepth, 8)
+bitdepth==8 ? eval("""
+try {
+    IsAvsPlus ? dontdoft : nop()
+    return c.FTurnLeft(chroma=chroma,mt=mt)
+    }
+catch(err_msg) {
+    return c.TurnLeft()
+    }
+    """) : BitdepthMsbLsb(c.BitdepthMsb(bitdepth=bitdepth).sTryFTurnLeft(chroma,mt=mt), c.BitdepthLsb(bitdepth=bitdepth).sTryFTurnLeft(chroma,mt=mt), bitdepth=bitdepth)
+}
+
+
+function sTryFTurn180(clip c, bool "chroma", int "bitdepth", bool "mt") {
+bitdepth=Default(bitdepth, 8)
+bitdepth==8 ? eval("""
+try {
+    IsAvsPlus ? dontdoft : nop()
+    return c.FTurn180(chroma=chroma,mt=mt)
+    }
+catch(err_msg) {
+    return c.Turn180()
+    }
+    """) : BitdepthMsbLsb(c.BitdepthMsb(bitdepth=bitdepth).sTryFTurn180(chroma,mt=mt), c.BitdepthLsb(bitdepth=bitdepth).sTryFTurn180(chroma,mt=mt), bitdepth=bitdepth)
+}
+
+
+# base on Dither_limit_dif16 idea (not 100% same output)
+function slimit_dif(clip "flt", clip "src", clip "ref", float "thr", float "elast", int "Y", int "U", int "V", bool "elastinfl", int "A")
+{
+thr    = default(thr,                 0.25)
+elast  = default(elast,                3.0)
+elast2  = elast > 1.0 ? elast * thr : elast
+Y  = default(Y,           3)
+U  = default(U,           3)
+V  = default(V,           3)
+elastinfl = default(elastinfl, false)
+A  = default(A,           2)
+
+dref = defined(ref)
+sisavs26 = !(VersionNumber() < 2.6)
+ 
+Assert(!(elast < 1), "slimit_dif: elast must be more than 1")
+Assert((defined(flt) && defined(src)), "slimit_dif: both flt clip and src clip are needed")
+ 
+ldmask = elast!=1 ? !sisavs26 ? mt_lutxy(dref ? ref : src,flt,"x y - abs "+string(thr)+" <= 255 x y - abs "+string(elast2)+" <= ? 255 255 "+string(elast2)+" / x y - abs * - 0 ?", Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V)
+                    \         : mt_lutxy(dref ? ref : src,flt,"x y - abs "+string(thr)+" yscalef <= yrange_max x y - abs "+string(elast2)+" yscalef <= ? yrange_max yrange_max "+string(elast2)+" yscalef / x y - abs * - 0 ?",use_expr=2, Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V,A=A==2 ? 1 : A) : 
+         \   dref ? !sisavs26 ? ref.mt_lutxy(flt,"x y - abs "+string(thr)+" <= 255 0 ?", Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V) : ref.mt_lutxy(flt,"x y - abs "+string(thr)+" yscalef <= yrange_max 0 ?",use_expr=2,clamp_float_UV=true, Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V,A=A==2 ? 1 : A) : nop()
+
+elast!=1 || dref ? !sisavs26 ? smaskmerge(src,flt, elastinfl ? ldmask.mt_inflate(155,Y=Y,U=U,V=V) : ldmask, Y=Y,U=U,V=V) : Mt_Merge(src,flt, elastinfl ? ldmask.mt_inflate(155,Y=Y,U=U,V=V,A=A) : ldmask, Y=Y,U=U,V=V,A=A) : \
+                   !sisavs26 ? src.mt_lutxy(flt,"x y - abs "+string(thr)+" <= y x ?", Y=Y,U=U,V=V)
+                   \         : src.mt_lutxy(flt,"x y - abs "+string(thr)+" yscalef <= y x ?",use_expr=2,clamp_float_UV=false, Y=Y,U=U,V=V,A=A)
+}
+
+
+Function sh_GetCSP(clip c) {
+    VersionNumber() < 2.6 ? eval("""
+  return c.IsPlanar ? c.IsYV12 ? "YV12" :
+  \                   c.IsYV16 ? "YV16" :
+  \                   c.IsYV24 ? "YV24" : c.sh_Y8_YV411 :
+  \      c.IsYUY2   ? "YUY2"   :
+  \      c.IsRGB32  ? "RGB32"  :
+  \      c.IsRGB24  ? "RGB24"  : "Unknown"
+    """) : c.PixelType()
+}
+
+
+Function sh_Y8_YV411(clip c) {
+  try {
+    c.UtoY
+    csp = "YV411"
+  } catch ( error_msg ) {
+    csp = "Y8"
+  }
+  return csp
+}
+
+
+########################################################
+#                                                      #
+# HELPER FUNCTIONS: For Contrasharp and YUY2 handling  #
+#                                                      #
+########################################################
+
+########################################
+## Didée's functions:
+
+ # contra-sharpening: sharpen the denoised clip, but don't add more to any pixel than what was removed previously.
+ # script function from Didée, at the VERY GRAINY thread
+
+ # In final version 2.0d ContraHD() was merged, to allow proper HD sharpening.
+ # In this case global variables of (before denoising) source MSuper and forward and backward
+ # compensated motion vectors are necessary as: Super, cb1 and cf1, if used as a stand alone function.
+ # Don't know who made (mod) it, so I can't give proper credits, sorry.
+
+FUNCTION ContraSharpeningHD(clip denoised, clip original, bool "HD", bool "planar", int "overshoot"){
+HD        = default(HD    ,false)
+planar    = default(planar,false)
+overshoot = default(overshoot,0)
+avs26 = VersionNumber() < 2.60 ? false : true
+yuy26 = avs26 && Isyuy2(denoised) && planar
+
+HD ? eval("""
+cb1=original.MCompensate(Super, cb1, planar=planar)
+cf1=original.MCompensate(Super, cf1, planar=planar)
+pmax = yuy26 ? original.Planar2Interleaved().ConvertToYV16().mt_logic(cb1.Planar2Interleaved().ConvertToYV16(), "max").mt_logic(cf1.Planar2Interleaved().ConvertToYV16(), "max") : original.mt_logic(cb1, "max").mt_logic(cf1, "max")
+pmin = yuy26 ? original.Planar2Interleaved().ConvertToYV16().mt_logic(cb1.Planar2Interleaved().ConvertToYV16(), "min").mt_logic(cf1.Planar2Interleaved().ConvertToYV16(), "min") : original.mt_logic(cb1, "min").mt_logic(cf1, "min")""") : nop()
+
+s    = denoised.MinBlur(HD?2:1,1,planar=planar)                                   # Damp down remaining spots of the denoised clip.
+s    = yuy26 ? s.Planar2Interleaved().ConvertToYV16() : s
+original = yuy26 ? original.Planar2Interleaved().ConvertToYV16() : original
+denoised = yuy26 ? denoised.Planar2Interleaved().ConvertToYV16() : denoised
+allD = mt_makediff(original,denoised)                                             # The difference achieved by the denoising.
+ssD  = mt_makediff(s,HD?s.removegrain(20,-1,planar=planar).\
+                          removegrain(20,-1,planar=planar):\
+                        s.removegrain(11,-1,planar=planar))                       # The difference of a simple kernel blur.
+allD = yuy26 ? allD.ConvertToYUY2().Interleaved2planar(true) : allD
+ssD  = yuy26 ? ssD.ConvertToYUY2().Interleaved2planar(true) : ssD
+ssDD = ssD.repair(HD?ssD.repair(allD,1,planar=planar):allD,HD?12:1,planar=planar) # Limit the difference to the max of what the denoising removed locally.
+ssDD = yuy26 ? ssDD.Planar2Interleaved().ConvertToYV16() : ssDD
+ssD  = yuy26 ? ssD.Planar2Interleaved().ConvertToYV16() : ssD
+ssDD = avs26 ? SSDD.mt_lutxy(ssD,"x range_half - abs y range_half - abs < x y ?",use_expr=1)
+       \     : SSDD.mt_lutxy(ssD,"x 128 - abs y 128 - abs < x y ?")                       # abs(diff) after limiting may not be bigger than before.
+
+denoised.mt_adddiff(ssDD,U=2,V=2)                                                 # Apply the limited difference. (Sharpening is just inverse blurring)
+HD ? mt_clamp(last,pmax,pmin,overshoot,overshoot,chroma="copy first") : last
+yuy26 ? last.ConvertToYUY2().Interleaved2planar() : last
+}
+
+
+ # MinBlur   by Didée
+ # Nifty Gauss/Median combination (Modified for Planar input)
+
+function MinBlur(clip clp, int "r", int "uv", bool "planar", string "mode", int "abtype", bool "blurrep"){
+
+r      = default(r,1)
+uv     = default(uv,3)
+planar = default(planar,false)
+defmod = defined(mode)
+mode   = default(mode,"Median_Both")
+avs26 = VersionNumber() < 2.60 ? false : true
+yuy26 = avs26 && Isyuy2(clp) && planar
+
+uv2    = (uv==2) ? 1  : uv
+rg4    = (uv==3) ? 4  : -1
+rg11   = (uv==3) ? 11 : -1
+rg20   = (uv==3) ? 20 : -1
+uvm2   = r==2 ? (uv==3?2:uv==2?0:-1) : nop()
+uvm3   = r==3 ? (uv==3?3:uv==2?0:-1) : nop()
+medf   = (uv==3) ? 1 : -200
+rg4v   = !(defmod && r==1) && (r<=1)
+
+blurrep= default(blurrep,false)
+
+blurstr= mode == "Median_Both" ? "medianblur(r,r*medf,r*medf)" : mode == "average_Both" ? "aBlur(r, abtype, chroma=uv)" : mode == "average_horizontal" ? "aBlur(r, abtype, blurv="+String(r==1 ? 0 : 1)+", chroma=uv)" : mode == "average_vertical" ? "aBlur("+String(r==1 ? 0 : 1)+", abtype, blurv=r, chroma=uv)" : mode
+
+RG11D = (r==0) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.sbr(planar=planar).Planar2Interleaved(uv2==1).ConvertToYV16(),U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1) : mt_makediff(clp,clp.sbr(planar=planar),U=uv2,V=uv2)
+ \    : (r==1) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.removegrain(11,rg11,planar=planar).Planar2Interleaved(uv2==1).ConvertToYV16(),U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1) : mt_makediff(clp,clp.removegrain(11,rg11,planar=planar),U=uv2,V=uv2)
+ \    : (r==2) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.removegrain(11,rg11,planar=planar).removegrain(20,rg20,planar=planar).Planar2Interleaved(uv2==1).ConvertToYV16(),U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1) : mt_makediff(clp,clp.removegrain(11,rg11,planar=planar).removegrain(20,rg20,planar=planar),U=uv2,V=uv2)
+ \    :          yuy26 ? mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.removegrain(11,rg11,planar=planar).removegrain(20,rg20,planar=planar).removegrain(20,rg20,planar=planar).Planar2Interleaved(uv2==1).ConvertToYV16(),U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1) : mt_makediff(clp,clp.removegrain(11,rg11,planar=planar).removegrain(20,rg20,planar=planar).removegrain(20,rg20,planar=planar),U=uv2,V=uv2)
+RG4D  = (rg4v) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.removegrain(4,rg4,planar=planar).Planar2Interleaved(uv2==1).ConvertToYV16(),U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1) : mt_makediff(clp,clp.removegrain(4,rg4,planar=planar),U=uv2,V=uv2)
+ \    : (r==2) ? avs26 ? yuy26 ? eval("mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.Planar2Interleaved(uv2==1).ConvertToYV16()."+blurstr+",U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1)") : eval("mt_makediff(clp,clp."+blurstr+",U=uv2,V=uv2)") : mt_makediff(clp,clp.Quantile(radius_y=2, radius_u=uvm2, radius_v=uvm2, planar=planar), U=uv2,V=uv2)
+ \    :          avs26 ? yuy26 ? eval("mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.Planar2Interleaved(uv2==1).ConvertToYV16()."+blurstr+",U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1)") : eval("mt_makediff(clp,clp."+blurstr+",U=uv2,V=uv2)") : mt_makediff(clp,clp.Quantile(radius_y=3, radius_u=uvm3, radius_v=uvm3, planar=planar), U=uv2,V=uv2)
+#RG4D  = blurrep ? RG4D.Repair(clp.removegrain(3,uv==3 ? 0 : -1,planar=planar),9,uv==3 ? 0 : -1,planar=planar) : RG4D
+DD    = yuy26 ? mt_lutxy(RG11D.Planar2Interleaved(uv2==1).ConvertToYV16(),RG4D.Planar2Interleaved(uv2==1).ConvertToYV16(),"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?",U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv==1)
+    \ : avs26 ? mt_lutxy(RG11D,RG4D,"x range_half - y range_half - * 0 < range_half x range_half - abs y range_half - abs < x y ? ?",use_expr=1,U=uv2,V=uv2)
+    \         : mt_lutxy(RG11D,RG4D,"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?",U=uv2,V=uv2)
+yuy26 ? clp.Planar2Interleaved(uv==1).ConvertToYV16().mt_makediff(DD.Planar2Interleaved(uv==1).ConvertToYV16(),U=uv,V=uv).ConvertToYUY2().Interleaved2planar(uv==1) : clp.mt_makediff(DD,U=uv,V=uv)
+blurrep ? Repair(clp.removegrain(17,uv==3 ? 0 : -1,planar=planar),9,uv==3 ? 0 : -1,planar=planar) : last
+ }
+
+
+ # helper function: make a highpass on a blur's difference (well, kind of that)
+ # Highpass of spatial r=1 Gaussian (like blur(1.0)) (Modified for Planar input)
+
+function sbr(clip c, bool "planar") {
+
+planar = default(planar,false)
+avs26 = VersionNumber() < 2.60 ? false : true
+yuy26 = avs26 && Isyuy2(c) && planar
+
+rg11   = c.removegrain(11,-1,planar=planar)
+rg11D  = yuy26 ? mt_makediff(c.Planar2Interleaved(true).ConvertToYV16(),rg11.Planar2Interleaved(true).ConvertToYV16()).ConvertToYUY2().Interleaved2planar(true) : mt_makediff(c,rg11)
+rg11DD = yuy26 ? mt_makediff(rg11D.Planar2Interleaved(true).ConvertToYV16(),rg11D.removegrain(11,-1,planar=planar).Planar2Interleaved(true).ConvertToYV16()).mt_lutxy(rg11D.Planar2Interleaved(true).ConvertToYV16(),"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?").ConvertToYUY2().Interleaved2planar(true)
+     \ : avs26 ? mt_makediff(rg11D,rg11D.removegrain(11,-1,planar=planar)).mt_lutxy(rg11D,"x range_half - y range_half - * 0 < range_half x range_half - abs y range_half - abs < x y ? ?",use_expr=1)
+     \         : mt_makediff(rg11D,rg11D.removegrain(11,-1,planar=planar)).mt_lutxy(rg11D,"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?")
+yuy26 ? c.Planar2Interleaved().ConvertToYV16().mt_makediff(rg11DD.Planar2Interleaved().ConvertToYV16(),U=2,V=2).ConvertToYUY2().Interleaved2planar() : c.mt_makediff(rg11DD,U=2,V=2) }
+ 
+ 
+## cretindesalpes' functions
+# Converts 16 bit interleaved YUY2 to 16bit planar YUY2 suitable for Ditherpost. (Use right before Ditherpost; this format is not suitable for filtering)
+
+function Dither_YUY2toPlanar16(c){c
+yuy26   = !(VersionNumber() < 2.60) && isyuy2(c)
+my = !yuy26 ? Dither_get_msb().ConvertToYV12() : nop()
+ly = !yuy26 ? Dither_get_lsb().ConvertToYV12() : nop()
+u = !yuy26 ? UToY ().ConvertToYV12 () : nop()
+v = !yuy26 ? VToY ().ConvertToYV12 () : nop()
+yuy26 ? ConvertToYV16() : YToUV (u, v, StackVertical (StackVertical (my, my), StackVertical (ly, ly)))}
+
+
+# Converts 8 bit interleaved YUY2 to 8 bit planar YUY2 ready for either 8 or 16 bit processing also suitable for Ditherpost
+
+function Dither_YUY2toPlanar(c){c
+yuy26   = !(VersionNumber() < 2.60) && isyuy2(c)
+y = !yuy26 ? ConvertToYV12 () : nop()
+u = !yuy26 ? UToY ().ConvertToYV12 () : nop()
+v = !yuy26 ? VToY ().ConvertToYV12 () : nop()
+yuy26 ? ConvertToYV16() : YToUV (u, v, StackVertical (y, y))}
+
+
+# Converts back the above special planar formats to normal interleaved 16 bit YUY2
+
+function Dither_YUY2toInterleaved16(c){c
+yuy26   = !(VersionNumber() < 2.60)
+y = !yuy26 ? StackVertical (Crop (0, 0, 0, (Height () /(4))), Crop (0, (Height () /(2))+(Height () /(4)), 0, 0)).ConvertToYUY2 () : nop()
+u = !yuy26 ? UToY ().ConvertToYUY2 () : nop()
+v = !yuy26 ? VToY ().ConvertToYUY2 () : nop()
+yuy26 ? ConvertToYUY2() : YToUV (u, v, y)}
+
+
+# Converts back the above special planar formats to normal interleaved YUY2
+
+function Dither_YUY2toInterleaved(c){c
+yuy26   = !(VersionNumber() < 2.60)
+y = !yuy26 ? Crop (0, 0, 0, Height () /(2)).ConvertToYUY2 () : nop()
+u = !yuy26 ? UToY ().ConvertToYUY2 () : nop()
+v = !yuy26 ? VToY ().ConvertToYUY2 () : nop()
+yuy26 ? ConvertToYUY2() : YToUV (u, v, y)}
+
+
+# Converts luma (and chroma) to PC levels, and optionally allows tweaking for pumping up the darks. (for the clip to be fed to motion search only)
+# By courtesy of cretindesalpes.
+
+function Dither_Luma_Rebuild (clip src, float "s0", float "c",int "uv", bool "lsb", bool "lsb_in", bool "lsb_out", int "mode", float "ampn", bool "slice", bool "chromaonlytvtopc"){
+lsb_in  = Default( lsb_in  ,false)
+lsb_out = Default( lsb_out ,false)
+lsb     = Default( lsb     ,lsb_in || lsb_out)
+lsb     = !lsb && (lsb_in || lsb_out) ? true : lsb
+mode    = Default( mode ,6)
+uv      = Default(uv,    3)
+s0      = Default(s0,  2.0)
+c       = Default(c,  1.0/16)
+ampn    = Default(ampn, 0.0)
+slice   = Default(slice, true)
+chrtv2pc   = Default(chromaonlytvtopc, false)
+y = chrtv2pc ? 2 : 3
+yuy2    = isyuy2(src)
+avs26   = VersionNumber() < 2.60 ? false : true
+sisphbd = AvsPlusVersionNumber > 2294
+lsb_native = sisphbd ? !(src.BitsPerComponent() > 8 && (lsb)) : true
+sisphbd ? Assert(lsb_native, "lsb hack is not Compatible with native high bit depth" ) : nop()
+sisphbd ? Assert(!(src.isYUVA() && lsb), "lsb hack is not Compatible with YUVA" ) : nop()
+Assert(!(src.isrgb()), "Dither_Luma_Rebuild: RGB Color formats is not supported" )
+src     = yuy2 ? lsb_in ? src.Planar2Interleaved(uv==1).Dither_YUY2toPlanar16() : avs26 ? src.Planar2Interleaved(uv==1).ConvertToYV16() : lsb ? src.Planar2Interleaved(uv==1).Dither_YUY2toPlanar() : src : src
+
+    k = (s0 - 1) * c
+    t = lsb_in ? "x 4096 - 56064 / 0 1 clip"
+     \ : avs26 ? "x 16 scalef - 219 scalef / 0 1 clip"
+             \ : "x 16 - 219 / 0 1 clip"
+    e = String(k)+" "+String(1+c)+" "+String((1+c)*c)+" "+t+" "+String(c)
+\       +" + / - * "+t+" 1 "+String(k)+" - * + "+String(lsb?65536:avs26?"range_size":255)+" *"
+src
+lsb ? (lsb_in ? Dither_lut16  (yexpr=e,expr="x 32768 - 32768 * 28672 / 32768 +",y=y, u=uv, v=uv)                  : \
+                Dither_lut8   (yexpr=e,expr="x 128 - 32768 * 112 / 32768 +"    ,y=y, u=uv, v=uv))                 : \
+                avs26 ? mt_lut(yexpr=e,expr="x range_half - 128 * 112 / range_half +",use_expr=2,y=y, u=uv, v=uv) : \
+                        mt_lut(yexpr=e,expr="x 128 - 128 * 112 / 128 +"        ,y=y, u=uv, v=uv)
+
+lsb_out && !yuy2 ? last : (lsb && !lsb_out ? yuy2 ? Ditherpost(mode=mode,ampn=ampn,slice=slice,staticnoise=ampn!=0.0?true:false,u=uv,v=uv).Dither_YUY2toInterleaved().Interleaved2planar(uv==1) : Ditherpost(mode=mode,ampn=ampn,slice=slice,staticnoise=ampn!=0.0?true:false,u=uv,v=uv) : last)
+return yuy2 && lsb_out ? last.Dither_YUY2toInterleaved16().Interleaved2planar(uv==1) : yuy2 && avs26 && !lsb ? converttoyuy2().Interleaved2planar(uv==1) : last
+}
+
+# SH_KNLMeansCL
+
+function SH_KNLMeansCL (clip input, String "device_type", int "device_id", bool "chroma", bool "lsb", bool "lsb_in", float "h", int "d", int "a", String "knlm_params")
+{
+d            = Default( d ,0)
+a            = Default( a ,1)
+h            = Default( h ,7.0)
+deviceid     = Default( device_id ,0)
+knlm_params  = default(knlm_params, "")
+chroma       = Default( chroma  ,true)
+lsb_in       = Default( lsb_in  ,false)
+lsb          = Default( lsb     ,lsb_in)
+
+                                              sisphbd = AvsPlusVersionNumber > 2294
+                                              fullchr = sisphbd ? input.is444() : input.isyv24()
+                                              chr420  = sisphbd ? input.is420() : input.isyv12()
+                                              nochr   = sisphbd ?   input.isy() : input.isy8()
+                                              chrlsb  = chroma && !fullchr && !nochr
+                                              NL_in   = lsb && !lsb_in ? input.Dither_convert_8_to_16() : input
+                                              cnl     = chrlsb ? "Y" : input.isrgb() ? "auto" : chroma ? "YUV" : "Y"
+
+NL_in = !chrlsb && input.isyuy2() ? NL_in.converttoyv16() : NL_in
+
+                               chrlsb ? eval("""
+                                              # In a more lucid state I could probably have laid out this block much better... or not...
+
+                                              NL_W    = width(NL_in)
+                                              Uclip   = sisphbd ? ExtractU(NL_in) : UToY8(NL_in)
+                                              Vclip   = sisphbd ? ExtractV(NL_in) : VToY8(NL_in)
+                                              NL_lsb  = (chr420 ? StackVertical(  lsb ? StackVertical(Dither_get_msb(uclip),Dither_get_msb(vclip)) : uclip,\
+                                                                                  lsb ? StackVertical(Dither_get_lsb(uclip),Dither_get_lsb(vclip)) : vclip) : \
+                                                                  StackHorizontal(uclip,vclip))
+
+                                              nlc     = StackHorizontal(sisphbd ? ConvertToY(NL_in) : ConvertToY8(NL_in),NL_lsb)
+
+                                              nlc     = Eval("nlc.KNLMeansCL(D=d, A=a, h=h,stacked=lsb_in || lsb,device_type=device_type,device_id=deviceid,channels=cnl" + knlm_params + ")")
+
+                                              uvh = lsb_in || lsb ? uclip.height()/2 : uclip.height()
+                                              uvw = uclip.width()
+
+                                              nly = nlc.crop(0,0,chr420 ? -uvw : -(uvw+uvw),0)
+
+                                              nlu = chr420 ? lsb_in || lsb ? StackVertical(Dither_get_msb(nlc).crop(NL_W,0,0,-uvh),Dither_get_lsb(nlc).crop(NL_W,0,0,-uvh)) : nlc.crop(NL_W,0,0,-uvh)                : \
+                                                              nlc.crop(NL_W    ,0,-uvw,0)
+                                              nlv = chr420 ? lsb_in || lsb ? StackVertical(Dither_get_msb(nlc).crop(NL_W,uvh, 0,0),Dither_get_lsb(nlc).crop(NL_W,uvh, 0,0)) : nlc.crop(NL_W,uvh, 0,0)                : \
+                                                              nlc.crop(NL_W+uvw,0,   0,0)
+                                              YToUV(nlu, nlv, nly)
+                                             """) :   Eval("NL_in.KNLMeansCL(D=d, A=a, h=h,stacked=lsb_in || lsb,device_type=device_type,device_id=deviceid,channels=cnl" + knlm_params + ")")
+
+!lsb && lsb_in ? Ditherpost(mode=6,slice=false) : last
+input.isyuy2() ? converttoyuy2() : last
+}
+
+
+Function sh_RemoveGrain(clip input, int "mode", int "modeU", int "modeV")
+{
+    mode     = Default(mode,     1      )
+    modeU    = Default(modeU,    mode   )
+    modeV    = Default(modeV,    modeU  )
+    
+    
+    iCSP     = input.sh_GetCSP()
+    isYV12   = iCSP == "YV12"
+    isY8     = iCSP == "Y8"
+    
+    sw       = input.Width ()
+    sh       = input.Height()
+    wmod4    = sw/4*4 == sw
+    hmod4    = sh/4*4 == sh
+    mod4     = wmod4 && hmod4
+    padw     = wmod4 ? sw : (sw/4+1)*4
+    padh     = hmod4 ? sh : (sh/4+1)*4
+    
+    
+    input_m4 = mod4 ? input : input.PointResize(padw, padh, 0, 0, padw, padh)
+    
+    return isYV12 ? input.RemoveGrain(mode, modeU, modeV)
+    \             : isY8 ? input_m4                       .RemoveGrain(mode , -1, -1)
+    \                              .Crop(0, 0, sw, sh)
+    \                    : YToUV(input_m4.UToY8()         .RemoveGrain(modeU, -1, -1),
+    \                            input_m4.VToY8()         .RemoveGrain(modeV, -1, -1),
+    \                            input_m4.ConvertToY8()   .RemoveGrain(mode , -1, -1))
+    \                     .Crop(0, 0, sw, sh)
+}
+
+
+# base on dithertools avsi functions by cretindesalpes
+
+Function y_gamma_to_linear (clip src,
+\	bool "tv_range_in", bool "tv_range_out", string "curve", int "u", int "v",
+\	float "gcor", bool "sigmoid", float "thr", float "cont")
+{
+	src
+	linear_and_gamma (false,
+\		tv_range_in, tv_range_out, curve, u, v,
+\		gcor, sigmoid, thr, cont
+\	)
+}
+
+
+Function y_linear_to_gamma (clip src,
+\	bool "tv_range_in", bool "tv_range_out", string "curve", int "u", int "v",
+\	float "gcor", bool "sigmoid", float "thr", float "cont")
+{
+	src
+	linear_and_gamma (true,
+\		tv_range_in, tv_range_out, curve, u, v,
+\		gcor, sigmoid, thr, cont
+\	)
+}
+
+
+Function linear_and_gamma (clip src, bool l2g_flag,
+\	bool "tv_range_in", bool "tv_range_out", string "curve", int "u", int "v",
+\	float "gcor", bool "sigmoid", float "thr", float "cont")
+{
+	sisphbd = AvsPlusVersionNumber > 2294
+	sishasalpha  = sisphbd ? src.hasalpha : false
+	src2         = sishasalpha ? src.RemoveAlphaPlane : src
+	tv_range_in  = Default (tv_range_in,  true)
+	tv_range_in  = src.IsRGB ? false : tv_range_in
+	tv_range_out = Default (tv_range_out, true)
+	tv_range_out = src.IsRGB ? false : tv_range_out
+	curve        = Default (curve,      "srgb")
+	u            = Default (u,               2)
+	u            = src.IsRGB ? 3 : u
+	v            = Default (v,               2)
+	v            = src.IsRGB ? 3 : v
+	gcor         = Default (gcor,          1.0)
+	sigmoid      = Default (sigmoid,     false)
+
+	c_num =
+\	  (curve == "srgb" ) ? 0
+\	: (curve == "709"  ) ? 1
+\	: (curve == "601"  ) ? 1
+\	: (curve == "170"  ) ? 1
+\	: (curve == "240"  ) ? 2
+\	: (curve == "2020" ) ? 3
+\	: (curve == "1886" ) ? 4
+\	: (curve == "1886a") ? 5
+\	: Assert (false, "linear_and_gamma: wrong curve value.")
+
+	#                                  BT-709/601
+	#                         sRGB     SMPTE 170M  SMPTE 240M    BT-2020    BT-1886    BT-1886a
+	k0    = Select (c_num, " 0.04045", " 0.081  ", " 0.0912 ", " 0.08145", "0      ", "0.35   ")
+	phi   = Select (c_num, "12.92   ", " 4.5    ", " 4.0    ", " 4.5    ", "4.5    ", "0.65709357")	# 0.35 ^ (3.0-2.6)
+	gam2  = Select (c_num, " 1      ", " 1      ", " 1      ", " 1      ", "1      ", "3.0    ")
+	alpha = Select (c_num, " 0.055  ", " 0.099  ", " 0.1115 ", " 0.0993 ", "0      ", "0      ")
+	gamma = Select (c_num, " 2.4    ", " 2.22222", " 2.22222", " 2.22222", "2.4    ", "2.6    ")
+
+	expr = (tv_range_in) ? "x 4096 - 56064 /" : "x 65536 /"
+
+	# E = (E' <= k0)   ?   (E' ^ gam2) / phi   :   ((E' + alpha) / (1 + alpha)) ^ gamma
+	g2l = expr
+	g2l =   g2l + " " + k0 +" <= "
+\	      + g2l + " " + gam2 + " ^ " + phi +" / "
+\	      + g2l + " " + alpha + " + 1 " + alpha + " + / " + gamma + " ^   ?"
+	g2l = (gcor != 1.0) ? g2l + " 0 >=   " + g2l + " " + String (gcor) + " ^   " + g2l + "   ?" : g2l
+	g2l = (sigmoid) ? build_sigmoid_expr (g2l , true , thr, cont) : g2l
+
+	l2g = (sigmoid) ? build_sigmoid_expr (expr, false, thr, cont) : expr
+	l2g = (gcor != 1.0) ? l2g + " 0 >=   " + l2g + " " + String (gcor) + " ^   " + l2g + "   ?" : l2g
+	# E' = (E <= k0 / phi)   ?   (E * phi) ^ (1 / gam2)   :   (E ^ (1 / gamma)) * (alpha + 1) - alpha
+	l2g =   l2g + " " + k0 + " " + phi + " / <= "
+\	      + l2g + " " + phi + " * 1 " + gam2 + " / ^ "
+\	      + l2g + " 1 " + gamma + " / ^ " + alpha + " 1 + * " + alpha + " -   ?"
+
+	expr = (l2g_flag) ? l2g : g2l
+	expr = expr + ((tv_range_out) ? " 56064 * 4096 +" : " 65536 *")
+	src2.mt_lut (expr="i16 " + expr, scale_inputs=!tv_range_out || !tv_range_in ? "allf" : "all", use_expr=2, y=3, u=u, v=v)
+	sishasalpha ? last.AddAlphaPlane(src.ExtractA) : last
+}
+
+
+# Sigmoidal functions:
+# x0 = 1 / (1 + exp (cont *  thr     ))
+# x1 = 1 / (1 + exp (cont * (thr - 1)))
+# y  = (1 / (1 + exp (cont * (thr - x))) - x0) / (x1 - x0)
+# x  = thr - log (1 / (y * (x1 - x0) + x0) - 1) / cont
+Function build_sigmoid_expr (string in, bool inv, float "thr", float "cont")
+{
+	thr   = Default (thr,  0.5)
+	cont  = Default (cont, 6.5)
+	Assert ((cont > 0), "build_sigmoid_expr: cont must be strictly positive.")
+	Assert ((thr >= 0 && thr <= 1), "build_sigmoid_expr: thr must be in the 0-1 range.")
+	x0v = 1 / (1 + exp (cont *  thr     ))
+	x1v = 1 / (1 + exp (cont * (thr - 1)))
+
+	x0   = String (      x0v)
+	x1m0 = String (x1v - x0v)
+	cont = String (cont)
+	thr  = String (thr)
+
+	expr = (inv)
+\	? thr + " 1 " + in + " " + x1m0 + " * " + x0 + " + 0.000001 max / 1 - 0.000001 max log " + cont + " / -"
+\	: "1 1 " + cont + " " + thr + " " + in + " - * exp + / " + x0 + " - " + x1m0 + " /"
+
+	return (expr)
+}
+
+
+Function sigmoid_direct (clip src, float "thr", float "cont", int "u", int "v")
+{
+	u = Default (u, 2)
+	u = src.IsRGB ? 3 : u
+	v = Default (v, 2)
+	v = src.IsRGB ? 3 : v
+
+	expr = "x 65536 /"
+	expr = build_sigmoid_expr (expr, false, thr, cont)
+	expr = expr + " 65536 *"
+	src.MT_lut (yexpr="i16 " + expr, scale_inputs="allf", use_expr=2, y=3, u=u, v=v)
+}
+
+
+Function sigmoid_inverse (clip src, float "thr", float "cont", int "u", int "v")
+{
+	u = Default (u, 2)
+	u = src.IsRGB ? 3 : u
+	v = Default (v, 2)
+	v = src.IsRGB ? 3 : v
+
+	expr = "x 65536 /"
+	expr = build_sigmoid_expr (expr, true , thr, cont)
+	expr = expr + " 65536 *"
+	src.mt_lut (yexpr="i16 " + expr, scale_inputs="allf", use_expr=2, y=3, u=u, v=v)
+}
+ 
+ 
+function sh_Vinverse2(clip clp, float "sstr", int "amnt", int "uv")
+{
+  uv   = default(uv,3)
+  sstr = default(sstr,2.7)
+  amnt = default(amnt,255)
+  uv2  = (uv==2) ? 1 : uv
+  STR  = string(sstr)
+  AMN  = string(amnt)
+  vblur  = clp.sbrV()
+  vblurD = mt_MakeDiff(clp,vblur,U=uv2,V=uv2)
+  Vshrp  = mt_LutXY(vblur,vblur.mt_convolution("1","1 2 1"),expr="x x y - "+STR+" * +",U=uv2,V=uv2)
+  VshrpD = mt_MakeDiff(Vshrp,vblur,U=uv2,V=uv2)
+  VlimD  = mt_LutXY(VshrpD,VblurD,expr="x 128 - y 128 - * 0 < x 128 - abs y 128 - abs < x y ? 128 - 0.25 * 128 + x 128 - abs y 128 - abs < x y ? ?",U=uv2,V=uv2)
+  mt_AddDiff(Vblur,VlimD,U=uv,V=uv)
+  (amnt>254) ? last : (amnt==0) ? clp : mt_LutXY(clp,last,expr="x "+AMN+" + y < x "+AMN+" + x "+AMN+" - y > x "+AMN+" - y ? ?",U=uv,V=uv)
+  return(last)
+}
+
+
+function sbrV(clip o)
+{
+  rg11=mt_convolution("1","1 2 1")
+  rg11D=mt_makediff(o,rg11)
+  rg11DD=mt_makediff(rg11D,rg11D.mt_convolution("1","1 2 1")).mt_lutxy(rg11D,"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?")
+  o.mt_makediff(rg11DD,U=2,V=2)
+}
+
+
+function sh_Vinverse2H(clip clp, float "sstr", int "amnt", int "uv", int "pass")
+{
+  uv   = default(uv,3)
+  sstr = default(sstr,2.7)
+  amnt = default(amnt,255)
+  uv2  = (uv==2) ? 1 : uv
+  STR  = string(sstr)
+  AMN  = string(amnt)
+  pass = Default(pass, 1)
+  Hblur  = clp.sbrH(pass)
+  HblurD = mt_MakeDiff(clp,Hblur,U=uv2,V=uv2)
+  Hshrp  = mt_LutXY(Hblur,spasses(Hblur, pass, """mt_convolution("1 2 1","1")"""),expr="x x y - "+STR+" * +",U=uv2,V=uv2)
+  HshrpD = mt_MakeDiff(Hshrp,Hblur,U=uv2,V=uv2)
+  HlimD  = mt_LutXY(HshrpD,HblurD,expr="x 128 - y 128 - * 0 < x 128 - abs y 128 - abs < x y ? 128 - 0.25 * 128 + x 128 - abs y 128 - abs < x y ? ?",U=uv2,V=uv2)
+  mt_AddDiff(Hblur,HlimD,U=uv,V=uv)
+  (amnt>254) ? last : (amnt==0) ? clp : mt_LutXY(clp,last,expr="x "+AMN+" + y < x "+AMN+" + x "+AMN+" - y > x "+AMN+" - y ? ?",U=uv,V=uv)
+  return(last)
+}
+
+
+function sbrH(clip o, int "pass")
+{
+  pass = Default(pass, 1)
+  rg11=spasses(o, pass, """mt_convolution("1 2 1","1")""")
+  rg11D=mt_makediff(o,rg11)
+  rg11DD=mt_makediff(rg11D,spasses(rg11D, pass, """mt_convolution("1 2 1","1")""")).mt_lutxy(rg11D,"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?")
+  o.mt_makediff(rg11DD,U=2,V=2)
+}
+
+
+# sBlackerPixel by A.SONY, for repairing DeCrawled and dehaloed clip
+# v1.56
+
+function sBlackerPixel(clip "o", clip "filtered", float "maxdiff", float "thr", bool "linflate", float "mdifffade", clip "o2", val "averagewithwhiterPixel", int "averagewithwhiterPixelrep", bool "deeponly")
+{
+maxdiff   = default(maxdiff,              32)
+thr       = default(thr,                  40)
+mdifffade = default(mdifffade, maxdiff*3/2.0) #should be more than the maxdiff
+linflate  = default(linflate,           true)
+whidorep  = defined(averagewithwhiterPixelrep)
+
+Assert((defined(o) && defined(filtered)), "both o clip and filtered clip are needed")
+
+doaverage = defined(averagewithwhiterPixel)
+whiterPixelclip = doaverage ? isclip(averagewithwhiterPixel) ? averagewithwhiterPixel : isstring(averagewithwhiterPixel) ? eval(averagewithwhiterPixel) : swhiterPixel(o, filtered, maxdiff, 255-thr, linflate, mdifffade, o2, deeponly) : nop()
+
+dpmask = mdifffade!=0 ? VersionNumber() < 2.6 ? o.mt_lutxy(filtered,"y "+string(thr)+" > x y > & x y - "+string(maxdiff)+" < 255 x y - "+string(mdifffade)+" < ? 255 255 "+string(mdifffade)+" / x y - * - 0 ? 0 ?")
+                        \                     : o.mt_lutxy(filtered,"y "+string(thr)+" scalef > x y > & x y - "+string(maxdiff)+" scalef < range_max x y - "+string(mdifffade)+" scalef < ? range_max range_max "+string(mdifffade)+" scalef / x y - * - 0 ? 0 ?",use_expr=2) : nop()
+
+mdifffade!=0 ? Mt_Merge(defined(o2) ? o2 : o,filtered, linflate ? dpmask.mt_inflate(155) : dpmask,U=2,V=2) : \
+               VersionNumber() < 2.6 ? o.mt_lutxy(filtered,"x y > y "+string(thr)+" > & x y - "+string(maxdiff)+" < & y x ?",U=2,V=2)
+               \                     : o.mt_lutxy(filtered,"x y > y "+string(thr)+" scalef > & x y - "+string(maxdiff)+" scalef < & y x ?",use_expr=2,U=2,V=2)
+doaverage ? whidorep ? mt_average(last, whiterPixelclip.Repair(o,averagewithwhiterPixelrep,-1), u=2, v=2) : mt_average(last, whiterPixelclip, u=2, v=2) : last
+}
+
+
+# swhiterPixel by A.SONY
+# v1.26
+
+function swhiterPixel(clip "o", clip "filtered", float "maxdiff", float "thr", bool "linflate", float "mdifffade", clip "o2", bool "deeponly")
+{
+maxdiff   = default(maxdiff,              32)
+thr       = default(thr,                 215)
+mdifffade = default(mdifffade, maxdiff*3/2.0) #should be more than the maxdiff
+linflate  = default(linflate,           true)
+deeponly  = default(deeponly,          false)
+
+Assert((defined(o) && defined(filtered)), "both o clip and filtered clip are needed")
+
+wpmask = mdifffade!=0 ? VersionNumber() < 2.6 ? o.mt_lutxy(filtered,"y "+string(thr)+" < x y < & y x - "+string(maxdiff)+" > 255 y x - "+string(mdifffade)+" > ? 255 255 "+string(mdifffade)+" / y x - * - 0 ? 0 ?")
+                        \                     : o.mt_lutxy(filtered,"y "+string(thr)+" scalef < x y < & y x - "+string(maxdiff)+" scalef > range_max y x - "+string(mdifffade)+" scalef > ? range_max range_max "+string(mdifffade)+" scalef / y x - * - 0 ? 0 ?",use_expr=2) : nop()
+
+wpmask = mdifffade!=0 && deeponly ? wpmask.mt_invert().mt_expand(155).mt_inpand(155).mt_invert() : wpmask
+
+mdifffade!=0 ? Mt_Merge(defined(o2) ? o2 : o,filtered, linflate ? wpmask.mt_inflate(155) : wpmask,U=2,V=2) : \
+               VersionNumber() < 2.6 ? o.mt_lutxy(filtered,"x y < y "+string(thr)+" < & y x - "+string(maxdiff)+" > & y x ?",U=2,V=2)
+               \                     : o.mt_lutxy(filtered,"x y < y "+string(thr)+" scalef < & y x - "+string(maxdiff)+" scalef > & y x ?",use_expr=2,U=2,V=2)
+}
+
+
+
+function chroma_rep(clip sourceo, int "cache", float "thr")
+{
+###### parameters & other necessary vars ######
+    cache   = default(cache,-1)
+global  rep_thr = default(thr, 0.125)
+
+
+avs26=!(VersionNumber() < 2.6)
+nonyuy2=avs26 && sourceo.isyuy2()
+
+source=nonyuy2 ? sourceo.nonyuy2clipin(true) : sourceo
+
+###### source preparation & lut ######
+global  out1    = source
+global  out2    = mergechroma(source,mt_adddiff(source.trim(1,0),mt_makediff(source.trim(1,0),source.trim(2,0),y=1,u=3,v=3),y=1,u=3,v=3).blur(1))
+
+
+###### initialise variables ######
+global  alfr     = -100
+
+
+###### evaluation call & output calculation ######
+scriptclip( source, """
+
+ ### preparation ###
+        cfr = current_frame
+        ajmp = alfr+1==cfr
+        
+    global  alfr = cfr
+
+        al_v = LumaDifference(out1.trim(1,0),out1.trim(2,0))
+        ac_v = ChromaUDifference(out1.trim(1,0),out1.trim(2,0)) + ChromaVDifference(out1.trim(1,0),out1.trim(2,0))
+
+  ## luma value shifting ##
+    l10 = ajmp ? l01 : al_v
+global 		l01	= ajmp ? l12 : al_v
+global 		l12	= al_v
+  
+  ## chroma value shifting ##
+    c10 = ajmp ? c01 : ac_v
+global 		c01 = ajmp ? c12 : ac_v
+global 		c12 = ac_v
+	
+ ### condition ###
+    change  = l12*2<l01 && c01*1.25<c12 && c01*l12/c12/l01<rep_thr
+    chango  = l01*2<l10 && c10*1.25<c01 && c10*l01/c01/l10<rep_thr
+    
+    change ? out2 : chango ? out1.trim(1,0) : out1
+
+""")
+
+nonyuy2 ? nonyuy2clipout(true) : last
+
+
+###### final decimation & caching ######
+cache<0 ? last : last.RequestLinear(8, cache, 5, false, false)
+
+return last
+}
+
+
+function chroma_rep2(clip sourceo, int "cache", float "thr")
+{
+###### parameters & other necessary vars ######
+    cache   = default(cache,-1)
+global  rep_thr = default(thr, 0.125)
+
+
+avs26=!(VersionNumber() < 2.6)
+nonyuy2=avs26 && sourceo.isyuy2()
+
+source=nonyuy2 ? sourceo.nonyuy2clipin(true) : sourceo
+
+###### source preparation & lut ######
+global  out1    = source
+global  out2    = mergechroma(source,mt_adddiff(source.trim(1,0),mt_makediff(source.trim(1,0),source.trim(2,0),y=1,u=3,v=3),y=1,u=3,v=3).blur(1))
+
+
+###### initialise variables ######
+global  alfr     = -100
+
+
+###### evaluation call & output calculation ######
+chrixout = scriptclip( source, """
+
+ ### preparation ###
+        cfr = current_frame
+        ajmp = alfr+1==cfr
+        
+    global  alfr = cfr
+
+        al_v = LumaDifference(out1,out1.trim(1,0))
+        ac_v = ChromaUDifference(out1,out1.trim(1,0)) + ChromaVDifference(out1,out1.trim(1,0))
+
+  ## luma value shifting ##
+    l10 = ajmp ? l01 : al_v
+global 		l01	= ajmp ? l12 : al_v
+global 		l12	= al_v
+  
+  ## chroma value shifting ##
+    c10 = ajmp ? c01 : ac_v
+global 		c01 = ajmp ? c12 : ac_v
+global 		c12 = ac_v
+	
+ ### condition ###
+    change  = l12*2<l01 && c01*1.25<c12 && c01*l12/c12/l01<rep_thr
+    chango  = l01*2<l10 && c10*1.25<c01 && c10*l01/c01/l10<rep_thr
+    
+    change ? out2 : chango ? out1.trim(1,0) : out1
+
+""")
+
+chrixout=nonyuy2 ? chrixout.nonyuy2clipout(true) : chrixout
+
+
+###### final decimation & caching ######
+chrixout2 = cache<0 ? sourceo.mergechroma(chrixout) : sourceo.mergechroma(chrixout).RequestLinear(8, cache, 5, false, false)
+
+return chrixout2
+}
+
+
+#based on smartfade v0.2 by martino - Aimed at removing interlaced fades in anime. Uses luma difference between two fields as activation threshold.
+#mod by thetoof : removed degrainmedian post-processing, 
+#		changed how the fields are blended together (average of 2 nnedi interpolations + contra-sharpening to retain more detail) and 
+#		added cache parameter to forward the setting of animeivtc to this function
+#		renamed global parameter to something less general than "threshold"
+
+function smartfademod(clip c, float "sfthr", bool "sfshow", int "cache") {
+    
+global sfthr	= default ( sfthr,  0.4 ) # Threshold for fade detection.
+show		= default ( sfshow, false ) # Displays luma difference between fields without processing anything.
+cache		= default ( cache,   10 ) # Cache the frames to help seeking and other functions requesting many frames
+
+show ? scriptclip(c, "subtitle(string(abs(	  separatefields().selectodd().averageluma() \
+            				- separatefields().selecteven().averageluma())))") : \
+       scriptclip(c, "sep = separatefields() \
+       avg = sep.selectodd().averageluma() - sep.selecteven().averageluma() \
+       abs(avg) > sfthr ? interleave(sep.selecteven(),sep.selectodd()).weave().daa3() : last")
+
+cache<0 ? last : last.RequestLinear(8, cache, 5, false, false)
+
+    return last
+
+}
+
+
+#Suggested by Mystery Keeper in "Denoise of tv-anime" thread
+function ediaa(clip a) {return a.EEDI2(field=1).TurnRight().EEDI2(field=1).TurnLeft().spline36resize(a.width,a.height,-0.5,-0.5)}
+
+
+#Anti-aliasing with contra-sharpening by Didée
+function daa(clip c) {
+nn	= c.nnedi2(field=-2)
+dbl   	= mt_average(selecteven(nn),selectodd(nn),U=3,V=3)
+dblD 	= mt_makediff(c,dbl,U=3,V=3)
+shrpD 	= mt_makediff(dbl,dbl.removegrain((width(c)>1100) ? 20 : 11),U=3,V=3)
+DD 	= shrpD.repair(dblD,13)
+return dbl.mt_adddiff(DD,U=3,V=3) }
+
+
+#Anti-aliasing with edge masking by martino, mask using "sobel" taken from Kintaro's useless filterscripts and modded by thetoof for spline36
+function maa(clip input, int "mask") {
+mask = input.mt_edge("sobel",7,7,5,5).mt_inflate()
+aa_clip=input.spline36Resize(width(input)*2,height(input)*2).TurnLeft().SangNom().TurnRight().SangNom().spline36Resize(width(input),height(input)).MergeChroma(input) 
+return mt_merge(input,aa_clip,mask) }
+
+
+#Developped in the "fine anime antialiasing thread"
+function SharpAAMCmod(clip orig, float "dark", int "thin", int "sharp", int "smooth", bool "stabilize", int "tradius", int "aapel", int "aaov", int "aablk", string "aatype")
+{
+dark	= default ( dark,     0.2 ) # strokes darkening strength
+thin	= default ( thin,      10 ) # Presharpening
+sharp	= default ( sharp,    150 ) # Postsharpening
+smooth	= default ( smooth,    -1 ) # Postsmoothing
+stabilize= default ( stabilize,false ) # Use post stabilization with Motion Compensation
+Tradius	= default ( Tradius,    2 ) # 2 = MDegrain2 / 3 = MDegrain3 
+aapel	= default ( aapel,      1 ) # accuracy of the motion estimation (Value can only be 1, 2 or 4. 1 means a precision to the pixel. 2 means a precision to half a pixel, 4 means a precision to quarter a pixel, produced by spatial interpolation (better but slower).)
+aaov	= default ( aaov,       (orig.width>1100) ? 8 : 4 ) # block overlap value (horizontal). Must be even and less than block size. (Higher = more precise & slower)
+aablk	= default ( aablk,      (orig.width>1100) ? 16 : 8 ) # Size of a block (horizontal). It's either 4, 8 or 16 ( default is 8 ). Larger blocks are less sensitive to noise, are faster, but also less accurate.
+aatype	= default ( aatype, "Sangnom" ) # Use Sangnom() or EEDI2() for anti-aliasing
+
+w=width(orig)
+h=height(orig)
+m=mt_logic( orig.DEdgeMask(0,255,0,255,"5 10 5 0 0 0 -5 -10 -5", divisor=4,Y=3,U=3,V=3)
+ \       ,orig.DEdgeMask(0,255,0,255,"5 0 -5 10 0 -10 5 0 -5", divisor=4,Y=3,U=3,V=3)
+ \       ,"max").mt_lut("x 128 / 0.86 ^ 255 *")
+preaa=(thin==0 && dark==0) ? orig : (thin==0) ? orig.Toon(dark) : (dark==0) ? orig.awarpsharp2(depth=thin) : orig.Toon(dark).awarpsharp2(depth=thin)
+aa= (aatype=="Sangnom") ? preaa.spline36resize(w*2,h*2).TurnLeft().SangNom().TurnRight().SangNom().spline36resize(w,h) : (aatype=="EEDI2") ? preaa.ediaa() : blankclip(pixel_type="YV12").subtitle("Please use Sangnom or EEDI2 for aatype")
+postsh=(sharp==0 && smooth==0) ? aa : aa.lsfmod(edgemode=1,strength=sharp,overshoot=1,soft=smooth)
+merged=mt_merge(orig,postsh,m,Y=3,U=3,V=3)
+
+sD=mt_makediff(orig,merged)
+
+origsuper= orig.MSuper(pel=aapel)
+sDsuper  = sD.  MSuper(pel=aapel, levels=1)
+
+
+fv3 = tradius==3 ? origsuper.MAnalyse(isb=false,delta=3,overlap=aaov,blksize=aablk) : nop()
+fv2 = tradius>=2 ? origsuper.MAnalyse(isb=false,delta=2,overlap=aaov,blksize=aablk) : nop()
+fv1 = tradius>=1 ? origsuper.MAnalyse(isb=false,delta=1,overlap=aaov,blksize=aablk) : nop()
+bv1 = tradius>=1 ? origsuper.MAnalyse(isb=true, delta=1,overlap=aaov,blksize=aablk) : nop()
+bv2 = tradius>=2 ? origsuper.MAnalyse(isb=true, delta=2,overlap=aaov,blksize=aablk) : nop()
+bv3 = tradius==3 ? origsuper.MAnalyse(isb=true, delta=3,overlap=aaov,blksize=aablk) : nop()
+sDD = tradius==1 ? sD.MDegrain1(sDsuper,bv1,fv1) : tradius==2 ? sD.MDegrain2(sDsuper,bv1,fv1,bv2,fv2) : sD.MDegrain3(sDsuper,bv1,fv1,bv2,fv2,bv3,fv3)
+
+reduc = 0.4
+sDD = mt_lutxy(sD,sDD,"x 128 - abs y 128 - abs < x y ?").mergeluma(sDD,1.0-reduc)
+
+return stabilize ? orig.mt_makediff(sDD,U=2,V=2) : merged
+}
+
+
+# Kill Combing Function from mcbob
+function VinverseD(clip clp, float "sstr", int "amnt", int "uv")
+{
+uv   = default(uv,3)
+sstr = default(sstr,2.7)
+amnt = default(amnt,255)
+uv2  = (uv==2) ? 1 : uv
+STR  = string(sstr)
+AMN  = string(amnt)
+vblur  = clp.mt_convolution("1","50 99 50",U=uv,V=uv)
+vblurD = mt_makediff(clp,vblur,U=uv2,V=uv2)
+Vshrp  = mt_lutxy(vblur,vblur.mt_convolution("1","1 4 6 4 1",U=uv2,V=uv2),expr="x x y - "+STR+" * +",U=uv2,V=uv2)
+VshrpD = mt_makediff(Vshrp,vblur,U=uv2,V=uv2)
+VlimD  = mt_lutxy(VshrpD,VblurD,expr="x 128 - y 128 - * 0 < x 128 - abs y 128 - abs < x y ? 128 - 0.25 * 128 + x 128 - abs y 128 - abs < x y ? ?",U=uv2,V=uv2)
+mt_adddiff(Vblur,VlimD,U=uv,V=uv)
+(amnt>254) ? last : (amnt==0) ? clp : mt_lutxy(clp,last,expr="x "+AMN+" + y < x "+AMN+" + x "+AMN+" - y > x "+AMN+" - y ? ?",U=uv,V=uv) 
+return(last)
+}
+
+
+
+###############
+#motion adaptive by A.SONY
+
+function smam(clip input, clip "prefilter", val "filter", int "pel", int "blksize", clip "motionmask", float "Str", float "Amp", bool "TV_range", bool "qtgmc_lsb", int "tr2", int "usedaa3mod", bool "repblend", val "dslow", bool "qtgmc_n16") {
+
+sisphbd = AvsPlusVersionNumber > 2294
+qtgmc_lsb = default(qtgmc_lsb, sisphbd ? false : true)
+qtgmc_n16 = default(qtgmc_n16, sisphbd ? input.BitsPerComponent() > 8 ? false : true : false)
+repblend  = default(repblend, false)
+
+defined(filter) ? Assert((Isclip(filter) || IsString(filter)),        "'filter' only accepts clip or string") : nop()
+
+Str             = default (Str, 1.5)
+exfilclp        = isclip(filter)
+sisbob          = round(framerate(input))==60 || framerate(input)==50
+tr2             = default (tr2, sisbob ? 3 : 1)
+usedaa3mod      = default (usedaa3mod, exfilclp ? 0 : sisbob ? 1 : 2)
+
+infiltr = usedaa3mod == 1 ? input.daa3mod(dslow) : input
+filclip = defined(filter) ? exfilclp ? filter : eval("infiltr." + filter) : infiltr.QTGMC(InputType=1, tr0=0, tr1=sisbob ? undefined : 1, tr2=tr2, lsb=qtgmc_lsb, n16=qtgmc_n16, rep1=sisbob ? undefined : 11, rep2=sisbob ? undefined : 11, Sharpness=0.0, TV_range=TV_range, Str=Str, Amp=Amp)
+filclip = usedaa3mod == 2 ? filclip.daa3mod(dslow) : filclip
+
+momask  = !defined(motionmask) ? input.smam_mask(prefilter,pel,blksize) : motionmask #if you deal with YUY2 then it should be Planar YUY2 in avs2.5 and yv16 in avs2.6
+isyuy2(input) && VersionNumber() < 2.60 ? mt_merge(input.Interleaved2Planar(),filclip.Interleaved2Planar(),momask,u=3,v=3).Planar2Interleaved() : isyuy2(input) ? mt_merge(input.converttoyv16(),filclip.converttoyv16(),momask,u=3,v=3).converttoyuy2() : mt_merge(input,filclip,momask,u=3,v=3)
+repblend ? isyuy2(input) && VersionNumber() < 2.60 ? Interleaved2Planar() : isyuy2(input) ? converttoyv16() : last : last
+repblend ? isyuy2(input) && VersionNumber() < 2.60 ? Repair(Repair(input.Interleaved2Planar(),16,Planar=true),12,Planar=true).Planar2Interleaved() : isyuy2(input) ? Repair(Repair(input.converttoyv16(),16),12).converttoyuy2() : Repair(Repair(input,16),12) : last
+}
+
+
+###############
+#smam_mask
+# if input is YUY2 the output will be Planar YUY2 in avs 2.5 and yv16 in avs 2.6
+
+function smam_mask(clip input, clip "prefilter", int "pel", int "blksize", bool "chroma", int "dct") {
+    ox = input.width()
+    oy = input.height()
+    HD = (ox > 1099 || oy > 599)
+    sisbob  = round(framerate(input))==60 || framerate(input)==50
+    pel = default( pel,     HD ? 1 : 2 )
+    dct = default( dct, sisbob ? 0 : 2 )
+    blksize = default(blksize,HD ? sisbob ? 8 : 16 : sisbob ? 4 : 8)
+preclip= defined(prefilter) ? prefilter : (VersionNumber() < 2.60) && isyv12(input) ? input.HQdn3d().FFT3DFilter() : input.HQdn3d_2().FFT3DFilter()
+sup    = preclip.MSuper(pel=pel,sharp=1)
+fv1    = sup.MAnalyse(isb=false,delta=1,DCT=dct,Truemotion=false,blksize=blksize,chroma=chroma)
+fv2    = sup.MAnalyse(isb=true,delta=1,DCT=dct,Truemotion=true,blksize=blksize,chroma=chroma)
+
+momask1 = input.MMask(fv1, kind = 1, ml=2)
+momask2 = input.MMask(fv2, kind = 1, ml=3)
+momask1 =isyuy2(input) && VersionNumber() < 2.60 ? momask1.Interleaved2Planar() : isyuy2(input) ? momask1.converttoyv16() : momask1
+momask2 =isyuy2(input) && VersionNumber() < 2.60 ? momask2.Interleaved2Planar() : isyuy2(input) ? momask2.converttoyv16() : momask2
+mt_average(momask1,momask2,u=3,v=3)
+}
+
+
+###############
+# Hqdn3d_2
+
+function Hqdn3d_2(clip clip, float "ls", float "cs", float "lt", float "ct", int "UV", bool "lsb", bool "lsb_in", bool "i16", int "Y") {
+sisavs26  = !(VersionNumber() < 2.60)
+sisphbd   = AvsPlusVersionNumber > 2294
+cs        = default (cs              , 3.0)
+ct        = default (ct              , 4.5)
+UV        = default (UV               , 3)
+Y         = default (Y                , 3)
+UV        = sisavs26 ? isY8(clip) ? 1 : UV : UV
+lsb_in    = default (lsb_in          , false)
+i16       = default (i16             , false)
+lsb_out   = default (lsb             , lsb_in)
+
+i16b      = sisphbd ? clip.BitsPerComponent() > 8 : (lsb_out || i16 || lsb_in)
+
+isrgb(clip) ? Assert(!i16b, "Hqdn3d_2: no 16bit for RGB, but you can use some trickes for that (see dither doc)") : nop()
+Assert(!(sisphbd && i16b && clip.BitsPerComponent() != 16), "Hqdn3d_2: only HBD 16bit Supported")
+Assert(!(sisphbd && i16b && (i16 || lsb_in || lsb_out)), "Hqdn3d_2: lsb hack is not Compatible with HBD")
+
+yString = sisphbd ? "Y" : !sisavs26 ? "yv12" : "Y8"
+
+pclip   = isYUV(clip) && i16b && isYUY2(clip) && sisavs26 ? clip.ConvertToYV16() : clip
+
+i16clip = isYUV(clip) ? i16b ? sisphbd ? pclip.ConvertToDoubleWidth() : lsb_in ? pclip.Bitdepth(from=88, to=16) : i16 ? clip : pclip.Bitdepth(from=8, to=16) : nop() : nop()
+
+	yclip = isYUV(clip) ? !sisavs26 ? i16b ? i16clip : clip : i16b ? ConvertToY8(i16clip) : ConvertToY8(clip) : nop()
+	u = isYUV(clip) && UV != 1 ? !sisavs26 ? i16b ? UToY(i16clip) : UToY(clip) : i16b ? UToY8(i16clip) : UToY8(clip) : nop()
+	v = isYUV(clip) && UV != 1 ? !sisavs26 ? i16b ? VToY(i16clip) : VToY(clip) : i16b ? VToY8(i16clip) : VToY8(clip) : nop()
+	yclip = isYUV(clip) ? Y == 3 ? !sisavs26 ? isclip(i16clip) ? yclip.converttoyv12().Hqdn3d16Y(sp=ls, tp=lt) : yclip.converttoyv12().Hqdn3dY(sp=ls, tp=lt) : isclip(i16clip) ? yclip.Hqdn3d16Y(sp=ls, tp=lt) : yclip.Hqdn3dY(sp=ls, tp=lt) : yclip : nop()
+	u = isYUV(clip) ? UV == 3 ? !sisavs26 ? isclip(i16clip) ? u.converttoyv12().Hqdn3d16Y(sp=cs, tp=ct) : u.converttoyv12().Hqdn3dY(sp=cs, tp=ct) : isclip(i16clip) ? u.Hqdn3d16Y(sp=cs, tp=ct) : u.Hqdn3dY(sp=cs, tp=ct) : u : nop()
+	v = isYUV(clip) ? UV == 3 ? !sisavs26 ? isclip(i16clip) ? v.converttoyv12().Hqdn3d16Y(sp=cs, tp=ct) : v.converttoyv12().Hqdn3dY(sp=cs, tp=ct) : isclip(i16clip) ? v.Hqdn3d16Y(sp=cs, tp=ct) : v.Hqdn3dY(sp=cs, tp=ct) : v : nop()
+	isYUV(clip) ? !sisavs26 && isYUY2(clip) ? UV == 1 ? yclip : YToUV(u.converttoyuy2(),v.converttoyuy2(),yclip.converttoyuy2()) : UV == 1 ? yclip : YToUV(u,v,yclip) : nop()
+        isYUV(clip) ? i16b && !i16 && lsb_out ? Bitdepth(from=16, to=88) : last : last
+	isYUV(clip) ? sisphbd && i16b ? ConvertFromDoubleWidth() : !i16b || lsb_out || i16 ? last : Bitdepth(from=16, to=8) : last
+	isYUY2(clip) ? !sisavs26 ? last : converttoyuy2() : last
+
+	A = isrgb32(clip) ? clip.ShowAlpha(yString) : nop()
+	r = isrgb(clip) ? clip.ShowRed(yString) : nop()
+	g = isrgb(clip) ? clip.ShowGreen(yString) : nop()
+	b = isrgb(clip) ? clip.ShowBlue(yString) : nop()
+	A = isrgb32(clip) ? A.Hqdn3dY(sp=ls, tp=lt) : nop()
+	r = isrgb(clip) ? r.Hqdn3dY(sp=ls, tp=lt) : nop()
+	g = isrgb(clip) ? g.Hqdn3dY(sp=ls, tp=lt) : nop()
+	b = isrgb(clip) ? b.Hqdn3dY(sp=ls, tp=lt) : nop()
+	isYUV(clip) ? last : isrgb32(clip) ? MergeARGB(A,r,g,b) : MergeRGB(r,g,b,"RGB24")
+}
+
+
+# 60p or 50p progressive to interlaced
+
+    FUNCTION interlaced60or50(clip c1, bool "BFF") {
+BFF	= default ( BFF,        false  )
+Ifrate 	= round(framerate(c1))==60 ? 1 : framerate(c1)==50 ? 2 : 3
+assert(ifrate!=3 && c1.IsFrameBased, "only Frame Based with 50 or ~60 fps is allowed.") 
+
+desiredoutputfieldorder = BFF ? c1.AssumeTFF() : c1.AssumeBFF() # opposite to the desired output field order
+outputfieldDoubleWeave = desiredoutputfieldorder.DoubleWeave()
+return outputfieldDoubleWeave.SelectEvery(4,1)
+}
+
+
+# convert_Fields_scan_order with add audio delay (-16) in NTSC source and -20 in PAL source
+
+    FUNCTION convert_Fields_scan_order(clip c1, bool "fast") {
+fast     = default ( fast, true)
+originField = !fast ? c1.SeparateFields() : nop()
+newoFields = !fast ? originField.Trim(1,0)+blankclip(originField,length=1) : nop()
+newoFields = fast ? c1.DoubleWeave().Selectodd() : newoFields.Weave()
+return newoFields
+}
+
+
+function yadifmodclipin(clip i, bool "doyv16")
+{
+i.nonyuy2clipin(doyv16)
+pointresize(width(),height()+8,0,-4,width(),height()+8.0001)
+}
+
+
+function yadifmodclipout(clip i, bool "doyuy2")
+{
+i.crop(0,4,-0,-4)
+nonyuy2clipout(doyuy2)
+}
+
+
+function tmm2_ortmm1(clip clip, int "mode", int "order", int "field", int "length", int "mtype", int "ttype", int "mtqL", int "mthL", int "mtqC", int "mthC", int "nt", int "minthresh", int "maxthresh", int "cstr", int "opt")
+{
+sisavs26=!(VersionNumber() < 2.6)
+nonyuy2=sisavs26 && clip.isyuy2()
+sisavs26 ? clip.nonyuy2clipin(nonyuy2).tmm2(mode, order, field, length, mtype, ttype, mtqL, mthL, mtqC, mthC, nt, minthresh, maxthresh, cstr, opt).nonyuy2clipout(nonyuy2) : \
+        clip.TMM(mode, order, field, length, mtype, ttype, mtqL, mthL, mtqC, mthC, nt, minthresh, maxthresh, cstr)
+}
+
+
+function nonyuy2clipin(clip i, bool "doyv16")
+{
+doyv16 ? Eval("try { i.PackedToPlanar() } catch(error_msg) { i.converttoyv16() }") : i
+}
+
+
+function nonyuy2clipout(clip i, bool "doyuy2")
+{
+doyuy2 ? Eval("try { i.PlanarToPacked() } catch(error_msg) { i.converttoyuy2() }") : i
+}
+
+
+####################
+#### need to be replace with https://forum.doom9.org/showpost.php?p=1897680&postcount=5103
+
+function IsAvsNeo()
+{
+      FindStr(VersionString, "AviSynth Neo")  != 0
+}
+
+
+function IsAvsPlus()
+{
+      FindStr(VersionString, "AviSynth+")  != 0 || IsAvsNeo
+}
+
+
+function AvsPlusVersionNumber()
+{
+    IsAvsNeo ? eval(MidStr(VersionString(),20,4)) : IsAvsPlus ? eval(MidStr(VersionString(),17,4)) : 0
+}
