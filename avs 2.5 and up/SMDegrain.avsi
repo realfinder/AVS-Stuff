@@ -7,7 +7,7 @@
 ###          Special Thanks: Sagekilla, Didée, cretindesalpes, Gavino and MVtools people     ###
 ###                                                                                          ###
 ###                       v3.1.2d (Dogway's mod) - 21 July 2015                              ###
-###   v3.1.2.105s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
+###   v3.1.2.106s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
 ###                     and yuy2 support in avs 2.6 with masktools 2.6                       ###
 ### and medianblur2 now will be used in Minblur instead of Quantile RemoveGrainHD in avs 2.6 ###
 ###                                    and add TV_range bool                                 ###
@@ -16,7 +16,7 @@
 ###                                some cleanup and others                                   ###
 ###                        add MDegrain4 and MDegrain5 and MDegrain6                         ###
 ###                               add always_MDegrainN bool                                  ###
-###                                  SMDegrain_KNLMeansCL                                    ###
+###                                     SH_KNLMeansCL                                        ###
 ###                 masktools 2.2.15 or up now required in avs26 and avs+                    ###
 ###                  now work basically with new high bit depth in avs+                      ###
 ###                   now has new parameters bool n16 and bool n16_out                       ###
@@ -605,7 +605,7 @@ bug_wa    = defined(bug_wa) ? bug_wa : interlaced && planar && chroma && !avs26 
                                                              mt_merge     (planar ? Dfttest(!lsb_in?inputd:input8y,sstring="0.0:4.0 0.2:9.0 1.0:15.0",tbsize=1,u=chroma,v=chroma,dither=1).Interleaved2planar(!chroma)                          : \
                                                                                     Dfttest(!lsb_in?inputd:input8 ,sstring="0.0:4.0 0.2:9.0 1.0:15.0",tbsize=1,u=chroma,v=chroma,dither=1),input8,   \
                                                                           input8.mt_lut(      "x 16 < 255 x 75 > 0 255 x 16 - 4.322033898305085 * - ? ?",u=1,v=1), luma=chroma,          u=bug_wa,v=bug_wa))                                                   : \
-                     (prefilter==4)  ?  planar ? inputd.SMDegrain_KNLMeansCL(lsb=lsb, lsb_in=lsb_in, device_type=device_type, device_id=device_id, chroma=chroma, h=h, d=d, a=a, knlm_params=knlm_params).Interleaved2planar(!chroma) : \ 
-                                                 inputd.SMDegrain_KNLMeansCL(lsb=lsb, lsb_in=lsb_in, device_type=device_type, device_id=device_id, chroma=chroma, h=h, d=d, a=a, knlm_params=knlm_params) : \
+                     (prefilter==4)  ?  planar ? inputd.SH_KNLMeansCL(lsb=lsb, lsb_in=lsb_in, device_type=device_type, device_id=device_id, chroma=chroma, h=h, d=d, a=a, knlm_params=knlm_params).Interleaved2planar(!chroma) : \ 
+                                                 inputd.SH_KNLMeansCL(lsb=lsb, lsb_in=lsb_in, device_type=device_type, device_id=device_id, chroma=chroma, h=h, d=d, a=a, knlm_params=knlm_params) : \
                                          Assert(false,    "prefilter must be between -1~4: "+string(prefilter))
 }
