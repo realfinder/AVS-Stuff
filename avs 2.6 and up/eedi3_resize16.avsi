@@ -1,5 +1,5 @@
 #################################################################################################
-###### eedi3_resize16 v3.3.07 ###### by mawen1250 mod by A.SONY ######      2020.02.29      ######
+###### eedi3_resize16 v3.3.08 ###### by mawen1250 mod by A.SONY ######      2020.03.08      ######
 #################################################################################################
 ###### from v2.8 on, eedi3_resize16 only supports AviSynth v2.6+                          ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, eedi3 v0.9.2.3,                     ######
@@ -33,7 +33,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 \                        string "output", bool "tv_range", string "cplace", string "matrix", string "curve", float "gcor",
 \                        int "Y", int "U", int "V", bool "lsb_in", bool "lsb", int "dither", bool "nnsclip", float "alpha",
 \                        float "beta", float "gamma", int "nrad", int "mdis", bool "hp", bool "ucubic", bool "cost3", 
-\                        int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2", bool "nnrep")
+\                        int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2", int "nnrep")
 {
     ###############################################################################################################################
     ###############################################################################################################################
@@ -537,7 +537,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 
 
 Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", int "hfield", bool "Y", bool "U", bool "V",
-\                              int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads", bool "honly", bool "nnsclip", float "alpha", float "beta", float "gamma", int "nrad", int "mdis", bool "hp", bool "ucubic", bool "cost3", int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2", bool "nnrep")
+\                              int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads", bool "honly", bool "nnsclip", float "alpha", float "beta", float "gamma", int "nrad", int "mdis", bool "hp", bool "ucubic", bool "cost3", int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2", int "nnrep")
 {
     vct      = Default(vct,      1      )
     hct      = Default(hct,      1      )
@@ -548,7 +548,7 @@ Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", in
     V        = Default(V,        False  )
     honly    = Default(honly,    False  )
     nnsclip  = Default(nnsclip,  false  )
-    nnrep    = Default(nnrep,    false  )
+    nnrep    = Default(nnrep,    0      )
     
     
     input
@@ -557,9 +557,9 @@ Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", in
     Eval("""
         (honly) ? last
         \       : Eval(" try { fturnright(chroma=U||V, mt=threads!=1) } catch(error_msg) { TurnRight() } ")
-        nnec = (nnrep || nnsclip) ? sh_Padding(2,2,2,2).nnedi3(hfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
+        nnec = (nnrep > 0 || nnsclip) ? sh_Padding(2,2,2,2).nnedi3(hfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
         eedi3(hfield, True, Y, U, V, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnsclip ? nnec : undefined, threads)
-        nnrep ? Repair(nnec,9) : last
+        nnrep > 1 ? slimit_dif(last,nnec,thr=4) : nnrep > 1 ? Repair(nnec,9) : last
         
     	hct    = hct - 1
         honly  = hct >= 1
@@ -571,9 +571,9 @@ Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", in
     
     vct >= 1 && !honly ? \
     Eval("""
-        nnec = (nnrep || nnsclip) ? sh_Padding(2,2,2,2).nnedi3(vfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
+        nnec = (nnrep > 0 || nnsclip) ? sh_Padding(2,2,2,2).nnedi3(vfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
         eedi3(vfield, True, Y, U, V, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnsclip ? nnec : undefined, threads)
-        nnrep ? Repair(nnec,9) : last
+        nnrep > 1 ? slimit_dif(last,nnec,thr=4) : nnrep > 1 ? Repair(nnec,9) : last
         
     	vct    = vct - 1
         vfield = 0
