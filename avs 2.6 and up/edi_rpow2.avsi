@@ -1,4 +1,4 @@
-/* edi_rpow2 v1.0 mod 8
+/* edi_rpow2 v1.0 mod 81
 
 An improved rpow2 function for nnedi3, nnedi3ocl, eedi3, and eedi2.
 
@@ -407,7 +407,7 @@ emclip = mclip.Defined() && pad     ||
 \ : edi == "eedi3" && chr420 ?
 \   Eval("""
          pow2  = einput.edi_rpow2_eedi3(rfactorX,rfactorY,alignc,Y,U,V,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
-         \                             vcheck,vthresh0,vthresh1,vthresh2,sclip,sclip_params,threads,mclip,opt,mt=mt,mt_params=mt_params,nnrep=nnrep)
+         \                             vcheck,vthresh0,vthresh1,vthresh2,sclip,sclip_params,threads,emclip,opt,mt=mt,mt_params=mt_params,nnrep=nnrep)
          pow2Y = sisphbd ? pow2.ConvertToY() : pow2.ConvertToY8()
          pow2U = sisphbd ? pow2.ExtractU() : pow2.UToY8()
          pow2V = sisphbd ? pow2.ExtractV() : pow2.VToY8()
@@ -704,7 +704,7 @@ function edi_rpow2_eedi3(clip input, int "rfactorX", int "rfactorY", bool "align
 \                        int "nrad", int "mdis", bool "hp", bool "ucubic", bool "cost3",
 \                        int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2",
 \                        string "sclip", string "sclip_params", int "threads", clip "mclip", int "opt",
-\                        bool "f", bool "t", bool "mt", string "mt_params", bool "nnrep") {
+\                        bool "f", bool "t", bool "mt", string "mt_params", int "nnrep") {
 
 rfactorX     = Default(rfactorX, 2)
 rfactorY     = Default(rfactorY, rfactorX)
