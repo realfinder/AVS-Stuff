@@ -1,4 +1,4 @@
-# AVS S Shared Functions V1.01
+# AVS S Shared Functions V1.02
 # Collections of Functions
 
 
@@ -1202,6 +1202,7 @@ defined(filter) ? Assert((Isclip(filter) || IsString(filter)),        "'filter' 
 Str             = default (Str, 1.5)
 exfilclp        = isclip(filter)
 sisbob          = round(framerate(input))==60 || framerate(input)==50
+dslow           = default(dslow, sisbob ? 4 : -2)
 tr2             = default (tr2, sisbob ? 3 : 1)
 usedaa3mod      = default (usedaa3mod, exfilclp ? 0 : sisbob ? 1 : 2)
 
