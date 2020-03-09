@@ -1,4 +1,4 @@
-/* edi_rpow2 v1.0 mod 81
+/* edi_rpow2 v1.0 mod 82
 
 An improved rpow2 function for nnedi3, nnedi3ocl, eedi3, and eedi2.
 
@@ -22,7 +22,7 @@ FTurn is optional but recommended.
 MaskTools2 is only required if eedi3's mclip parameter is used.
 
 Color formats:
-  Y8, YV12, YV16, YUY2, YV411, YV24, RGB24
+  Y8, YV12, YV16, YUY2, YV411, YV24, RGB24, HBD in avs+ if plugins support it
    
 Using eedi2 on RGB24 isn't recommended as it can cause discoloration.
 
@@ -100,7 +100,7 @@ duplicate pixels before image enlargement and then cropping the padding off afte
 Defaults to false when edi="eedi3" because it isn't needed when using eedi3.
 
 
-bool YV12cfix (default: true)
+bool c420fix (default: true)
 -----------------------------
 Enlarging YV12 vertically causes a small chroma shift that's corrected by
 resizing the chroma channels even when not correcting the image center shift.
@@ -167,7 +167,7 @@ Defaults are the same as eedi2.
 */
 
 function edi_rpow2(clip input, int "rfactorX", int "rfactorY", string "edi", string "cshift", int "fwidth", int "fheight", 
-\                  int "taps", float "a1", float "a2", string "cplace", bool "Y", bool "U", bool "V", bool "lsb", bool "bordfix", bool "YV12cfix",
+\                  int "taps", float "a1", float "a2", string "cplace", bool "Y", bool "U", bool "V", bool "lsb", bool "bordfix", bool "c420fix",
 \                  int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads", int "opt", int "fapprox",
 \                  float "alpha", float "beta", float "gamma", int "nrad", int "mdis", bool "hp", bool "ucubic", bool "cost3",
 \                  int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2", string "sclip", string "sclip_params", clip "mclip",
@@ -194,8 +194,9 @@ V         = Default(V, true)
 lsb       = Default(lsb, false)
 lsb_out   = Default(lsb_out , false)
 lsb       = !lsb && lsb_out ? true : lsb
-bordfix   = Default(bordfix, edi != "eedi3" ? true : false)
-YV12cfix  = Default(YV12cfix, true)
+nnrep     = Default(nnrep, 0)
+bordfix   = Default(bordfix, edi != "eedi3" ? true : nnrep > 0)
+c420fix   = Default(c420fix, true)
 nsize     = Default(nsize, 0)
 nns       = Default(nns, 3)
 
@@ -430,7 +431,7 @@ emclip = mclip.Defined() && pad     ||
 \ : edi == "eedi3" && input.isrgb() ?
 \   Eval("""
          # Always split RGB24 so that the sclip and mclip parameters work
-         pow2 = sisphbd ? Interleave(einput.ExtractR(),einput.ExtractG(),einput.ExtractB()) : Interleave(einput.ShowRed("YV12"),einput.ShowGreen("YV12"),einput.ShowBlue("YV12"))
+         pow2 = sisphbd ? Interleave(einput.ExtractR(),einput.ExtractG(),einput.ExtractB()) : Interleave(einput.ShowRed("Y8"),einput.ShowGreen("Y8"),einput.ShowBlue("Y8"))
          pow2 = pow2.edi_rpow2_eedi3(rfactorX,rfactorY,alignc,true,false,false,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
          \                           vcheck,vthresh0,vthresh1,vthresh2,sclip,sclip_params,threads,emclip,opt,mt=mt,mt_params=mt_params,nnrep=nnrep)
          splitRGB24 = true
@@ -531,7 +532,7 @@ noUV = einput.BlankClip(width=fwidth_c, height=lsb_out?fheight_c*2:fheight_c, pi
          \                  : noY
          """)
 \ : cshift == "" && chr420 && rfactorY == 1 ||
-\   cshift == "" && chr420 && !YV12cfix     ||
+\   cshift == "" && chr420 && !c420fix     ||
 \   cshift == "" && chr422                  ||
 \   cshift == "" && csp == "YUY2"                  ||
 \   cshift == "" && csp == "YV411"                 ||
@@ -572,7 +573,7 @@ noUV = einput.BlankClip(width=fwidth_c, height=lsb_out?fheight_c*2:fheight_c, pi
 \ : NOP()
 
 shift = sisphbd ? input.hasalpha() && !(shift.hasalpha()) ? shift.AddAlphaPlane(input.ExtractA().edi_rpow2(rfactorX,rfactorY,edi,cshift,fwidth,fheight, 
-\									   taps,a1,a2,cplace,Y,U,V,lsb,bordfix,YV12cfix,
+\									   taps,a1,a2,cplace,Y,U,V,lsb,bordfix,c420fix,
 \									   nsize,nns,qual,etype,pscrn,threads,opt,fapprox,
 \									   alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
 \									   vcheck,vthresh0,vthresh1,vthresh2,sclip,sclip_params,defined(mclip) ? mclip.ExtractA() : mclip,
