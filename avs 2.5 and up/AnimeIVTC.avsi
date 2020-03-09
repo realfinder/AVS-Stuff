@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.22 2020-03-08 mod
+# v2.23 2020-03-09 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -588,7 +588,7 @@ qtgmc_n16 = default(qtgmc_n16, sisphbd ? i.BitsPerComponent() > 8 ? false : true
 
 useq                  = default (useqtgmc,                                                                                                           0)
 Stringuseq        = IsString(useq                                                                                                                 )
-bobpresmbool = default (isbool(bobpresmooth) ? bobpresmooth : !Stringuseq ? (useq==8 || defined(bobpresmooth)) : defined(bobpresmooth), false)
+bobpresmbool = defined(bobpresmooth) ? isbool(bobpresmooth) ? bobpresmooth : true : !Stringuseq ? useq==8 : false
 Str                     = default (Str,                                                                                                              1.5)
 tr2                     = default (tr2,                                                                                !Stringuseq ? useq==8 ? 3 : 1 : 1)
 usedaa3mod   = default (usedaa3mod,                                            !Stringuseq ? useq==4 || useq==5 || useq==7 || useq==9 : false)
