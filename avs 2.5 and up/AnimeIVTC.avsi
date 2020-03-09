@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.22 2018-04-17 mod
+# v2.22 2020-03-08 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -35,6 +35,7 @@
 # add tmm2
 # added vidDetect parameter for VFR
 # added mode 5 same as 3 but use nnrep method to ediandnn, mode 6 too, but it's like 4, and now you can use negative value for use nnedi3 with Padding to avoids edges distortion on top and bottom
+# added mode 7 same as 5 but use better but slower nnrep method to ediandnn, mode 8 too, but it's like 6, and now you can use negative value for use nnedi3 with Padding to avoids edges distortion on top and bottom
 
 # Read the documentation for all the required info to know how to use this function, With note that there are some things have changed in this MOD
 
@@ -105,8 +106,10 @@ bbob		= default ( bbob, 	          3 )
 cbob		= default ( cbob, 	          4 )
 
 
-yadiffun=VersionNumber() < 2.6 ? "yadifmod" : "yadifmod2"
-nonyuy2=!(VersionNumber() < 2.6) && i.isyuy2()
+sisavs26 = !(VersionNumber() < 2.60)
+yadiffun=!sisavs26 ? "yadifmod" : "yadifmod2"
+sisyuy2 = i.isyuy2()
+nonyuy2=sisavs26 && sisyuy2
 
 prefiltered_i = defined(prefiltered_i) ? isclip(prefiltered_i) ? prefiltered_i : Eval("i." + prefiltered_i) : undefined()
 iforbob = defined(prefiltered_i) ? prefiltered_i : bobpresmooth ? i.QTGMC_bob(0,0.5).nonyuy2clipin(nonyuy2).reduceflicker(strength=2).nonyuy2clipout(nonyuy2).interlaced60or50(BFF=!(GetParity(i))) : i
@@ -180,7 +183,8 @@ usecbob = mode==3 || defined(i1) || chrfix_b && blend==false
 #Assign clip to prevent double computation
 ediext= defined(ediext) ? isclip(ediext) ? ediext : Eval("i." + ediext) : undefined()
 edeintn= ((usecbob && cbob < 6) || (usebbob && bbob < 6) || ((usefm || usehfm) && precision < 6)) || autoAssuf ? defined(ediext) ? ediext : ediandnn != 2 || ediandnn != -2 ? ediandnn < 0 ? iforbob.sh_Padding(2,4,2,4).nnedi3(-2).crop(2,4,-2,-4,true) : iforbob.nnedi3(-2) : nop() : nop()
-edeint= ((usecbob && cbob < 6) || (usebbob && bbob < 6) || ((usefm || usehfm) && precision < 6)) || autoAssuf ? defined(ediext) ? ediext : ediandnn == 1 ? edeintn : ediandnn == 2 ? iforbob.eedi3(-2) : ediandnn == 5 || ediandnn == 6 ? i.eedi3(-2,sclip=edeintn).Repair(edeintn,9) : i.eedi3(-2,sclip=edeintn) : edeintn
+ediandnn=abs(ediandnn)
+edeint= ((usecbob && cbob < 6) || (usebbob && bbob < 6) || ((usefm || usehfm) && precision < 6)) || autoAssuf ? defined(ediext) ? ediext : ediandnn == 1 ? edeintn : ediandnn == 2 ? iforbob.eedi3(-2) : ediandnn > 6 ? i.eedi3(-2,sclip=edeintn).nonyuy2clipin(nonyuy2).slimit_dif(edeintn,thr=4).nonyuy2clipout(nonyuy2) : ediandnn > 4 ? sisyuy2 ? i.eedi3(-2,sclip=edeintn).Interleaved2Planar().Repair(edeintn,9,Planar=true).Planar2Interleaved() : i.eedi3(-2,sclip=edeintn).Repair(edeintn,9) : i.eedi3(-2,sclip=edeintn) : edeintn
 emask = (usebbob && (bbob==2 || ((bbob==3 || bbob==4) && reptdei) || bbob==6)) || (usecbob && (cbob==2 || ((cbob==3 || cbob==4) && reptdei) || cbob==6)) || ((usefm || usehfm) && precision==3) ? iforbob.tmm2_ortmm1(1) : nop()
 
 
@@ -194,7 +198,7 @@ emask = (usebbob && (bbob==2 || ((bbob==3 || bbob==4) && reptdei) || bbob==6)) |
 blendbob 	= usebbob ?	bbob<=0 ? iforbob.tdeint(1) 			 		 	                : 
 \				bbob==1 ? iforbob.tdeint(1,		edeint=edeint	) 	 	                : 
 \				bbob==2 ? iforbob.tdeint(1,		edeint=edeint,emask=emask)	 	        : 
-\				bbob==3 ? reptdei ? ediandnn==4 || ediandnn==6 ? Eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=3,edeint=iforbob.QTGMC(Preset=bob4p,edimode=edimode,ediext= !defined(edimode) && !defined(ediext) ? edeint : ediext,tr2=degrain" + bbob4_params + ").yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=3,edeint=edeint.yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : eval("iforbob.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=1,edeint=edeint.yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) 		 		        :
+\				bbob==3 ? reptdei ? ediandnn==4 || ediandnn==6 || ediandnn==8 ? Eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=3,edeint=iforbob.QTGMC(Preset=bob4p,edimode=edimode,ediext= !defined(edimode) && !defined(ediext) ? edeint : ediext,tr2=degrain" + bbob4_params + ").yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=3,edeint=edeint.yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : eval("iforbob.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=1,edeint=edeint.yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) 		 		        :
 \				bbob==4 ? Eval("iforbob.QTGMC(Preset=bob4p,edimode=edimode,ediext= !defined(edimode) && !defined(ediext) ? edeint : ediext,tr2=degrain" + bbob4_params + ")")	:
 \				bbob==5 ? extbob	 	        : 
 \				          i.tdeint(1, emask=emask, sharp=tdeintsharp, type=tdeinttype)                      	                                        : NOP()
@@ -204,7 +208,7 @@ blendbob 	= usebbob ?	((bbob==3 || bbob==4) && reptdei) ? isyuy2(i) ? blendbob.I
 clearbob 	= usecbob ?	cbob<=0 ? iforbob.tdeint(1)						                : 
 \				cbob==1 ? iforbob.tdeint(1,		edeint=edeint)			                : 
 \				cbob==2 ? iforbob.tdeint(1,		edeint=edeint,emask=emask)	                : 
-\				cbob==3 ? creptdei ? ediandnn==4 || ediandnn==6 ? Eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=3,edeint=iforbob.QTGMC(Preset=bob4p,edimode=edimode,ediext= !defined(edimode) && !defined(ediext) ? edeint : ediext,tr2=degrain" + bbob4_params + ").yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=3,edeint=edeint.yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : eval("iforbob.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=1,edeint=edeint.yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2)			                :
+\				cbob==3 ? creptdei ? ediandnn==4 || ediandnn==6 || ediandnn==8 ? Eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=3,edeint=iforbob.QTGMC(Preset=bob4p,edimode=edimode,ediext= !defined(edimode) && !defined(ediext) ? edeint : ediext,tr2=degrain" + bbob4_params + ").yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=3,edeint=edeint.yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : eval("iforbob.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=1,edeint=edeint.yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2)			                :
 \			        cbob==4 ? Eval("iforbob.QTGMC(Preset=bob4p,edimode=edimode,ediext= !defined(edimode) && !defined(ediext) ? edeint : ediext,tr2=degrain" + cbob4_params + ")")	:
 \				cbob==5 ? extbob	                : 
 \				          i.tdeint(1, emask=emask, sharp=tdeintsharp, type=tdeinttype)                                                        	: NOP()
@@ -232,7 +236,7 @@ tfmcli2=(precision==0 && ((usefm && !blend) || usehfm)) ? undefined :
 \	(precision==2 && ((usefm && !blend) || usehfm)) ? iforbob.tdeint(2,edeint=edeint) : 
 \	(precision==3 && ((usefm && !blend) || usehfm)) ? iforbob.tdeint(2,edeint=edeint,emask=emask) : 
 \	(precision==4 && ((usefm && !blend) || usehfm)) ? iforbob.tdeint(0,edeint=edeint.SelectEven(),emask=iforbob.tmm2_ortmm1(0)) : 
-\	(precision==5 && ((usefm && !blend) || usehfm)) ? reptdei ? ediandnn==4 || ediandnn==6 ? Eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=2,edeint=iforbob.QTGMC(Preset=bob4p,edimode=edimode,ediext= !defined(edimode) && !defined(ediext) ? edeint : ediext,tr2=degrain" + bbob4_params + ").SelectEven().yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=2,edeint=edeint.SelectEven().yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : eval("iforbob.yadifmodclipin(nonyuy2)."+yadiffun+"(edeint=edeint.SelectEven().yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : 
+\	(precision==5 && ((usefm && !blend) || usehfm)) ? reptdei ? ediandnn==4 || ediandnn==6 || ediandnn==8 ? Eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=2,edeint=iforbob.QTGMC(Preset=bob4p,edimode=edimode,ediext= !defined(edimode) && !defined(ediext) ? edeint : ediext,tr2=degrain" + bbob4_params + ").SelectEven().yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=2,edeint=edeint.SelectEven().yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : eval("iforbob.yadifmodclipin(nonyuy2)."+yadiffun+"(edeint=edeint.SelectEven().yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2) : 
 \	(precision==6 && ((usefm && !blend) || usehfm)) ? i.tdeint(0,emask=iforbob.tmm2_ortmm1(0), sharp=tdeintsharp, type=tdeinttype) : 
 \	(precision==7 && ((usefm && !blend) || usehfm)) ? extbob.SelectEven : 
 \	(precision==8 && ((usefm && !blend) || usehfm)) ? extbob : 
@@ -576,7 +580,7 @@ return omode==2 && pass==1 ? finalvfr : aaed
 ##############
 # sanimebob by A.SONY
 
-function sanimebob(clip i, val "useqtgmc", val "bobpresmooth", float "Str", float "Amp", bool "TV_range", bool "qtgmc_lsb", bool "usedaa3mod", bool "usesmam", int "tr2", bool "repblend", val "dslow", bool "qtgmc_n16", bool "nnrep", bool "nnedi3pad") {
+function sanimebob(clip i, val "useqtgmc", val "bobpresmooth", float "Str", float "Amp", bool "TV_range", bool "qtgmc_lsb", bool "usedaa3mod", bool "usesmam", int "tr2", bool "repblend", val "dslow", bool "qtgmc_n16", int "nnrep", bool "nnedi3pad") {
 
 sisphbd = AvsPlusVersionNumber > 2294
 qtgmc_lsb = default(qtgmc_lsb, sisphbd ? false : true)
@@ -589,24 +593,27 @@ Str                     = default (Str,                                         
 tr2                     = default (tr2,                                                                                !Stringuseq ? useq==8 ? 3 : 1 : 1)
 usedaa3mod   = default (usedaa3mod,                                            !Stringuseq ? useq==4 || useq==5 || useq==7 || useq==9 : false)
 usesmam        = default (usesmam,                                                       !Stringuseq ? !(useq==0 || useq==1 || useq==8) : false)
-nnrep               = default (nnrep, false)
+nnrep               = default (nnrep, 0)
 nnedi3pad       = default (nnedi3pad, false)
+
+sisyuy2 = i.isyuy2()
+sisavs26 = !(VersionNumber() < 2.60)
 
 Assert(Isint(useq) || Stringuseq, "'useqtgmc' only accepts int or string")
 
 prefiltered_i   = defined(bobpresmooth) ? isclip(bobpresmooth) ? bobpresmooth : IsString(bobpresmooth) ? Eval("i." + bobpresmooth) : undefined() : undefined()
 
-nonyuy2=!(VersionNumber() < 2.6) && i.isyuy2()
+nonyuy2=sisavs26 && sisyuy2
 iforbob   = bobpresmbool ? defined(prefiltered_i) ? prefiltered_i : i.QTGMC_bob(0,0.5).nonyuy2clipin(nonyuy2).reduceflicker(strength=2).nonyuy2clipout(nonyuy2).interlaced60or50(BFF=!(GetParity(i))) : i
 iforbob   = bobpresmbool && !defined(prefiltered_i) ? isyuy2(i) ? iforbob.SeparateFields().Interleaved2Planar().Repair(i.SeparateFields().Interleaved2Planar(),Planar=true).Planar2Interleaved().weave() : iforbob.SeparateFields().Repair(i.SeparateFields()).weave() : iforbob
 
 pyi       = i.sh_Padding(0,4,0,4)
 pni       = nnedi3pad ? iforbob.sh_Padding(2,4,2,4).nnedi3(-2).crop(2,4,-2,-4,true) : iforbob.nnedi3(-2)
 pei       = i.eedi3(-2,sclip=pni)
-pei       = nnrep ? isyuy2(i) ? pei.Interleaved2Planar().Repair(pni.Interleaved2Planar(),9,Planar=true).Planar2Interleaved().sh_Padding(0,4,0,4) : pei.Repair(pni,9).sh_Padding(0,4,0,4) : pei.sh_Padding(0,4,0,4)
+pei       = nnrep > 0 ? nnrep > 1 ? pei.nonyuy2clipin(nonyuy2).slimit_dif(pni.nonyuy2clipin(nonyuy2),thr=4).nonyuy2clipout(nonyuy2).sh_Padding(0,4,0,4) : isyuy2(i) ? pei.Interleaved2Planar().Repair(pni.Interleaved2Planar(),9,Planar=true).Planar2Interleaved().sh_Padding(0,4,0,4) : pei.Repair(pni,9).sh_Padding(0,4,0,4) : pei.sh_Padding(0,4,0,4)
 
-ymodclip  = VersionNumber() < 2.60 ? pyi.yadifmod(mode=3, edeint=pei).crop(0,4,-0,-4) : pyi.nonyuy2clipin(nonyuy2).yadifmod2(mode=3, edeint=pei.nonyuy2clipin(nonyuy2)).crop(0,4,-0,-4)
-yadifclip = isyuy2(i) && VersionNumber() < 2.60 ? ymodclip.Interleaved2Planar().Repair(i.TDeint(1,emask=iforbob.tmm2_ortmm1(1)).Interleaved2Planar(),Planar=true).Planar2Interleaved() : \
+ymodclip  = !sisavs26 ? pyi.yadifmod(mode=3, edeint=pei).crop(0,4,-0,-4) : pyi.nonyuy2clipin(nonyuy2).yadifmod2(mode=3, edeint=pei.nonyuy2clipin(nonyuy2)).crop(0,4,-0,-4)
+yadifclip = sisyuy2 && !sisavs26 ? ymodclip.Interleaved2Planar().Repair(i.TDeint(1,emask=iforbob.tmm2_ortmm1(1)).Interleaved2Planar(),Planar=true).Planar2Interleaved() : \
                                                   ymodclip.Repair(i.TDeint(1,emask=iforbob.tmm2_ortmm1(1)).nonyuy2clipin(nonyuy2)).nonyuy2clipout(nonyuy2)
 
 # for custom qtgmc, don't forget to put the input clip like this:- iforbob.QTGMC(... or yadifclip.QTGMC(... or i.QTGMC(...
