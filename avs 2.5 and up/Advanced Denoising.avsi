@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.82
+# Advanced Denoising and anime bob v1.83
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -119,16 +119,17 @@ tile ? last : Eval("try { PointResizemt(morinc.width, morinc.height) } catch(err
 
 ##########
 function admfilter(clip oin, bool "mc", float "f", bool "DarkPreserve", float "rStr", float "amp", bool "lsb", bool "lsb_in", bool "lsb_out", bool "luma_rebuild", bool "u", bool "v", string "pp", string "dfttest_params", string "mcdfttest_params", string "custom_filter", clip "MotionRampadc", bool "mcf", clip "ppsuper", clip "super", clip "exmcclip", bool "nlsb") {
+iscf = defined(custom_filter)
 d = default (DarkPreserve      , true)
-mc = default (mc      , true)
+exmc = defined(exmcclip)
+mc = default (mc      , !iscf)
 sisphbd = AvsPlusVersionNumber > 2294
 f = Default(f, 16.0)
-lsb = default (lsb, sisphbd ? oin.BitsPerComponent() > 8 ? false : true : true)
+lsb = default (lsb, iscf ? false : sisphbd ? oin.BitsPerComponent() > 8 ? false : true : true)
 nlsb = default (nlsb, sisphbd && lsb)
 lsb_in = default (lsb_in      , false)
 u = default (u      , true)
 v = default (v      , true)
-exmc = defined(exmcclip)
 mcf = default (mcf, exmc || (nlsb && lsb_in))
 oin8 = lsb_in ? oin.ditherpost(mode=7,slice=false,u=u ? 3 : 1,v=v ? 3 : 1) : oin
     ox = oin8.width()
@@ -136,16 +137,16 @@ oin8 = lsb_in ? oin.ditherpost(mode=7,slice=false,u=u ? 3 : 1,v=v ? 3 : 1) : oin
     HD = (ox > 1099 || oy > 599)
 lsb_out = default (lsb_out      , lsb_in)
 lsb = lsb_in || lsb_out ? true : lsb
-luma_rebuild = default (luma_rebuild      , true)
+luma_rebuild = default (luma_rebuild      , !iscf)
 dfttest_params = default(dfttest_params, "")
 mcdfttest_params = default(mcdfttest_params, "")
 pp = default (pp, "oin8.blur(1.53)")
 
 pel = HD ? 1 : 2
 
-super = defined(super) ? super : oin8.MSuper(pel=pel, levels=1, chroma=(U || V))
-ppsu = defined(ppsuper) ? ppsuper : oin.spp_super(pp=Eval(pp),rStr=rStr,amp=amp,lsb_in=lsb_in,lsb=lsb,luma_rebuild=luma_rebuild,u=u,v=v,hd=hd)
-exmcclip = mcf ? exmc ? exmcclip : nlsb && lsb_in ? oin.ConvertFromStacked().sMCclips(ppsu,super.convertbits(16),hd=hd).ConvertToStacked() : oin8.sMCclips(ppsu,super,hd=hd) : nop()
+super = defined(super) ? super : mcf ? oin8.MSuper(pel=pel, levels=1, chroma=(U || V)) : nop()
+ppsu = defined(ppsuper) ? ppsuper :  mcf ? oin.spp_super(pp=Eval(pp),rStr=rStr,amp=amp,lsb_in=lsb_in,lsb=lsb,luma_rebuild=luma_rebuild,u=u,v=v,hd=hd) : nop()
+exmcclip = mcf ? exmc ? exmcclip : nlsb && lsb_in ? oin.ConvertFromStacked().sMCclips(ppsu,super.convertbits(16),hd=hd).ConvertToStacked() : oin8.sMCclips(ppsu,super,hd=hd) : exmcclip
 
 custom_filter = defined(custom_filter) ? custom_filter : \
 							mcf ? "dfttestmc(pp=oin8,lsb=lsb, Sigma=adSigma+1.0/f,lsb_in=lsb_in,u=u,v=v,slices=false,super=super,input8=oin8,hd=hd,exmcclip=exmcclip,dfttest_params=dfttest_params" + mcdfttest_params + ")" : \

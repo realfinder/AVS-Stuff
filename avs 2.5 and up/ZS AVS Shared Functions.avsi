@@ -1,4 +1,4 @@
-# AVS S Shared Functions V1.02
+# AVS S Shared Functions V1.03
 # Collections of Functions
 
 
@@ -277,8 +277,8 @@ F_lsb_in        ? Assert(lsb,                          "16stacked filtered clip 
 lsb_in          ? Assert(lsb,                          "lsb_in  requires: lsb=true")                                : nop()
 lsb_out         ? Assert(lsb,                          "lsb_out requires: lsb=true")                                : nop()
 
-dp_lut = lsb_in ? original.Dither_lut16("x 4096 < 65535 x 19200 > 0 65535 x 4096 - 4.338916843220339 * - ? ?",u=1,v=1) : !sisavs26 < 2.6 ? original.mt_lut("x 16 < 255 x 75 > 0 255 x 16 - 4.322033898305085 * - ? ?",u=1,v=1)
-         														 \		       : original.mt_lut("x 16 scalef < range_max x 75 scalef > 0 range_max x 16 scalef - range_max 75 scalef 16 scalef - / * - ? ?",use_expr=2,u=1,v=1)
+dp_lut = lsb_in ? original.Dither_lut16("x 4096 < 65535 x 19200 > 0 65535 x 4096 - 4.338916843220339 * - ? ?",u=1,v=1) : !sisavs26 ? original.mt_lut("x 16 < 255 x 75 > 0 255 x 16 - 4.322033898305085 * - ? ?",u=1,v=1)
+         														 \	   : original.mt_lut("x 16 scalef < range_max x 75 scalef > 0 range_max x 16 scalef - range_max 75 scalef 16 scalef - / * - ? ?",use_expr=2,u=1,v=1)
 
 dp_lut = lsb_in && merge16_8 ? dp_lut.Ditherpost(mode=6, slice=false, u=1, v=1) : dp_lut
 
