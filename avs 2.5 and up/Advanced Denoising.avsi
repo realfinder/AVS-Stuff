@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.84
+# Advanced Denoising and anime bob v1.85
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -155,7 +155,7 @@ exmcclip = mcf ? exmc ? exmcclip : nlsb && lsb_in ? oin.ConvertFromStacked().sMC
 
 custom_filter = defined(custom_filter) ? custom_filter : \
 							mcf ? "dfttestmc(pp=oin8,lsb=lsb, Sigma=(adSigma+1.0)/f,lsb_in=lsb_in,u=u,v=v,slices=false,super=super,input8=oin8,hd=hd,exmcclip=exmcclip,dfttest_params=dfttest_params" + mcdfttest_params + ")" : \
-                                                         mc ? "dfttestmc(pp=Eval(pp),lsb=lsb, Sigma=*adSigma+1.0)/f,rStr=rStr,amp=amp,lsb_in=lsb_in,luma_rebuild=luma_rebuild,u=u,v=v,dfttest_params=dfttest_params" + mcdfttest_params + ")" : \
+                                                         mc ? "dfttestmc(pp=Eval(pp),lsb=lsb, Sigma=(adSigma+1.0)/f,rStr=rStr,amp=amp,lsb_in=lsb_in,luma_rebuild=luma_rebuild,u=u,v=v,dfttest_params=dfttest_params" + mcdfttest_params + ")" : \
                                                               "dfttest(lsb=lsb, Sigma=(adSigma+1.0)/f, lsb_in=lsb_in,u=u,v=v" + dfttest_params + ")"
 
 oin
