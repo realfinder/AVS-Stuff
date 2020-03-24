@@ -1,4 +1,4 @@
-# 2020.01.31
+# 2020.03.24
 # Masked_DHA with high bit support, need masktools 2.2.17 or up in avs26 and avs+
 
 function Masked_DHA(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "msk_pull", float "msk_push", float "ss", bool "show_msk", bool "cs", int "search_rade", int "search_radi")
@@ -47,8 +47,8 @@ mbl = 1.58
 
 sm     = clp.bicubicresize(m4_sh(ox/rx),m4_sh(oy/ry))
 lg     = sm.bicubicresize(ox,oy,1,0)
-chl    = !sisavs26 ? mt_lutxy(clp.srmdhae(sre,1),clp.srmdhai(sri,1),"x y -","x y -","x y -") : mt_lutxy(clp.srmdhae(sre,1),clp.srmdhai(sri,1),"x y -", use_expr=3)
-lhl    = !sisavs26 ? mt_lutxy(lg.srmdhae(sre,1),lg.srmdhai(sri,1),"x y -","x y -","x y -") : mt_lutxy(lg.srmdhae(sre,1),lg.srmdhai(sri,1),"x y -", use_expr=3)
+chl    = !sisavs26 ? mt_lutxy(clp.spasses(sre,"mt_expand()"),clp.spasses(sri,"mt_inpand()"),"x y -","x y -","x y -") : mt_lutxy(clp.spasses(sre,"mt_expand()"),clp.spasses(sri,"mt_inpand()"),"x y -", use_expr=3)
+lhl    = !sisavs26 ? mt_lutxy(lg.spasses(sre,"mt_expand()"),lg.spasses(sri,"mt_inpand()"),"x y -","x y -","x y -") : mt_lutxy(lg.spasses(sre,"mt_expand()"),lg.spasses(sri,"mt_inpand()"),"x y -", use_expr=3)
 mask_i = !sisavs26 ? mt_lutxy(lhl,chl,"y x - y 0.001 + / 255 * "+LOS+" - y 256 + 512 / "+HIS+" + *" )
          \                     : mt_lutxy(lhl,chl,"y x - y 0.001 + / range_max * "+LOS+" scalef - y range_size + 512 scalef / "+HIS+" + *", scale_inputs="floatf", clamp_float=true, use_expr=1 )
 

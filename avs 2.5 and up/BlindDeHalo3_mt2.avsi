@@ -1,4 +1,4 @@
-# 2020.01.31
+# 2020.03.24
 # BlindDeHalo3 with high bit support, need masktools 2.2.17 or up in avs26 and avs+
 
 function BlindDeHalo3( clip input, float "rx", float "ry", int "strength",
@@ -40,7 +40,7 @@ clp = sislumaonly ? input : sisphbd ? input.converttoy() : input.converttoy8()
 i     = (interlaced==false) ? clp : clp.separatefields()
 oxi   = i.width
 oyi   = i.height
-sm    = i.bicubicresize(bh_m4(oxi/rx),bh_m4(oyi/ry))
+sm    = i.bicubicresize(m4_sh(oxi/rx),m4_sh(oyi/ry))
 mm    = !sisavs26 ? mt_lutxy(sm.mt_expand(),sm.mt_inpand(),"x y - 4 *") : mt_lutxy(sm.mt_expand(),sm.mt_inpand(),"x y - 4 *",clamp_float=true,use_expr=3)
 mm    = mm.mt_expand().mt_deflate().blur(1.58).mt_inflate().bicubicresize(oxi,oyi,1.0,.0).mt_inflate()
 sm    = sm.bicubicresize(oxi,oyi,1.0,.0)
@@ -53,7 +53,7 @@ LL    = string(PPlimit)
 LIM   = !sisavs26 ? "x "+LL+" + y < x "+LL+" + x "+LL+" - y > x "+LL+" - y ? ?" : "x "+LL+" scalef + y < x "+LL+" scalef + x "+LL+" scalef - y > x "+LL+" scalef - y ? ?"
 
 base  = (PPmode<0) ? i : clean
-small = base .bicubicresize(bh_m4(oxi/sqrt(rx*1.5)),bh_m4(oyi/sqrt(ry*1.5)))
+small = base .bicubicresize(m4_sh(oxi/sqrt(rx*1.5)),m4_sh(oyi/sqrt(ry*1.5)))
 ex1   = small.mt_expand().blur(.5)
 in1   = small.mt_inpand().blur(.5)
 huexp = "x y - 1 1 / * 1.0 ^ 1 - 5 *"
