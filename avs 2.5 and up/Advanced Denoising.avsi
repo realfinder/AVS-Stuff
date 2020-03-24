@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.83
+# Advanced Denoising and anime bob v1.84
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -26,6 +26,7 @@ global MotionThreshthresh = thresh
 global MotionThreshmotinc = motinc
 global mtcav=0
 global mtnav=0
+global sisphbdr = sisphbd
 """) : nop()
 fast ? white.ScriptClip("""
 MotionThreshwhite = last
@@ -34,7 +35,9 @@ cfr=current_frame
  
 mtpav=cfr<3 ? 0 : mtcav
 global mtcav=cfr<2 ? 0 : mtnav
-global mtnav=motinc.trim(1,0).AverageLuma()
+mtnavb = sisphbdr ? BitsPerComponent() > 8 ? BitsPerComponent() == 10 ? 4 : BitsPerComponent() == 12 ? 8 : BitsPerComponent() == 14 ? 64 : nop() : nop() : nop()
+global mtnav=sisphbdr ? isvideofloat() ? morinc.YDifferenceToNext()*255.0 : BitsPerComponent() > 8 ? BitsPerComponent() < 16 ? morinc.YDifferenceToNext()/mtnavb : morinc.YDifferenceToNext()/256 : morinc.YDifferenceToNext() : morinc.YDifferenceToNext()
+global mtnav=sisphbdr ? isvideofloat() ? motinc.trim(1,0).AverageLuma()*255.0 : BitsPerComponent() > 8 ? BitsPerComponent() < 16 ? motinc.trim(1,0).AverageLuma()/mtnavb : sqrt(motinc.trim(1,0).AverageLuma()) : motinc.trim(1,0).AverageLuma() : motinc.trim(1,0).AverageLuma()
 
 cond1 = abs(mtcav-mtpav) > MotionThreshthresh ? MotionThreshwhite : MotionThreshblack
 cond2 = abs(mtcav-mtnav) > MotionThreshthresh ? MotionThreshwhite : MotionThreshblack
@@ -51,7 +54,7 @@ fast ? cache<0 ? last : last.RequestLinear(8, cache, 5, false, false) : last
 # Average motion soft-thresholding based on 5 thresholds
 # Dependancies: MotionThresh, ParameterisedBlend or Average if avs is 2.6 or up
  
-function MotionRamp(clip morinc, int thresh1, int thresh2, int thresh3, int thresh4, int thresh5, int "min", int "max", int "floor", int "ceil", int "radius", bool "tile", bool "fast", int "cache") {
+function MotionRamp(clip morinc, float thresh1, float thresh2, float thresh3, float thresh4, float thresh5, int "min", int "max", int "floor", int "ceil", int "radius", bool "tile", bool "fast", int "cache") {
 min = Default(min, 0)
 max = Default(max, 255)
 floor = Default(floor, 0)
@@ -77,6 +80,7 @@ global MotionThreshthresh4 = thresh4
 global MotionThreshthresh5 = thresh5
 global MotionThreshmorinc = last
 global mtnav=0
+global sisphbdr = sisphbd
 """) : last
 fast ? white.ScriptClip("""
 morinc = MotionThreshmorinc
@@ -84,7 +88,8 @@ MotionThreshwhite = last
 cfr=current_frame
  
 mtpav=cfr<1 ? 0 : mtnav
-global mtnav=morinc.YDifferenceToNext()
+mtnavb = sisphbdr ? BitsPerComponent() > 8 ? BitsPerComponent() == 10 ? 4 : BitsPerComponent() == 12 ? 8 : BitsPerComponent() == 14 ? 64 : nop() : nop() : nop()
+global mtnav=sisphbdr ? isvideofloat() ? morinc.YDifferenceToNext()*255.0 : BitsPerComponent() > 8 ? BitsPerComponent() < 16 ? morinc.YDifferenceToNext()/mtnavb : morinc.YDifferenceToNext()/256 : morinc.YDifferenceToNext() : morinc.YDifferenceToNext()
 
 cond11 = mtpav > MotionThreshthresh1 ? MotionThreshwhite : MotionThreshblack
 cond21 = mtnav > MotionThreshthresh1 ? MotionThreshwhite : MotionThreshblack
@@ -149,17 +154,17 @@ ppsu = defined(ppsuper) ? ppsuper :  mcf ? oin.spp_super(pp=Eval(pp),rStr=rStr,a
 exmcclip = mcf ? exmc ? exmcclip : nlsb && lsb_in ? oin.ConvertFromStacked().sMCclips(ppsu,super.convertbits(16),hd=hd).ConvertToStacked() : oin8.sMCclips(ppsu,super,hd=hd) : exmcclip
 
 custom_filter = defined(custom_filter) ? custom_filter : \
-							mcf ? "dfttestmc(pp=oin8,lsb=lsb, Sigma=adSigma+1.0/f,lsb_in=lsb_in,u=u,v=v,slices=false,super=super,input8=oin8,hd=hd,exmcclip=exmcclip,dfttest_params=dfttest_params" + mcdfttest_params + ")" : \
-                                                         mc ? "dfttestmc(pp=Eval(pp),lsb=lsb, Sigma=adSigma+1.0/f,rStr=rStr,amp=amp,lsb_in=lsb_in,luma_rebuild=luma_rebuild,u=u,v=v,dfttest_params=dfttest_params" + mcdfttest_params + ")" : \
-                                                              "dfttest(lsb=lsb, Sigma=adSigma+1.0/f, lsb_in=lsb_in,u=u,v=v" + dfttest_params + ")"
+							mcf ? "dfttestmc(pp=oin8,lsb=lsb, Sigma=(adSigma+1.0)/f,lsb_in=lsb_in,u=u,v=v,slices=false,super=super,input8=oin8,hd=hd,exmcclip=exmcclip,dfttest_params=dfttest_params" + mcdfttest_params + ")" : \
+                                                         mc ? "dfttestmc(pp=Eval(pp),lsb=lsb, Sigma=*adSigma+1.0)/f,rStr=rStr,amp=amp,lsb_in=lsb_in,luma_rebuild=luma_rebuild,u=u,v=v,dfttest_params=dfttest_params" + mcdfttest_params + ")" : \
+                                                              "dfttest(lsb=lsb, Sigma=(adSigma+1.0)/f, lsb_in=lsb_in,u=u,v=v" + dfttest_params + ")"
 
 oin
-MotionRampadc = defined(MotionRampadc) ? MotionRampadc : oin8.MotionRamp(5,10,15,20,25,Max=255,fast=True)
+MotionRampadc = defined(MotionRampadc) ? MotionRampadc : oin8.MotionRamp(5.0,10.0,15.0,20.0,25.0,Max=255,fast=True)
 lsb_out && !lsb_in ? Dither_convert_8_to_16() : lsb_in && !lsb_out ? Ditherpost(mode=-1, y=1, u=1,v=1) : last
 return GScriptClip("""
                      adfloat = AverageLuma(MotionRampadc)
                      adSigmb = sisphbd ? BitsPerComponent() > 8 ? BitsPerComponent() == 10 ? 4 : BitsPerComponent() == 12 ? 8 : BitsPerComponent() == 14 ? 64 : nop() : nop() : nop()
-                     adSigma = sisphbd ? isvideofloat() ? adfloat*255.0 : BitsPerComponent() > 8 ? BitsPerComponent() < 16 ? adfloat/adSigmb : sqrt(adfloat) : adfloat : adfloat
+                     adSigma = sisphbd ? isvideofloat() ? adfloat*255.0 : BitsPerComponent() > 8 ? BitsPerComponent() < 16 ? adfloat/adSigmb : adfloat/256 : adfloat : adfloat
                      (lsb_out && !lsb_in) || (lsb_in && !lsb_out) ? oin : last
                      adden = Eval(custom_filter)
                      d ? DarkPreserve_function(filtered=nlsb && lsb ? adden.ConvertFromStacked() : adden, original=nlsb && lsb_in ? last.ConvertFromStacked() : nlsb && lsb ? last.Convertbits(16) : last, u=u ? 3 : 4, v=v ? 3 : 4, lsb=lsb && !nlsb, lsb_in=lsb_in && !nlsb, lsb_out=lsb_out && !nlsb) : adden
