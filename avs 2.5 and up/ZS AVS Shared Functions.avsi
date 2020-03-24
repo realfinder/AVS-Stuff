@@ -1,4 +1,4 @@
-# AVS S Shared Functions V1.03
+# AVS S Shared Functions V1.04
 # Collections of Functions
 
 
@@ -865,7 +865,7 @@ function sh_Vinverse2(clip clp, float "sstr", int "amnt", int "uv")
 
 function sbrV(clip o)
 {
-  rg11=mt_convolution("1","1 2 1")
+  rg11=o.mt_convolution("1","1 2 1")
   rg11D=mt_makediff(o,rg11)
   rg11DD=mt_makediff(rg11D,rg11D.mt_convolution("1","1 2 1")).mt_lutxy(rg11D,"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?")
   o.mt_makediff(rg11DD,U=2,V=2)
