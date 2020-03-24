@@ -1,5 +1,5 @@
 #################################################################################################
-###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2020.01.31      ######
+###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2020.03.24      ######
 #################################################################################################
 ###### from v2.8 on, nnedi3_resize16 only supports AviSynth v2.6+                          ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, nnedi3 v0.9.4.53,                  ######
@@ -537,16 +537,16 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
         \                                            src_widthc     , src_heightc     , luma=U32==3, chroma=false,
         \                                            kernel=cv||ch?kernel_u:kernel_d,
-		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
-		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                            desampling=ch||cv?invks_u:invks_d
+		\                                            taps=taps, a1=a1, a2=a2
 		\                                           ) :
 		\                                           input16.UToY8().""" + resstf + """
 		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
         \                                            src_widthc     , src_heightc     , y=U32, u=1  , v=1  ,
         \                                            kernelh=ch?kernel_u:kernel_d, kernelv=cv?kernel_u:kernel_d,
 		\                                            fh=ch?f_u:f_d, fv=cv?f_u:f_d,
-		\                                            desampling=ch||cv?invks_u:invks_d
-		\                                            taps=taps, a1=a1, a2=a2
+		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
 		\                                           )
         \                                : input16.BlankClip(width=owc, height=ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
 		
@@ -554,7 +554,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
         \                                            src_widthc     , src_heightc     , luma=V32==3, chroma=false,
         \                                            kernel=ch||cv?kernel_u:kernel_d,
-		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
+		\                                            desampling=ch||cv?invks_u:invks_d,
 		\                                            taps=taps, a1=a1, a2=a2
 		\                                           ) :
 		\                                           input16.VToY8().""" + resstf + """
