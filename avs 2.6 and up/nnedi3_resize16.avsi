@@ -36,8 +36,8 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     sisphbd = AvsPlusVersionNumber > 2294
     sischbd = sisphbd ? input.BitsPerComponent() > 8 : false
 	sisprgb = input.IsRGB() && input.IsPlanar()
-	sIsYUVA = sisphbd ? input.IsYUVA : false
-	AlphaC  = sIsYUVA ? input.ExtractA().nnedi3_resize16(target_width, target_height, src_left, src_top,
+	sHAlpha = sisphbd ? input.HasAlpha : false
+	AlphaC  = sHAlpha ? input.ExtractA().nnedi3_resize16(target_width, target_height, src_left, src_top,
 \                        src_width, src_height,
 \                        kernel_d, kernel_u, f_d, f_u, taps,
 \                        a1, a2, a3, invks_d, invks_u, invkstaps, noring,
@@ -45,7 +45,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 \                        ratiothr, mixed, thr, elast, sharp,
 \                        undefined, false, cplace, matrix, "linear", gcor,
 \                        Y, 1, 1, false, false, dither, false) : nop()
-	input = sIsYUVA ? input.RemoveAlphaPlane() : input
+	input = sHAlpha ? input.RemoveAlphaPlane() : input
     ###############################################################################################################################
     ###############################################################################################################################
     # Parameters for merging edge&flat upscaled clip
@@ -606,7 +606,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
         \                      : merge16.nnedi3_resize16_Down8(tv_range, True, !IsY8, !IsY8, dither) : merge16
     """) : \
     Eval("""
-        shift16  = sischbd || sisprgb ? input16.ResizeX(ow, oh, src_left, src_top, src_width, src_height, kernel="point", y=Y, u=U, v=V) : input16.Dither_resize16(ow, oh, src_left, src_top, src_width, src_height, kernel="point", y=Y, u=U, v=V)
+        shift16  = sischbd || sisprgb ? input16.ResizeX(ow, oh, src_left, src_top, src_width, src_height, kernel="point", luma=Y!=1, chroma=u!=1 && V!=1) : input16.Dither_resize16(ow, oh, src_left, src_top, src_width, src_height, kernel="point", y=Y, u=U, v=V)
         shift16  = sischbd || sisprgb ? shift16 : IsY8 ? output=="Y8" ? shift16.""" + syext + """() : Eval("shift16.ConvertTo"+oCSP).Dither_lut16(Y=2, U=-32768, V=-32768) : shift16
         
         final    = sisprgb ? shift16 : !sischbd ? IsRGB ? shift16.Dither_convert_yuv_to_rgb(matrix=matrix, tv_range=tv_range, lsb_in=True, mode=dither, output=output)
@@ -615,7 +615,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     """)
     
     
-    return sIsYUVA ? final.AddAlphaPlane(AlphaC) : final
+    return sHAlpha ? final.AddAlphaPlane(AlphaC) : final
 }
 
 
