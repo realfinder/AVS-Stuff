@@ -1,4 +1,4 @@
-###### Contra-Sharpen mod 3.7 ###### by mawen1250 ###### 2020.03.25 ######
+###### Contra-Sharpen mod 3.7 ###### by mawen1250 ###### 2020.03.26 ######
 ###### Requirements: masktools v2.0a48, mvtools v2.5.11.3/v2.6.0.5, RemoveGrain + Repair v1.0pre, RemoveGrainHD v0.5    ######
 ###### FluxSmooth v1.1a, nnedi3 v0.9.4, SangNom 2004.01.18(filter_ss="AA"), TEdgeMask v0.9, tcanny v1.0, MSharpen v1.10 ######
 
@@ -234,17 +234,17 @@ filtered_ds = usepasf ? pre_ds : filtered_ds
 prefinal  = ssout ? Tlimit&&!chroma&&chromamv ? pre.MergeChroma(filtered_ss) : pre : Tlimit&&!chroma&&chromamv ? pre_ds.MergeChroma(filtered_os) : pre_ds
 srcfinal  = ssout ? source_ss                                                      : source
 
-prewittm  = mt_edge(prefinal, "prewitt", Round(edgethr*0.5), 255, 0, 0, V=1, U=1)
+prewittm  = mt_edge(prefinal, "prewitt", Round(edgethr*0.5), 255, 0, 0, V=nochro ? ch31 : 1, U=nochro ? ch31 : 1)
 edgemask  = IsClip(edgemask) ? edgemask
 \         : IsInt (edgemask) ?
-\           edgemask == -1   ? mt_edge(prefinal, "sobel", 7, 7, 5, 5, U=1, V=1).mt_inflate(U=1, V=1)
-\         : edgemask == -2   ? mt_edge(prefinal, "roberts", 0, 4, 0, 4, U=1, V=1).mt_inflate(U=1, V=1)
-\         : edgemask == -3   ? sisavs26 ? mt_edge(prefinal, "prewitt", 0, 255, 0, 0, V=1, U=1)
-\                             .mt_lut("x " + string(edgethr) + " scalef <= x 1 >> x 1.4 ^ ?",scale_inputs="floatf",clamp_float=true, U=1, V=1)
-\                             .RemoveGrain(4, nochro ? undefined : -1).mt_inflate(U=1, V=1) :
+\           edgemask == -1   ? mt_edge(prefinal, "sobel", 7, 7, 5, 5, U=nochro ? ch31 : 1, V=nochro ? ch31 : 1).mt_inflate(U=nochro ? ch31 : 1, V=nochro ? ch31 : 1)
+\         : edgemask == -2   ? mt_edge(prefinal, "roberts", 0, 4, 0, 4, U=nochro ? ch31 : 1, V=nochro ? ch31 : 1).mt_inflate(U=nochro ? ch31 : 1, V=nochro ? ch31 : 1)
+\         : edgemask == -3   ? sisavs26 ? mt_edge(prefinal, "prewitt", 0, 255, 0, 0, V=nochro ? ch31 : 1, U=nochro ? ch31 : 1)
+\                             .mt_lut("x " + string(edgethr) + " scalef <= x 1 >> x 1.4 ^ ?",scale_inputs="floatf",clamp_float=true, U=nochro ? ch31 : 1, V=nochro ? ch31 : 1)
+\                             .RemoveGrain(4, nochro ? undefined : -1).mt_inflate(U=nochro ? ch31 : 1, V=nochro ? ch31 : 1) :
 \                                         mt_edge(prefinal, "prewitt", 0, 255, 0, 0, V=1, U=1)
 \                             .mt_lut("x " + string(edgethr) + " <= x 1 >> x 1.4 ^ ?", U=1, V=1)
-\                             .RemoveGrain(4, nochro ? undefined : -1).mt_inflate(U=1, V=1)
+\                             .RemoveGrain(4, -1).mt_inflate(U=1, V=1)
 \         : edgemask == -4   ? sisavs26 ? TEdgeMask(prefinal, link=2, preblur=false, valon=-1, U=0, V=0)
 \                             .mt_lut("x " + string(edgethr/5.0) + " scalef <= x 1 >> x 4 << ?",scale_inputs="floatf",clamp_float=true, U=1, V=1)
 \                             .mt_deflate(U=1, V=1).RemoveGrain(HD ? 20 : 11, nochro ? undefined : -1) :
@@ -264,23 +264,23 @@ edgemask  = IsClip(edgemask) ? edgemask
 \                             .RemoveGrain(HD ? 20 : 11, nochro ? undefined : -1).mt_inflate(U=1, V=1) :
 \                                         tcanny(srcfinal, sigma=tcannysigma, mode=1, plane=1)
 \                             .mt_lut("x " + string(edgethr) + " <= 0 x " + string(edgethr) + " - 6 << ?", U=1, V=1)
-\                             .RemoveGrain(HD ? 20 : 11, nochro ? undefined : -1).mt_inflate(U=1, V=1)
-\         : edgemask ==  1   ? sisavs26 ? prefinal.mt_edge(thY1=0, thY2=255, mode="min/max", U=1, V=1)
-\                             .mt_lut("x " + string(edgethr) + " / 0.86 ^ 255 *",scale_inputs="allf",use_expr=2,clamp_float=true, U=1, V=1)
-\                             .mt_inflate(U=1, V=1).mt_inflate(U=1, V=1).Removegrain(11, nochro ? undefined : -1) :
+\                             .RemoveGrain(HD ? 20 : 11, -1).mt_inflate(U=1, V=1)
+\         : edgemask ==  1   ? sisavs26 ? prefinal.mt_edge(thY1=0, thY2=255, mode="min/max", U=nochro ? ch31 : 1, V=nochro ? ch31 : 1)
+\                             .mt_lut("x " + string(edgethr) + " / 0.86 ^ 255 *",scale_inputs="allf",use_expr=2,clamp_float=true, U=nochro ? ch31 : 1, V=nochro ? ch31 : 1)
+\                             .mt_inflate(U=nochro ? ch31 : 1, V=nochro ? ch31 : 1).mt_inflate(U=nochro ? ch31 : 1, V=nochro ? ch31 : 1).Removegrain(11, nochro ? undefined : -1) :
 \                                         prefinal.mt_edge(thY1=0, thY2=255, mode="min/max", U=1, V=1)
 \                             .mt_lut("x " + string(edgethr) + " / 0.86 ^ 255 *", U=1, V=1)
-\                             .mt_inflate(U=1, V=1).mt_inflate(U=1, V=1).Removegrain(11, nochro ? undefined : -1)
-\         : edgemask ==  2   ? sisavs26 ? mt_logic(prefinal.mt_edge(thY1=0, thY2=255, "8 16 8 0 0 0 -8 -16 -8 4", U=1, V=1),
-\                                       prefinal.mt_edge(thY1=0, thY2=255, "8 0 -8 16 0 -16 8 0 -8 4", U=1, V=1),
-\                                       "max", U=1, V=1).mt_lut("x " + string(edgethr*4.0) + " / 0.86 ^ 255 *",scale_inputs="allf",use_expr=2,clamp_float=true, U=1, V=1)
-\                             .mt_inflate(U=1, V=1).mt_inflate(U=1, V=1).RemoveGrain(11, nochro ? undefined : -1) :
+\                             .mt_inflate(U=1, V=1).mt_inflate(U=1, V=1).Removegrain(11, -1)
+\         : edgemask ==  2   ? sisavs26 ? mt_logic(prefinal.mt_edge(thY1=0, thY2=255, "8 16 8 0 0 0 -8 -16 -8 4", U=nochro ? ch31 : 1, V=nochro ? ch31 : 1),
+\                                       prefinal.mt_edge(thY1=0, thY2=255, "8 0 -8 16 0 -16 8 0 -8 4", U=nochro ? ch31 : 1, V=nochro ? ch31 : 1),
+\                                       "max", U=nochro ? ch31 : 1, V=nochro ? ch31 : 1).mt_lut("x " + string(edgethr*4.0) + " / 0.86 ^ 255 *",scale_inputs="allf",use_expr=2,clamp_float=true, U=nochro ? ch31 : 1, V=nochro ? ch31 : 1)
+\                             .mt_inflate(U=nochro ? ch31 : 1, V=nochro ? ch31 : 1).mt_inflate(U=nochro ? ch31 : 1, V=nochro ? ch31 : 1).RemoveGrain(11, nochro ? undefined : -1) :
 \                                         mt_logic(prefinal.mt_edge(thY1=0, thY2=255, "8 16 8 0 0 0 -8 -16 -8 4", U=1, V=1),
 \                                       prefinal.mt_edge(thY1=0, thY2=255, "8 0 -8 16 0 -16 8 0 -8 4", U=1, V=1),
 \                                       "max", U=1, V=1).mt_lut("x " + string(edgethr*4.0) + " / 0.86 ^ 255 *", U=1, V=1)
-\                             .mt_inflate(U=1, V=1).mt_inflate(U=1, V=1).RemoveGrain(11, nochro ? undefined : -1)
-\         : edgemask ==  3   ? sisavs26 ? mt_edge(prefinal, "prewitt", Round(edgethr*0.25), 255, 0, 0, V=1, U=1)
-\                             .mt_lut("x 1.8 ^",scale_inputs="floatf",use_expr=2,clamp_float=true, U=1, V=1).RemoveGrain(4, nochro ? undefined : -1).mt_inflate(U=1, V=1).RemoveGrain(20,nochro ? undefined : -1) :
+\                             .mt_inflate(U=1, V=1).mt_inflate(U=1, V=1).RemoveGrain(11, -1)
+\         : edgemask ==  3   ? sisavs26 ? mt_edge(prefinal, "prewitt", Round(edgethr*0.25), 255, 0, 0, V=nochro ? ch31 : 1, U=nochro ? ch31 : 1)
+\                             .mt_lut("x 1.8 ^",scale_inputs="floatf",use_expr=2,clamp_float=true, U=nochro ? ch31 : 1, V=nochro ? ch31 : 1).RemoveGrain(4, nochro ? undefined : -1).mt_inflate(U=nochro ? ch31 : 1, V=nochro ? ch31 : 1).RemoveGrain(20,nochro ? undefined : -1) :
 \                                       mt_edge(prefinal, "prewitt", Round(edgethr*0.25), 255, 0, 0, V=1, U=1)
 \                             .mt_lut("x 1.8 ^", U=1, V=1).RemoveGrain(4, nochro ? undefined : -1).mt_inflate(U=1, V=1).RemoveGrain(20,nochro ? undefined : -1)
 \         : edgemask ==  4   ? MSharpen(prefinal, threshold=Round(edgethr/10.0), strength=0, mask=true, highq=false)
@@ -291,8 +291,8 @@ edgemask  = IsClip(edgemask) ? edgemask
 \                                         tcanny(srcfinal, sigma=tcannysigma, mode=1, plane=1)
 \                             .mt_lut("x " + string(edgethr*0.5) + " <= 0 x " + string(edgethr*0.5) + " - 2.4 ^ ?", U=1, V=1)
 \                             .RemoveGrain(HD ? 20 : 11, nochro ? undefined : -1).mt_inflate(U=1, V=1)
-\         :                    mt_hysteresis(prewittm.RemoveGrain(4, nochro ? undefined : -1), prewittm, U=1, V=1)
-\                             .RemoveGrain(HD ? 20 : 11, nochro ? undefined : -1).mt_inflate(U=1, V=1)
+\         :                    mt_hysteresis(prewittm.RemoveGrain(4, nochro ? undefined : -1), prewittm, U=nochro ? ch31 : 1, V=nochro ? ch31 : 1)
+\                             .RemoveGrain(HD ? 20 : 11, nochro ? undefined : -1).mt_inflate(U=nochro ? ch31 : 1, V=nochro ? ch31 : 1)
 \         :                    Assert(false, """CSmod: "edgemask" should be int or clip!""")
 
 
@@ -417,10 +417,10 @@ end        = edgemode <= 0 ? chroma ? sclp
 \                                   : ssout ? ssoutc ? sclp.MergeChroma(merged_ss)
 \                                                    : sclp
 \                                           : sclp.MergeChroma(merged_os)
-\          : edgemode == 1 ? ssout ? mt_merge(merged_ss, sclp, edgemask, luma=chroma, Y=3, U=ssoutc?ch32:ch31, V=ssoutc?ch32:ch31)
-\                                  : mt_merge(merged_os, sclp, edgemask, luma=chroma, Y=3, U=ch32,             V=ch32            )
-\                          : ssout ? mt_merge(sclp, merged_ss, edgemask, luma=chroma, Y=3, U=ssoutc?ch34:ch31, V=ssoutc?ch34:ch31)
-\                                  : mt_merge(sclp, merged_os, edgemask, luma=chroma, Y=3, U=ch34,             V=ch34            )
+\          : edgemode == 1 ? ssout ? mt_merge(merged_ss, sclp, edgemask, luma=nochro ? undefined : chroma, Y=3, U=ssoutc?ch32:ch31, V=ssoutc?ch32:ch31)
+\                                  : mt_merge(merged_os, sclp, edgemask, luma=nochro ? undefined : chroma, Y=3, U=ch32,             V=ch32            )
+\                          : ssout ? mt_merge(sclp, merged_ss, edgemask, luma=nochro ? undefined : chroma, Y=3, U=ssoutc?ch34:ch31, V=ssoutc?ch34:ch31)
+\                                  : mt_merge(sclp, merged_os, edgemask, luma=nochro ? undefined : chroma, Y=3, U=ch34,             V=ch34            )
 
 return end
 }
@@ -439,8 +439,10 @@ Function CSmod_nrSpline64Resize(clip input, int "target_width", int "target_heig
   src_height    = Default(src_height,        h)
   chroma        = Default(chroma,         true)
   nr            = Default(nr,             true)
+  sisavs26      = !(VersionNumber() < 2.6)
   sisphbd       = AvsPlusVersionNumber > 2294
   sischbd       = sisphbd ? input.BitsPerComponent() > 8 : false
+  nochro        = input.isrgb()
 
   nr        = IsInt(nr) ? Float(nr) : nr
   Assert( IsFloat(nr) || IsBool(nr), """CSmod_nrSpline64Resize: "nr" should be either bool or float!""" )
@@ -451,27 +453,19 @@ Function CSmod_nrSpline64Resize(clip input, int "target_width", int "target_heig
   \         : nr /* == True  */ ? Spline( res_mul, 1, 0, 2.25, 1, 3.5, 0, true )
   \         :    /* == False */   0
   nr_weight = min( max( nr_weight, 0 ), 1 )
-  
-  force420 = (sisphbd ? input.IsYV12 : input.Is420) == false && nr_weight != 0
 
-  try {
-    inputp = chroma ? force420 ? sisphbd ? input .ConvertToYUV420 : input .ConvertToYV12
-	\                           : input
-	\               : sisphbd ? input.ConvertToY : input.ConvertToY8
-  } catch ( error_msg ) {
-    inputp = force420 ? sisphbd ? input.ConvertToYUV420 : input.ConvertToYV12
-    \                  : input
-  }
+    inputp = chroma ? input
+	\               : sisavs26 ? sisphbd ? input.ConvertToY : input.ConvertToY8 : input
   
   resize = inputp.Spline64Resize(target_width, target_height, src_left, src_top, src_width, src_height)
   nrres  = inputp.GaussResize(target_width, target_height, src_left, src_top, src_width, src_height, p=100)
-  resize = sischbd ? resize : resize.sh_GetCSP == "Y8" ? resize.ConvertToYV12 : resize
-  nrres  = sischbd ? nrres : resize .sh_GetCSP == "Y8" ? nrres .ConvertToYV12 : nrres 
 
   resize = nr_weight == 0 ? resize
   \      : nr_weight == 1 ? resize.Repair(nrres, 1, nochro ? undefined : chroma ? 1 : -1)
   \      : chroma         ? Merge    (resize, resize.Repair(nrres, 1, nochro ? undefined :  1), nr_weight)
   \                       : MergeLuma(resize, resize.Repair(nrres, 1, nochro ? undefined : -1), nr_weight)
+  chresi = !chroma ? blankclip(input,width=target_width,height=target_height) : nop()
+  resize = !chroma ? sisavs26 ? sisphbd ? CombinePlanes(resize,chresi,planes="YUV",sample_clip=chresi) : ytouv(chresi.utoy8(),chresi.vtoy8(),resize) : resize : resize
   
   return resize
 }
