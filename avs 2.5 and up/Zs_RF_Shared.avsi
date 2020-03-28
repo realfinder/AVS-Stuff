@@ -1,5 +1,5 @@
-# AVS S Shared Functions V1.04
-# Collections of Functions
+# Shared Functions and utility
+# V1.05
 
 
 #################################################
@@ -9,7 +9,7 @@
 
 Function sh_StrReplace(string s, string find, string replace)
 {
- AvsPlusVersionNumber > 2347 ? ReplaceStr(s,find,replace) : eval("""i = s.FindStr(find) Chr(3) i ==0 || Replace=="" ? s : (s.LeftStr(i-1)+replace+s.MidStr(Strlen(find)+i)).StrReplace(find, replace)""")
+ AvsPlusVersionNumber > 2958 ? ReplaceStr(s,find,replace) : eval("""i = s.FindStr(find) Chr(3) i ==0 || Replace=="" ? s : (s.LeftStr(i-1)+replace+s.MidStr(Strlen(find)+i)).sh_StrReplace(find, replace)""")
 }
 
 
@@ -318,7 +318,7 @@ lsb ? lsb_out ? dp_merge : dp_merge.Ditherpost(mode=7, slice=false) : dp_merge
 }
 
 
-# Padding by DidÃ©e
+# Padding by Didée
 function sh_Padding(clip c, int left, int top, int right, int bottom, int "threads")
 {
 threads = Default(threads, 0)
@@ -428,10 +428,10 @@ Function sh_Y8_YV411(clip c) {
 ########################################################
 
 ########################################
-## DidÃ©e's functions:
+## Didée's functions:
 
  # contra-sharpening: sharpen the denoised clip, but don't add more to any pixel than what was removed previously.
- # script function from DidÃ©e, at the VERY GRAINY thread
+ # script function from Didée, at the VERY GRAINY thread
 
  # In final version 2.0d ContraHD() was merged, to allow proper HD sharpening.
  # In this case global variables of (before denoising) source MSuper and forward and backward
@@ -473,7 +473,7 @@ yuy26 ? last.ConvertToYUY2().Interleaved2planar() : last
 }
 
 
- # MinBlur   by DidÃ©e
+ # MinBlur   by Didée
  # Nifty Gauss/Median combination (Modified for Planar input)
 
 function MinBlur(clip clp, int "r", int "uv", bool "planar", string "mode", int "abtype", bool "blurrep"){
@@ -1104,7 +1104,7 @@ cache<0 ? last : last.RequestLinear(8, cache, 5, false, false)
 function ediaa(clip a) {return a.EEDI2(field=1).TurnRight().EEDI2(field=1).TurnLeft().spline36resize(a.width,a.height,-0.5,-0.5)}
 
 
-#Anti-aliasing with contra-sharpening by DidÃ©e
+#Anti-aliasing with contra-sharpening by Didée
 function daa(clip c) {
 nn	= c.nnedi2(field=-2)
 dbl   	= mt_average(selecteven(nn),selectodd(nn),U=3,V=3)
