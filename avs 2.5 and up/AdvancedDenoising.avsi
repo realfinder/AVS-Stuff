@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.85
+# Advanced Denoising and anime bob v1.86
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -65,14 +65,20 @@ tile = Default(tile,  fast)
 cache= default(cache,10)
 
 sisphbd = AvsPlusVersionNumber > 2294
+
+morinc = morinc.killaudio()
  
 sislumaonly = fast ? sisphbd ? morinc.isy() : morinc.isy8() : false
+
+sisavs26 = !(VersionNumber() < 2.60)
+
+sfas = fast && sisavs26
  
-fast && !(VersionNumber() < 2.60) && !sislumaonly ? sisphbd ? morinc.converttoy() : morinc.converttoy8() : morinc
+sfas && !sislumaonly ? sisphbd ? morinc.converttoy() : morinc.converttoy8() : morinc
 
 fast ? eval("""
-white = BlankClip(last, width=16, height=16, Color_yuv=color_white)
-global MotionThreshblack = BlankClip(last, width=16, height=16, Color_yuv=color_black)
+white = BlankClip(last, width=sfas ? 1 : 16, height=sfas ? 1 : 16, Color_yuv=color_white)
+global MotionThreshblack = BlankClip(last, width=sfas ? 1 : 16, height=sfas ? 1 : 16, Color_yuv=color_black)
 global MotionThreshthresh1 = thresh1
 global MotionThreshthresh2 = thresh2
 global MotionThreshthresh3 = thresh3
@@ -80,6 +86,7 @@ global MotionThreshthresh4 = thresh4
 global MotionThreshthresh5 = thresh5
 global MotionThreshmorinc = last
 global mtnav=0
+global sisavs26r = sisavs26
 global sisphbdr = sisphbd
 """) : last
 fast ? white.ScriptClip("""
@@ -111,9 +118,9 @@ cond15 = mtpav > MotionThreshthresh5 ? MotionThreshwhite : MotionThreshblack
 cond25 = mtnav > MotionThreshthresh5 ? MotionThreshwhite : MotionThreshblack
 c5=Overlay(cond15, cond25, mode="darken")
 
-VersionNumber() < 2.6 ? Interleave(c3, c2, c4, c1, c5).ParameterisedBlend(0.20, 0.20, 0.20, 0.20, 0.20, gamma=1, scaleweights=false).SelectEvery(5,0) : Average(c3, 0.20, c2, 0.20, c4, 0.20, c1, 0.20, c5, 0.20)
-""") : VersionNumber() < 2.6 ? Interleave(MotionThresh(thresh3, tile=true), MotionThresh(thresh2, tile=true), MotionThresh(thresh4, tile=true), MotionThresh(thresh1, tile=true), MotionThresh(thresh5, tile=true)).ParameterisedBlend(0.20, 0.20, 0.20, 0.20, 0.20, gamma=1, scaleweights=false).SelectEvery(5,0) : \
-                               Average(MotionThresh(thresh3, tile=true), 0.20, MotionThresh(thresh2, tile=true), 0.20, MotionThresh(thresh4, tile=true), 0.20, MotionThresh(thresh1, tile=true), 0.20, MotionThresh(thresh5, tile=true), 0.20)
+!sisavs26r ? Interleave(c3, c2, c4, c1, c5).ParameterisedBlend(0.20, 0.20, 0.20, 0.20, 0.20, gamma=1, scaleweights=false).SelectEvery(5,0) : Average(c3, 0.20, c2, 0.20, c4, 0.20, c1, 0.20, c5, 0.20)
+""") : !sisavs26 ? Interleave(MotionThresh(thresh3, tile=true), MotionThresh(thresh2, tile=true), MotionThresh(thresh4, tile=true), MotionThresh(thresh1, tile=true), MotionThresh(thresh5, tile=true)).ParameterisedBlend(0.20, 0.20, 0.20, 0.20, 0.20, gamma=1, scaleweights=false).SelectEvery(5,0) : \
+                   Average(MotionThresh(thresh3, tile=true), 0.20, MotionThresh(thresh2, tile=true), 0.20, MotionThresh(thresh4, tile=true), 0.20, MotionThresh(thresh1, tile=true), 0.20, MotionThresh(thresh5, tile=true), 0.20)
 fast ? cache<0 ? last : last.RequestLinear(8, cache, 5, false, false) : last
 TemporalSoften(radius,255,0,255,2)
 fast ? last : Levels(floor, 1, ceil, min, max)
@@ -123,19 +130,21 @@ tile ? last : Eval("try { PointResizemt(morinc.width, morinc.height) } catch(err
 
 
 ##########
-function admfilter(clip oin, bool "mc", float "f", bool "DarkPreserve", float "rStr", float "amp", bool "lsb", bool "lsb_in", bool "lsb_out", bool "luma_rebuild", bool "u", bool "v", string "pp", string "dfttest_params", string "mcdfttest_params", string "custom_filter", clip "MotionRampadc", bool "mcf", clip "ppsuper", clip "super", clip "exmcclip", bool "nlsb") {
+function admfilter(clip oin, bool "mc", float "f", bool "DarkPreserve", float "rStr", float "amp", bool "lsb", bool "lsb_in", bool "lsb_out", bool "luma_rebuild", bool "u", bool "v", string "pp", string "dfttest_params", string "mcdfttest_params", string "custom_filter", clip "MotionRampadc", bool "mcf", clip "ppsuper", clip "super", clip "exmcclip", bool "nlsb", bool "bthr") {
 iscf = defined(custom_filter)
+bthr = default (bthr      , true)
 d = default (DarkPreserve      , true)
 exmc = defined(exmcclip)
 mc = default (mc      , !iscf)
 sisphbd = AvsPlusVersionNumber > 2294
 f = Default(f, 16.0)
-lsb = default (lsb, iscf ? false : sisphbd ? oin.BitsPerComponent() > 8 ? false : true : true)
+sischbd = sisphbd ? oin.BitsPerComponent() > 8 : false
+lsb = default (lsb, iscf ? false : sischbd ? false : true)
 nlsb = default (nlsb, sisphbd && lsb)
 lsb_in = default (lsb_in      , false)
 u = default (u      , true)
 v = default (v      , true)
-mcf = default (mcf, exmc || (nlsb && lsb_in))
+mcf = default (mcf, sischbd || exmc || (nlsb && lsb_in))
 oin8 = lsb_in ? oin.ditherpost(mode=7,slice=false,u=u ? 3 : 1,v=v ? 3 : 1) : oin
     ox = oin8.width()
     oy = oin8.height()
@@ -154,24 +163,26 @@ ppsu = defined(ppsuper) ? ppsuper :  mcf ? oin.spp_super(pp=Eval(pp),rStr=rStr,a
 exmcclip = mcf ? exmc ? exmcclip : nlsb && lsb_in ? oin.ConvertFromStacked().sMCclips(ppsu,super.convertbits(16),hd=hd).ConvertToStacked() : oin8.sMCclips(ppsu,super,hd=hd) : exmcclip
 
 custom_filter = defined(custom_filter) ? custom_filter : \
-							mcf ? "dfttestmc(pp=oin8,lsb=lsb, Sigma=(adSigma+1.0)/f,lsb_in=lsb_in,u=u,v=v,slices=false,super=super,input8=oin8,hd=hd,exmcclip=exmcclip,dfttest_params=dfttest_params" + mcdfttest_params + ")" : \
-                                                         mc ? "dfttestmc(pp=Eval(pp),lsb=lsb, Sigma=(adSigma+1.0)/f,rStr=rStr,amp=amp,lsb_in=lsb_in,luma_rebuild=luma_rebuild,u=u,v=v,dfttest_params=dfttest_params" + mcdfttest_params + ")" : \
-                                                              "dfttest(lsb=lsb, Sigma=(adSigma+1.0)/f, lsb_in=lsb_in,u=u,v=v" + dfttest_params + ")"
+							mcf ? "dfttestmc(pp=oin8,lsb=lsb, Sigma=bthr ? (min(bthrvs,adSigma)+1.0)/f : (adSigma+1.0)/f,lsb_in=lsb_in,u=u,v=v,slices=false,super=super,input8=oin8,hd=hd,exmcclip=exmcclip,dfttest_params=dfttest_params" + mcdfttest_params + ")" : \
+                                                         mc ? "dfttestmc(pp=Eval(pp),lsb=lsb, Sigma=bthr ? (min(bthrvs,adSigma)+1.0)/f : (adSigma+1.0)/f,rStr=rStr,amp=amp,lsb_in=lsb_in,luma_rebuild=luma_rebuild,u=u,v=v,dfttest_params=dfttest_params" + mcdfttest_params + ")" : \
+                                                              "dfttest(lsb=lsb, Sigma=bthr ? (min(bthrvs,adSigma)+1.0)/f : (adSigma+1.0)/f, lsb_in=lsb_in,u=u,v=v" + dfttest_params + ")"
 
 oin
 MotionRampadc = defined(MotionRampadc) ? MotionRampadc : oin8.MotionRamp(5.0,10.0,15.0,20.0,25.0,Max=255,fast=True)
 lsb_out && !lsb_in ? Dither_convert_8_to_16() : lsb_in && !lsb_out ? Ditherpost(mode=-1, y=1, u=1,v=1) : last
 return GScriptClip("""
+                     bthrv   = bthr ? AverageLuma() : nop()
                      adfloat = AverageLuma(MotionRampadc)
                      adSigmb = sisphbd ? BitsPerComponent() > 8 ? BitsPerComponent() == 10 ? 4 : BitsPerComponent() == 12 ? 8 : BitsPerComponent() == 14 ? 64 : nop() : nop() : nop()
                      adSigma = sisphbd ? isvideofloat() ? adfloat*255.0 : BitsPerComponent() > 8 ? BitsPerComponent() < 16 ? adfloat/adSigmb : adfloat/256 : adfloat : adfloat
+					 bthrvs  = bthr ? sisphbd ? isvideofloat() ? bthrv*255.0 : BitsPerComponent() > 8 ? BitsPerComponent() < 16 ? bthrv/adSigmb : bthrv/256 : bthrv : bthrv : nop()
                      (lsb_out && !lsb_in) || (lsb_in && !lsb_out) ? oin : last
                      adden = Eval(custom_filter)
                      d ? DarkPreserve_function(filtered=nlsb && lsb ? adden.ConvertFromStacked() : adden, original=nlsb && lsb_in ? last.ConvertFromStacked() : nlsb && lsb ? last.Convertbits(16) : last, u=u ? 3 : 4, v=v ? 3 : 4, lsb=lsb && !nlsb, lsb_in=lsb_in && !nlsb, lsb_out=lsb_out && !nlsb) : adden
                      d && lsb && nlsb ? ConvertToStacked() : last
                      d && lsb && nlsb && !lsb_out ? Ditherpost(mode=7, slice=false) : last
                      !d && !lsb_out && lsb ? Ditherpost(mode=7, slice=false) : last
-                     """, args="MotionRampadc, f, d, rStr, amp, lsb_in, lsb_out, lsb, luma_rebuild, u, v,dfttest_params,mcdfttest_params,pp,oin,custom_filter,sisphbd,super,oin8,hd,exmcclip,nlsb")
+                     """, args="MotionRampadc, f, d, rStr, amp, lsb_in, lsb_out, lsb, luma_rebuild, u, v,dfttest_params,mcdfttest_params,pp,oin,custom_filter,sisphbd,super,oin8,hd,exmcclip,nlsb,bthr")
 }
 
 

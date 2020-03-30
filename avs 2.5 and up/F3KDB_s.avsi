@@ -1,5 +1,5 @@
 ###############
-# F3KDB_3 and it sisters v1.2
+# F3KDB_3 and it sisters v1.3
 
 
 function F3KDB_3(clip clip, int "range", int "Y", int "Cb", int "Cr", \
@@ -201,15 +201,17 @@ mrad > 2 ? removegrain (20, -1) : last
 
 
 # F3KDB_3_adg F3KDB_3 with adaptive grain
-# basic release
 
 function F3KDB_3_adg(clip clip, int "range", int "Y", int "Cb", int "Cr", int "seed", \
 		bool "blur_first", bool "dynamic_grain", int "opt", bool "mt", \
 		int "dither_algo", bool "keep_tv_range", \
 		int "random_algo_ref", int "random_algo_grain", \
-		float "random_param_ref", float "random_param_grain", bool "chroma", int "pass", bool "masking", float "mask_thr", int "mask_radius") {
+		float "random_param_ref", float "random_param_grain", bool "chroma", int "pass", bool "masking", float "mask_thr", int "mask_radius", float "gf", float "gmin", float "gmax") {
 pass = default (pass, 2)
 masking = default (masking, true)
+gf = default (gf, 512)
+gmin = default (gmin, 12)
+gmax = default (gmax, 100)
 Assert(clip.BitsPerComponent() == 16, "F3KDB_3_adg: only work with avs+ HBD 16 bit")
 pass != 1 ? clip.F3KDB_3(range, Y, Cb, Cr, 0, 0, 4, seed, \
 		blur_first, dynamic_grain, opt, mt, \
@@ -221,14 +223,14 @@ pass != 1 ? clip.F3KDB_3(range, Y, Cb, Cr, 0, 0, 4, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, \
 		random_algo_ref, random_algo_grain, \
-		random_param_ref, random_param_grain, chroma, pass - 1, masking, mask_thr, mask_radius) : last
+		random_param_ref, random_param_grain, chroma, pass - 1, masking, mask_thr, mask_radius, gf, gmin, gmax) : last
 pass == 1 ? last.gScriptClip("""
 last.F3KDB_3(range, Y, Cb, Cr, \
-		round(65535-AverageLuma)/256, 0, 4, seed, \
+		round(max(min((65535-AverageLuma)/gf,gmax),gmin)), 0, 4, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, 0, \
 		16, 3, 16, \
 		random_algo_ref, random_algo_grain, \
 		random_param_ref, random_param_grain, chroma, 1, false, masking, mask_thr, mask_radius)
-""",args="range, Y, Cb, Cr, seed, blur_first, dynamic_grain, opt, mt, dither_algo, keep_tv_range, random_algo_ref, random_algo_grain, random_param_ref, random_param_grain, chroma, masking, mask_thr, mask_radius") : last
+""",args="range, Y, Cb, Cr, seed, blur_first, dynamic_grain, opt, mt, dither_algo, keep_tv_range, random_algo_ref, random_algo_grain, random_param_ref, random_param_grain, chroma, masking, mask_thr, mask_radius, gf, gmin, gmax") : last
 }
