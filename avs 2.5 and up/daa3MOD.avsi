@@ -1,7 +1,7 @@
 #Motion-Compensated Anti-aliasing with contra-sharpening by A.SONY
 #some ideas was taken from Didée scripts daa and this http://forum.doom9.org/showthread.php?t=153219
 #created because when applied daa3 to fixed scenes, it could damage some details and other issues.
-# v3.56
+# v3.57
 
 function mcdaa3(clip input) {
 sup    = input.HQdn3d().FFT3DFilter().MSuper(pel=2,sharp=1)
@@ -17,7 +17,7 @@ mt_merge(input,csaa,momask,u=3,v=3)
 
 #############################
 
-#Anti-aliasing with contra-sharpening by Didée with some modifications, v3.55
+#Anti-aliasing with contra-sharpening by Didée with some modifications, v3.57
 
     FUNCTION daa3mod(clip c1, val "slow", int "threads") {
 avs25 = VersionNumber() < 2.60
@@ -36,7 +36,7 @@ downsizer = slowb ? issloi ? slow!=0 ? "BicubicResize" : "Spline36Resize" : "Spl
 
 c = rescale ? threads!=1 ? Eval("""try { Eval("c1."+upsizer+"mt(c1.width, c1.height*3/2,threads=threads)") } catch(error_msg) { Eval("c1."+upsizer+"(c1.width, c1.height*3/2)") }""") : Eval("c1."+upsizer+"(c1.width, c1.height*3/2)") : c1
 
-    nn      = issloi ? slow > 1 ? c.sh_Padding(slow==2 ? 0 : 4,4,slow==2 ? 0 : 4,4).nnedi3(field=-2,threads=threads).crop(slow==2 ? 0 : 4,4,slow==2 ? 0 : -4,-4) : c.nnedi3(field=-2,threads=threads) : c.nnedi3(field=-2,threads=threads)
+    nn      = issloi ? slow > 1 || slow < -2 ? c.sh_Padding(slow==2 || slow==-3 ? 0 : 4,4,slow==2 || slow==-3 ? 0 : 4,4).nnedi3(field=-2,threads=threads).crop(slow==2 || slow==-3 ? 0 : 4,4,slow==2 || slow==-3 ? 0 : -4,-4) : c.nnedi3(field=-2,threads=threads) : c.nnedi3(field=-2,threads=threads)
  c =isyuy2(c) && avs25 ? c.Interleaved2Planar() : isyuy2(c) ? c.converttoyv16() : c
  nn=isyuy2(nn) && avs25 ? nn.Interleaved2Planar() : isyuy2(nn) ? nn.converttoyv16() : nn
     isslow4 = slowb && issloi ? slow > 3 || slow < -1 : false
