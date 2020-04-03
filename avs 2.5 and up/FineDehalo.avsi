@@ -1,5 +1,5 @@
 # FineDehalo
-# 1.1 mod8.77
+# 1.1 mod8.78
 #
 # This program is free software. It comes without any warranty, to
 # the extent permitted by applicable law. You can redistribute it
@@ -52,7 +52,7 @@ Function FineDehalo_contrasharp (clip dehaloed, clip src, float level, bool "chr
 	bb  = dehaloed.RemoveGrain (11, chroma ? undefined : -1)
 	bb2 = bb.Repair (bb.Repair (bb.Medianblur (2, -256, -256), 1, chroma ? undefined : -1), 1, chroma ? undefined : -1)
 	xd  = mt_makediff (bb, bb2, u=chroma ? 3 : undefined, v=chroma ? 3 : undefined)
-	xd  = !sisavs26 ? xd.mt_lut ("x 128 - 2.49 * "+String(level)+" * 128 +")
+	xd  = !sisavs26 ? xd.mt_lut ("x 128 - 2.49 * "+String(level)+" * 128 +", u=chroma ? 3 : undefined, v=chroma ? 3 : undefined)
               \     : xd.mt_lut ("x range_half - 2.49 * "+String(level)+" * range_half +", use_expr=2, u=chroma ? 3 : undefined, v=chroma ? 3 : undefined)
 	xdd = !sisavs26 ? mt_lutxy (
 \		xd,
@@ -61,7 +61,7 @@ Function FineDehalo_contrasharp (clip dehaloed, clip src, float level, bool "chr
 \	) : mt_lutxy (
 \		xd,
 \		mt_makediff (src, dehaloed, u=chroma ? 3 : undefined, v=chroma ? 3 : undefined),
-\		"x range_half - y range_half - * 0 < range_half x range_half - abs y range_half - abs < x y ? ?", u=chroma ? 3 : undefined, v=chroma ? 3 : undefined, use_expr=2
+\		"x range_half - y range_half - * 0 < range_half x range_half - abs y range_half - abs < x y ? ?", use_expr=2, u=chroma ? 3 : undefined, v=chroma ? 3 : undefined
 \	)
 
 	dehaloed.mt_adddiff (xdd, y=3, u=chroma ? 3 : 2, v=chroma ? 3 : 2)
