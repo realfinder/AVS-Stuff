@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.07
+# V1.08
 
 
 #################################################
@@ -13,10 +13,16 @@ Function sh_StrReplace(string s, string find, string replace)
 }
 
 
+function sAverageLumaMask(clip src) {
+sisavs26 = !(VersionNumber() < 2.60)
+sisavs26 ? src.ScriptClip("""mt_lut(Y=AverageLuma,paramscale="none")""") : src.ScriptClip("""mt_lut(Y=AverageLuma)""")
+}
+
+
 # =======  MOD4-and-atleast-16 helper function  =======
 
 function m4_sh(float x, int "mode") {
-mode  = default(mode,  0 ) #0=any 1=NTSC 2=PAL
+mode  = default(mode,  0 ) #0=any 1=NTSC 2=PAL/Force Original Behavior
 nx = mode!=0 || VersionNumber() < 2.6 ? x<16?16:int(round(x/(mode!=1 ? 4.0 : 5.0))*(mode!=1 ? 4 : 12)) : round(x)
 return(nx)
 }
