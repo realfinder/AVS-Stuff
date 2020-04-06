@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.06
+# V1.07
 
 
 #################################################
@@ -78,13 +78,6 @@ mt_lutxy( last, last.temporalsoften(1,255,0,32,2),
 
 mt_makediff(orig,last,u=uv,v=uv)
 return( last )
-}
-
-
-# filtering with black borders by A.SONY
-Function filtering_wbb (clip src, string "filter", int "oneborder", clip "linesm", clip "clip4lines", int "mmy", bool "mmLuma", int "mmuv", bool "minflate")
-{
-filtering_wsb(src,filter,oneborder,linesm,clip4lines,mmy,mmLuma,mmuv,minflate)
 }
 
 
