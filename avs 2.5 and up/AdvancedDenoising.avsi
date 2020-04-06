@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.86
+# Advanced Denoising and anime bob v1.87
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -325,6 +325,13 @@ eval(filter)
 Crop(oneborder, oneborder, -oneborder, -oneborder, align=true)
  
 defined(linesm) ? mt_Merge(last, defined(clip4lines) ? clip4lines : src, minf,y=mmy,luma=mmLuma,u=mmuv,v=mmuv) : last
+}
+
+
+# filtering with black borders by A.SONY
+Function filtering_wbb (clip src, string "filter", int "oneborder", clip "linesm", clip "clip4lines", int "mmy", bool "mmLuma", int "mmuv", bool "minflate")
+{
+filtering_wsb(src,filter,oneborder,linesm,clip4lines,mmy,mmLuma,mmuv,minflate)
 }
 
 
