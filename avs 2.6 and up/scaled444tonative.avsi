@@ -1,5 +1,5 @@
 # base on ChromaReconstructor and fulltonative by feisty2
-# 1.05
+# 1.06
 
 function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mode", int "device_type", int "device_id", int "fast", float "sDev", float "iDev", float "cs", bool "d2", int "kernS", int "kernI", int "resType", bool "onecall")
 {
@@ -20,7 +20,7 @@ function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mo
 	kernI		= default (kernI,        3)
 	restype		= default (restype,      0)
 	onecall     	= default(onecall, false)
-	pad             = fast > -1 ? src.sh_padding (4, 4, 4, 4) : src
+	pad             = fast > -1 ? sishasalpha ? src.RemoveAlphaPlane().sh_padding (4, 4, 4, 4) : src.sh_padding (4, 4, 4, 4) : src
 	srcy            = sisphbd ? ExtractY(pad) : ConvertToY8(pad)
 	srcu            = sisphbd ? ExtractU(pad) : UToY8(pad)
 	srcv            = sisphbd ? ExtractV(pad) : VToY8(pad)
