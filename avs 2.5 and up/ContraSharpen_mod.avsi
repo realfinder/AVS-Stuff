@@ -1,4 +1,4 @@
-###### Contra-Sharpen mod 3.7 ###### by mawen1250 ###### 2020.03.26 ######
+###### Contra-Sharpen mod 3.7 ###### by mawen1250 ###### 2020.04.06 ######
 ###### Requirements: masktools v2.0a48, mvtools v2.5.11.3/v2.6.0.5, RemoveGrain + Repair v1.0pre, RemoveGrainHD v0.5    ######
 ###### FluxSmooth v1.1a, nnedi3 v0.9.4, SangNom 2004.01.18(filter_ss="AA"), TEdgeMask v0.9, tcanny v1.0, MSharpen v1.10 ######
 
@@ -82,7 +82,7 @@ ssout    = ss ? ssout : false
 ssrep    = ss ? ssrep : false
 ssoutc   = (!chroma && ssout) ? ssoutc : false
 ssrep    = ssout ? true : ssrep
-filter_ss= deffss ? AA ? "SangNom(aa=48).TurnRight().SangNom(aa=48).TurnLeft()" : filter_ss : NOP()
+filter_ss= deffss ? AA ? sisavs26 ? "SangNom2(aa=48).TurnRight().SangNom2(aa=48).TurnLeft()" : "SangNom(aa=48).TurnRight().SangNom(aa=48).TurnLeft()" : filter_ss : NOP()
 # When defining filter_ss="AA", it will automatically use SangNom for anti-aliasing in super sampling clip, and it will automatically set [Repmode=13, edgemode=1, edgemask=-3].
 
 preblur  = Default(preblur, AA?0:edgemode>=2?0:ss_w*ss_h>=9?-3:ss_w*ss_h>=4?-2:-1)
