@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.08
+# V1.09
 
 
 #################################################
@@ -15,7 +15,7 @@ Function sh_StrReplace(string s, string find, string replace)
 
 function sAverageLumaMask(clip src) {
 sisavs26 = !(VersionNumber() < 2.60)
-sisavs26 ? src.ScriptClip("""mt_lut(Y=AverageLuma,paramscale="none")""") : src.ScriptClip("""mt_lut(Y=AverageLuma)""")
+sisavs26 ? src.ScriptClip("""mt_lut(Y=-AverageLuma,paramscale="none")""") : src.ScriptClip("""mt_lut(Y=-round(AverageLuma))""")
 }
 
 
@@ -1115,8 +1115,9 @@ return dbl.mt_adddiff(DD,U=3,V=3) }
 
 #Anti-aliasing with edge masking by martino, mask using "sobel" taken from Kintaro's useless filterscripts and modded by thetoof for spline36
 function maa(clip input, int "mask") {
+sisavs26 = !(VersionNumber() < 2.60)
 mask = input.mt_edge("sobel",7,7,5,5).mt_inflate()
-aa_clip=input.spline36Resize(width(input)*2,height(input)*2).TurnLeft().SangNom().TurnRight().SangNom().spline36Resize(width(input),height(input)).MergeChroma(input) 
+aa_clip=sisavs26 ? input.spline36Resize(width(input)*2,height(input)*2).TurnLeft().SangNom2().TurnRight().SangNom2().spline36Resize(width(input),height(input)).MergeChroma(input) : input.spline36Resize(width(input)*2,height(input)*2).TurnLeft().SangNom().TurnRight().SangNom().spline36Resize(width(input),height(input)).MergeChroma(input)
 return mt_merge(input,aa_clip,mask) }
 
 
@@ -1132,7 +1133,7 @@ Tradius	= default ( Tradius,    2 ) # 2 = MDegrain2 / 3 = MDegrain3
 aapel	= default ( aapel,      1 ) # accuracy of the motion estimation (Value can only be 1, 2 or 4. 1 means a precision to the pixel. 2 means a precision to half a pixel, 4 means a precision to quarter a pixel, produced by spatial interpolation (better but slower).)
 aaov	= default ( aaov,       (orig.width>1100) ? 8 : 4 ) # block overlap value (horizontal). Must be even and less than block size. (Higher = more precise & slower)
 aablk	= default ( aablk,      (orig.width>1100) ? 16 : 8 ) # Size of a block (horizontal). It's either 4, 8 or 16 ( default is 8 ). Larger blocks are less sensitive to noise, are faster, but also less accurate.
-aatype	= default ( aatype, "Sangnom" ) # Use Sangnom() or EEDI2() for anti-aliasing
+aatype	= default ( aatype, "Sangnom2" ) # Use Sangnom() or EEDI2() for anti-aliasing
 
 w=width(orig)
 h=height(orig)
@@ -1140,7 +1141,7 @@ m=mt_logic( orig.DEdgeMask(0,255,0,255,"5 10 5 0 0 0 -5 -10 -5", divisor=4,Y=3,U
  \       ,orig.DEdgeMask(0,255,0,255,"5 0 -5 10 0 -10 5 0 -5", divisor=4,Y=3,U=3,V=3)
  \       ,"max").mt_lut("x 128 / 0.86 ^ 255 *")
 preaa=(thin==0 && dark==0) ? orig : (thin==0) ? orig.Toon(dark) : (dark==0) ? orig.awarpsharp2(depth=thin) : orig.Toon(dark).awarpsharp2(depth=thin)
-aa= (aatype=="Sangnom") ? preaa.spline36resize(w*2,h*2).TurnLeft().SangNom().TurnRight().SangNom().spline36resize(w,h) : (aatype=="EEDI2") ? preaa.ediaa() : blankclip(pixel_type="YV12").subtitle("Please use Sangnom or EEDI2 for aatype")
+aa= (aatype=="Sangnom2") ? preaa.spline36resize(w*2,h*2).TurnLeft().SangNom2().TurnRight().SangNom2().spline36resize(w,h) : (aatype=="Sangnom") ? preaa.spline36resize(w*2,h*2).TurnLeft().SangNom().TurnRight().SangNom().spline36resize(w,h) : (aatype=="EEDI2") ? preaa.ediaa() : blankclip(pixel_type="YV12").subtitle("Please use Sangnom or EEDI2 for aatype")
 postsh=(sharp==0 && smooth==0) ? aa : aa.lsfmod(edgemode=1,strength=sharp,overshoot=1,soft=smooth)
 merged=mt_merge(orig,postsh,m,Y=3,U=3,V=3)
 
