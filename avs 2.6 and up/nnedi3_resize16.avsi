@@ -1,5 +1,5 @@
 #################################################################################################
-###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2020.03.26      ######
+###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2020.04.07      ######
 #################################################################################################
 ###### from v2.8 on, nnedi3_resize16 only supports AviSynth v2.6+                          ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, nnedi3 v0.9.4.53,                  ######
@@ -31,7 +31,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 \                        int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads",
 \                        float "ratiothr", bool "mixed", float "thr", float "elast", float "sharp",
 \                        string "output", bool "tv_range", string "cplace", string "matrix", string "curve", float "gcor",
-\                        int "Y", int "U", int "V", bool "lsb_in", bool "lsb", int "dither", bool "nlsb")
+\                        int "Y", int "U", int "V", bool "lsb_in", bool "lsb", int "dither", bool "nlsb", bool "padding")
 {
     sisphbd = AvsPlusVersionNumber > 2294
     sischbd = sisphbd ? input.BitsPerComponent() > 8 : false
@@ -75,6 +75,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     etype    = Default(etype,    0      )
     pscrn    = Default(pscrn,    2      )
     threads  = Default(threads,  0      )
+    pad      = Default(padding,  false  )
     
     ###############################################################################################################################
 	###############################################################################################################################
@@ -389,7 +390,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     !(enable && nnt) ? NOP() : \
     yhct==chct && yvct==cvct && chr420 ? \
     Eval("""
-        edgenn  = nnedi3_resize16_rpow2(nlsb ? input16 : input8, yvct, yhct, 1, 1, Yt, Ut, Vt, nsize, nns, qual, etype, pscrn, threads, nlsb = nlsb)
+        edgenn  = nnedi3_resize16_rpow2(nlsb ? input16 : input8, yvct, yhct, 1, 1, Yt, Ut, Vt, nsize, nns, qual, etype, pscrn, threads, nlsb = nlsb, pad=pad)
     	edgennY = sharp>0 ? nlsb ? edgenn.CSmod16(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp)
     	\                        : sischbd ? edgenn.CSmod(chroma=false, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1) : edgenn.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).nnedi3_resize16_U16(tv_range, Yt, Ut, Vt)
     	\                 : nlsb || sischbd ? edgenn : edgenn.nnedi3_resize16_U16(tv_range, Yt, Ut, Vt)
@@ -400,33 +401,33 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     Eval("""
         edgennY = !Ynnt ? NOP()
     	\               : sharp>0 ? sisprgb ? input16.nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, Ut, Vt,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false, pad=pad)
         \                                 .CSmod(chroma=U32==3||V32==3, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
         \                                   : nlsb ? input16.ConvertToY ().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = true)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = true, pad=pad)
         \                                 .CSmod16(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp)
         \                                   : sischbd ? input8.""" + syext + """().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false, pad=pad)
         \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
 		\                         		    : input8.""" + syext + """().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false, pad=pad)
         \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
     	\                                 .nnedi3_resize16_U16(tv_range, Yt, False, False)
         \                         : sisprgb ? input16.nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, Ut, Vt,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false, pad=pad)
         \                                   : nlsb || sischbd ? input16.ConvertToY ().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = !sischbd)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = !sischbd, pad=pad)
         \                                : input8.""" + syext + """().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false, pad=pad)
     	\                                 .nnedi3_resize16_U16(tv_range, Yt, False, False)
     	edgennU = sisprgb || !Unnt ? NOP()
     	\               : nnedi3_resize16_rpow2(nlsb ? input16.ExtractU() : input8.""" + suext + """(), cvct, chct, 1, 1, Ut, False, False,
-        \                                                            nsize, nns, qual, etype, pscrn, threads, nlsb = nlsb)
+        \                                                            nsize, nns, qual, etype, pscrn, threads, nlsb = nlsb, pad=pad)
     	edgennU = sisprgb || !Unnt ? NOP()
     	\               : nlsb || sischbd ? edgennU : edgennU.nnedi3_resize16_U16(tv_range, Ut, False, False)
     	edgennV = sisprgb || !Vnnt ? NOP()
     	\               : nnedi3_resize16_rpow2(nlsb ? input16.ExtractV() : input8.""" + svext + """(), cvct, chct, 1, 1, Vt, False, False,
-        \                                                            nsize, nns, qual, etype, pscrn, threads, nlsb = nlsb)
+        \                                                            nsize, nns, qual, etype, pscrn, threads, nlsb = nlsb, pad=pad)
     	edgennV = sisprgb || !Vnnt ? NOP()
     	\               : nlsb || sischbd ? edgennV : edgennV.nnedi3_resize16_U16(tv_range, Vt, False, False)
     """)
@@ -620,7 +621,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 
 
 Function nnedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", int "hfield", bool "Y", bool "U", bool "V",
-\                              int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads", bool "honly", bool "nlsb")
+\                              int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads", bool "honly", bool "nlsb", bool "pad")
 {
     vct      = Default(vct,      1      )
     hct      = Default(hct,      1      )
@@ -640,7 +641,7 @@ Function nnedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", i
     Eval("""
         (honly) ? last
         \       : Eval(" try { sisphbd ? dontdoft : fturnright(chroma=U||V, mt=threads!=1) } catch(error_msg) { TurnRight() } ")
-        nnedi3(hfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads)
+        pad ? sh_Padding(2,2,2,2,threads).nnedi3(hfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nnedi3(hfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads)
         
     	hct    = hct - 1
         honly  = hct >= 1
@@ -652,7 +653,7 @@ Function nnedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", i
     
     vct >= 1 && !honly ? \
     Eval("""
-        nnedi3(vfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads)
+        pad ? sh_Padding(2,2,2,2,threads).nnedi3(vfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nnedi3(vfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads)
         
     	vct    = vct - 1
         vfield = 0
@@ -661,7 +662,7 @@ Function nnedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", i
     nlsb && (Y||U||V) ? last.ConvertToStacked() : last
     
     return Y||U||V ? vct <= 0 && hct <= 0 ? last
-    \                                     : last.nnedi3_resize16_rpow2(vct, hct, vfield, hfield, Y, U, V, nsize, nns, qual, etype, pscrn, threads, honly, nlsb)
+    \                                     : last.nnedi3_resize16_rpow2(vct, hct, vfield, hfield, Y, U, V, nsize, nns, qual, etype, pscrn, threads, honly, nlsb, pad)
     \              : input
 }
 
