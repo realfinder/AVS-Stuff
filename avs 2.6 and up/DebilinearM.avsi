@@ -1,0 +1,136 @@
+/* DebilinearM v1.3.1 mod 1.26
+
+DebilinearM is a wrapper function for the Debilinear and Debicubic plugins that masks parts of the frame that aren't upscaled,
+such as text overlays, and uses a regular resize kernel to downscale those areas. It works by downscaling the input
+clip to the target resolution with Debilinear or Debicubic, upscaling it again, comparing it to the original clip,
+and masking pixels that have a difference greater than the specified threshold.
+
+##### Requirements #####
+
+Plugins:
+  Debicubic
+  Debilinear
+  Dither
+  MaskTools2
+
+Scripts:
+  ResizeX
+
+Color formats:
+  Depends on settings and the avs/avs+ ver.
+*/
+
+function DebilinearM(clip input, int target_width, int target_height, int "thr", int "expand", int "inflate",
+\                    string "kernel", int "taps", float "a1", float "a2", bool "cubic", float "b", float "c",
+\                    bool "chroma", bool "lsb_inout", int "showmask", bool "DeResizeMT", bool "use_IResize") {
+
+# Default settings and other variable assignment
+thr       = Default(thr, 10)
+expand    = Default(expand, 1)
+inflate   = Default(inflate, 2)
+kernel    = Default(kernel, "Spline36")
+cubic     = Default(cubic, false)
+chroma    = Default(chroma, true)
+lsb_inout = Default(lsb_inout, false)
+DeRMT     = Default(DeResizeMT, false)
+use_IRe   = Default(use_IResize, false)
+showmask  = Default(showmask, 0)
+
+Assert(target_width  > 0, "DebilinearM: target width must be greater than 0")
+Assert(target_height > 0, "DebilinearM: target height must be greater than 0")
+Assert(thr >= 0 && thr <= 255, "DebilinearM: thr must be in the range 0 to 255")
+Assert(showmask > -1 && showmask < 3, "DebilinearM: showmask must be 0, 1, or 2")
+Assert(!(lsb_inout && interlaced), "Interlaced 16 bit stacked clip is not a recognized format")
+
+w = input.Width()
+h = lsb_inout ? input.Height()/2 : input.Height()
+
+uvint = chroma ? 3
+\              : 1
+
+# Resizing
+input_8bit = lsb_inout ? input.DitherPost(mode=-1) : input
+
+    use_IRe ? 
+\   Eval("""
+         dbi      = input.IResizeResizexwarpForDebilinearM(target_width,target_height,cubic ? "Bicubic" : "Bilinear", a1=b, a2=c, chroma=chroma, desampling=true)
+         dbi2     = dbi.IResizeResizexwarpForDebilinearM(w,h,cubic ? "Bicubic" : "Bilinear", a1=b, a2=c, chroma=chroma)
+         """)
+\ : DeRMT ? 
+\   Eval("""
+         dbi      = input.ResizeX(target_width,target_height, a1=b, a2=c, chroma=chroma, desampling=true, kernel=cubic ? "Bicubic" : "Bilinear", lsb_in=lsb_inout, lsb_out=lsb_inout)
+         dbi2     = dbi.ResizeX(w,h, kernel=cubic ? "Bicubic" : "Bilinear", a1=b, a2=c, chroma=chroma, lsb_in=lsb_inout, lsb_out=false, dither_mode=-1)
+         """)
+\ : cubic ?
+\   Eval("""
+         dbi      = chroma ? input.Debicubic(target_width,target_height, b=b, c=c, lsb_inout=lsb_inout)
+         \                 : input.DebicubicY(target_width,target_height, b=b, c=c, lsb_inout=lsb_inout)
+         dbi_8bit = chroma ? input_8bit.Debicubic(target_width,target_height, b=b, c=c)
+         \                 : input_8bit.DebicubicY(target_width,target_height, b=b, c=c)
+         dbi2     = lsb_inout ? dbi_8bit.ResizeX(w,h, kernel="Bicubic", a1=b, a2=c, chroma=chroma)
+         \                    : dbi.ResizeX(w,h, kernel="Bicubic", a1=b, a2=c, chroma=chroma)
+         """)
+\ : Eval("""
+         dbi      = chroma ? input.Debilinear(target_width,target_height, lsb_inout=lsb_inout)
+         \                 : input.DebilinearY(target_width,target_height, lsb_inout=lsb_inout)
+         dbi_8bit = chroma ? input_8bit.Debilinear(target_width,target_height)
+         \                 : input_8bit.DebilinearY(target_width,target_height)
+         dbi2     = lsb_inout ? dbi_8bit.ResizeX(w,h, kernel="Bilinear", chroma=chroma)
+         \                    : dbi.ResizeX(w,h, kernel="Bilinear", chroma=chroma)
+         """)
+
+rs = use_IRe ? input.IResizeResizexwarpForDebilinearM(target_width,target_height, kernel=kernel, taps=taps, a1=a1, a2=a2, chroma=chroma) : input.ResizeX(target_width,target_height, kernel=kernel, taps=taps, a1=a1, a2=a2, chroma=chroma, lsb_in=lsb_inout, lsb_out=lsb_inout)
+
+# Masking
+diffmask = mt_lutxy(input_8bit,dbi2, "x y - abs", use_expr=1, U=uvint, V=uvint).mt_binarize(threshold=thr, U=uvint, V=uvint)
+diffmask = showmask == 2 ? diffmask.DebilinearM_expand(expand=expand, U=uvint, V=uvint)
+\                                  .DebilinearM_inflate(inflate=inflate, U=uvint, V=uvint)
+\                        : diffmask.ResizeX(target_width,target_height, kernel="Bilinear", chroma=chroma)
+\                                  .mt_binarize(threshold=3, U=uvint, V=uvint)
+\                                  .DebilinearM_expand(expand=expand, U=uvint, V=uvint)
+\                                  .DebilinearM_inflate(inflate=inflate, U=uvint, V=uvint)
+
+merged = lsb_inout ? Dither_merge16_8(dbi,rs,diffmask, u=uvint, v=uvint)
+\                  : mt_merge(dbi,rs,diffmask, U=uvint, V=uvint)
+
+return showmask > 0 ? diffmask
+\                   : merged
+}
+
+# DebicubicM alias
+function DebicubicM(clip input, int target_width, int target_height, int "thr", int "expand", int "inflate",
+\                   string "kernel", int "taps", float "a1", float "a2", float "b", float "c",
+\                   bool "chroma", bool "lsb_inout", int "showmask", bool "DeResizeMT", bool "use_IResize") {
+
+return DebilinearM(input,target_width,target_height,thr,expand,inflate,kernel,taps,a1,a2,true,b,c,chroma,lsb_inout,showmask,DeResizeMT,use_IResize)
+}
+
+
+# Helper functions
+function DebilinearM_expand(clip input, int "expand", int "U", int "V") {
+return expand > 0 ? DebilinearM_expand(input.mt_expand(mode="both", U=U, V=V), expand-1)
+\                 : input
+}
+
+function DebilinearM_inflate(clip input, int "inflate", int "U", int "V") {
+return inflate > 0 ? DebilinearM_inflate(input.mt_inflate(U=U, V=V), inflate-1)
+\                  : input
+}
+
+function IResizeResizexwarpForDebilinearM(clip input, int target_width, int target_height, string "kernel", float "a1", float "a2", int "taps", bool "chroma", bool "desampling") {
+desampling     = Default(desampling, false)
+chroma = Default(chroma, true)
+kernel = Default(kernel,"Spline36")
+taps = kernel.LeftStr(6)  == "Spline"          && kernel != "Spline16" && kernel != "Spline36" && kernel != "Spline64" &&
+\                                                 kernel.StrLen() >  6 ? kernel.RightStr(kernel.StrLen()-6).Value().Int()
+\    : kernel.LeftStr(7)  == "Lanczos"         && kernel.StrLen() >  7 ? kernel.RightStr(kernel.StrLen()-7).Value().Int()
+\    : kernel.LeftStr(8)  == "Blackman"        && kernel.LeftStr(15) != "Blackmanminlobe" &&
+\                                                 kernel.StrLen() >  8 ? kernel.RightStr(kernel.StrLen()-8).Value().Int()
+\    : kernel.LeftStr(15) == "Blackmanminlobe" && kernel.StrLen() > 15 ? kernel.RightStr(kernel.StrLen()-15).Value().Int()
+\    : kernel.LeftStr(4)  == "Sinc"            && kernel.StrLen() >  4 ? kernel.RightStr(kernel.StrLen()-4).Value().Int()
+\                                                                      : Default(taps, 3)
+a1 = Default(a1, 1.0/3)
+a2 = Default(a2, 1.0/3)
+return desampling ? input.IResize(target_width,target_height,res_params=""",kernel=""""+kernel+"""",a1="""+string(a1)+""",a2="""+string(a2)+""",taps="""+string(taps)+""", chroma="""+string(chroma)+""", desampling=true""",resifilter="resizex")
+\                 : input.IResize(target_width,target_height,res_params=""",kernel=""""+kernel+"""",a1="""+string(a1)+""",a2="""+string(a2)+""",taps="""+string(taps)+""", chroma="""+string(chroma)+""", desampling=false""",resifilter="resizex")
+}
