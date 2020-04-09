@@ -1,4 +1,4 @@
-/* DebilinearM v1.3.1 mod 1.26
+/* DebilinearM v1.3.1 mod 1.27
 
 DebilinearM is a wrapper function for the Debilinear and Debicubic plugins that masks parts of the frame that aren't upscaled,
 such as text overlays, and uses a regular resize kernel to downscale those areas. It works by downscaling the input
@@ -22,7 +22,7 @@ Color formats:
 
 function DebilinearM(clip input, int target_width, int target_height, int "thr", int "expand", int "inflate",
 \                    string "kernel", int "taps", float "a1", float "a2", bool "cubic", float "b", float "c",
-\                    bool "chroma", bool "lsb_inout", int "showmask", bool "DeResizeMT", bool "use_IResize") {
+\                    bool "chroma", bool "lsb_inout", int "showmask", bool "DeResizeMT", bool "use_IResize", int "expandmode", int "inflatemode", bool "ifields") {
 
 # Default settings and other variable assignment
 thr       = Default(thr, 10)
@@ -35,6 +35,9 @@ lsb_inout = Default(lsb_inout, false)
 DeRMT     = Default(DeResizeMT, false)
 use_IRe   = Default(use_IResize, false)
 showmask  = Default(showmask, 0)
+expdmode  = Default(expandmode, use_IRe ? 1 : 3) #0=square 1=horizontal 2=vertical 3=both
+inflmode  = Default(inflatemode, use_IRe ? 1 : 0) #0=mt_inflate 1=horizontal 2=vertical 3=both
+ifields   = Default(ifields, use_IRe && (expdmode!=1 || inflmode!=1))
 
 Assert(target_width  > 0, "DebilinearM: target width must be greater than 0")
 Assert(target_height > 0, "DebilinearM: target height must be greater than 0")
@@ -83,12 +86,15 @@ rs = use_IRe ? input.IResizeResizexwarpForDebilinearM(target_width,target_height
 
 # Masking
 diffmask = mt_lutxy(input_8bit,dbi2, "x y - abs", use_expr=1, U=uvint, V=uvint).mt_binarize(threshold=thr, U=uvint, V=uvint)
-diffmask = showmask == 2 ? diffmask.DebilinearM_expand(expand=expand, U=uvint, V=uvint)
-\                                  .DebilinearM_inflate(inflate=inflate, U=uvint, V=uvint)
-\                        : diffmask.ResizeX(target_width,target_height, kernel="Bilinear", chroma=chroma)
+diffmask = showmask == 2 ? diffmask.DebilinearM_expand(expand=expand, expandmode=expdmode, ifields=ifields, U=uvint, V=uvint)
+\                                  .DebilinearM_inflate(inflate=inflate, inflatemode=inflmode, ifields=ifields, U=uvint, V=uvint)
+\                        : use_IRe ? diffmask.IResizeResizexwarpForDebilinearM(target_width,target_height, kernel="Bilinear", chroma=chroma)
 \                                  .mt_binarize(threshold=3, U=uvint, V=uvint)
-\                                  .DebilinearM_expand(expand=expand, U=uvint, V=uvint)
-\                                  .DebilinearM_inflate(inflate=inflate, U=uvint, V=uvint)
+\                                  .DebilinearM_expand(expand=expand, expandmode=expdmode, ifields=ifields, U=uvint, V=uvint)
+\                                  .DebilinearM_inflate(inflate=inflate, inflatemode=inflmode, ifields=ifields, U=uvint, V=uvint) : diffmask.ResizeX(target_width,target_height, kernel="Bilinear", chroma=chroma)
+\                                  .mt_binarize(threshold=3, U=uvint, V=uvint)
+\                                  .DebilinearM_expand(expand=expand, expandmode=expdmode, ifields=ifields, U=uvint, V=uvint)
+\                                  .DebilinearM_inflate(inflate=inflate, inflatemode=inflmode, ifields=ifields, U=uvint, V=uvint)
 
 merged = lsb_inout ? Dither_merge16_8(dbi,rs,diffmask, u=uvint, v=uvint)
 \                  : mt_merge(dbi,rs,diffmask, U=uvint, V=uvint)
@@ -100,20 +106,33 @@ return showmask > 0 ? diffmask
 # DebicubicM alias
 function DebicubicM(clip input, int target_width, int target_height, int "thr", int "expand", int "inflate",
 \                   string "kernel", int "taps", float "a1", float "a2", float "b", float "c",
-\                   bool "chroma", bool "lsb_inout", int "showmask", bool "DeResizeMT", bool "use_IResize") {
+\                   bool "chroma", bool "lsb_inout", int "showmask", bool "DeResizeMT", bool "use_IResize", int "expandmode", int "inflatemode", bool "ifields") {
 
-return DebilinearM(input,target_width,target_height,thr,expand,inflate,kernel,taps,a1,a2,true,b,c,chroma,lsb_inout,showmask,DeResizeMT,use_IResize)
+return DebilinearM(input,target_width,target_height,thr,expand,inflate,kernel,taps,a1,a2,true,b,c,chroma,lsb_inout,showmask,DeResizeMT,use_IResize,expandmode,inflatemode,ifields)
 }
 
 
 # Helper functions
-function DebilinearM_expand(clip input, int "expand", int "U", int "V") {
-return expand > 0 ? DebilinearM_expand(input.mt_expand(mode="both", U=U, V=V), expand-1)
+function DebilinearM_expand(clip input, int "expand", int "U", int "V", int "expandmode", bool "ifields") {
+expdmode = Default(expandmode, 0)
+ifields = Default(ifields, false)
+expdmstr = expdmode == 1 ? "horizontal" : expdmode == 2 ? "vertical" : expdmode == 3 ? "both" : "square"
+expclp  = expand > 0 ? ifields ? input.SeparateFields().mt_expand(mode=expdmstr, U=U, V=V).Weave() : input.mt_expand(mode=expdmstr, U=U, V=V) : nop()
+return expand > 0 ? DebilinearM_expand(expclp, expand-1, U, V, expdmode, ifields)
 \                 : input
 }
 
-function DebilinearM_inflate(clip input, int "inflate", int "U", int "V") {
-return inflate > 0 ? DebilinearM_inflate(input.mt_inflate(U=U, V=V), inflate-1)
+function DebilinearM_inflate(clip input, int "inflate", int "U", int "V", int "inflatemode", bool "ifields") {
+sisphbd     = AvsPlusVersionNumber > 2294
+inflmode = Default(inflatemode, 0)
+ifields = Default(ifields, false)
+input   = inflate > 0 && ifields ? input.SeparateFields() : input
+srcy        = inflmode!=0 ? sisphbd ? ExtractY(input) : ConvertToY8(input) : nop()
+srcu        = inflmode!=0 ? sisphbd ? ExtractU(input) : UToY8(input) : nop()
+srcv        = inflmode!=0 ? sisphbd ? ExtractV(input) : VToY8(input) : nop()
+inflclp = inflmode!=0 ? YToUV(u==3 ? srcu.swhiterPixel(srcu.blur(inflmode!=2 ? 1 : 0,inflmode!=1 ? 1 : 0),255,255,false,0) : srcu, v==3 ? srcv.swhiterPixel(srcv.blur(inflmode!=2 ? 1 : 0,inflmode!=1 ? 1 : 0),255,255,false,0) : srcu, srcy.swhiterPixel(srcy.blur(inflmode!=2 ? 1 : 0,inflmode!=1 ? 1 : 0),255,255,false,0)) : input.mt_inflate(U=U, V=V)
+inflclp = ifields ? inflclp.Weave() : inflclp
+return inflate > 0 ? DebilinearM_inflate(inflclp, inflate-1, U, V, inflmode, ifields)
 \                  : input
 }
 
