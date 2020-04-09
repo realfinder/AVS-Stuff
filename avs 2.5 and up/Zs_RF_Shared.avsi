@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.09
+# V1.10
 
 
 #################################################
@@ -15,6 +15,7 @@ Function sh_StrReplace(string s, string find, string replace)
 
 function sAverageLumaMask(clip src) {
 sisavs26 = !(VersionNumber() < 2.60)
+src = AvsPlusVersionNumber > 2294 ? src.isvideofloat ? src.Limiter(0,1) : src : src
 sisavs26 ? src.ScriptClip("""mt_lut(Y=-AverageLuma,paramscale="none")""") : src.ScriptClip("""mt_lut(Y=-round(AverageLuma))""")
 }
 
@@ -928,7 +929,7 @@ doaverage ? whidorep ? mt_average(last, whiterPixelclip.Repair(o,averagewithwhit
 
 
 # swhiterPixel by A.SONY
-# v1.26
+# v1.27
 
 function swhiterPixel(clip "o", clip "filtered", float "maxdiff", float "thr", bool "linflate", float "mdifffade", clip "o2", bool "deeponly")
 {
@@ -940,14 +941,14 @@ deeponly  = default(deeponly,          false)
 
 Assert((defined(o) && defined(filtered)), "both o clip and filtered clip are needed")
 
-wpmask = mdifffade!=0 ? VersionNumber() < 2.6 ? o.mt_lutxy(filtered,"y "+string(thr)+" < x y < & y x - "+string(maxdiff)+" > 255 y x - "+string(mdifffade)+" > ? 255 255 "+string(mdifffade)+" / y x - * - 0 ? 0 ?")
-                        \                     : o.mt_lutxy(filtered,"y "+string(thr)+" scalef < x y < & y x - "+string(maxdiff)+" scalef > range_max y x - "+string(mdifffade)+" scalef > ? range_max range_max "+string(mdifffade)+" scalef / y x - * - 0 ? 0 ?",use_expr=2) : nop()
+wpmask = mdifffade!=0 ? VersionNumber() < 2.6 ? o.mt_lutxy(filtered,"y "+string(thr)+" < x y < & y x - "+string(maxdiff)+" < 255 y x - "+string(mdifffade)+" > ? 255 255 "+string(mdifffade)+" / y x - * - 0 ? 0 ?")
+                        \                     : o.mt_lutxy(filtered,"y "+string(thr)+" scalef < x y < & y x - "+string(maxdiff)+" scalef < range_max y x - "+string(mdifffade)+" scalef > ? range_max range_max "+string(mdifffade)+" scalef / y x - * - 0 ? 0 ?",use_expr=2) : nop()
 
 wpmask = mdifffade!=0 && deeponly ? wpmask.mt_invert().mt_expand(155).mt_inpand(155).mt_invert() : wpmask
 
 mdifffade!=0 ? Mt_Merge(defined(o2) ? o2 : o,filtered, linflate ? wpmask.mt_inflate(155) : wpmask,U=2,V=2) : \
-               VersionNumber() < 2.6 ? o.mt_lutxy(filtered,"x y < y "+string(thr)+" < & y x - "+string(maxdiff)+" > & y x ?",U=2,V=2)
-               \                     : o.mt_lutxy(filtered,"x y < y "+string(thr)+" scalef < & y x - "+string(maxdiff)+" scalef > & y x ?",use_expr=2,U=2,V=2)
+               VersionNumber() < 2.6 ? o.mt_lutxy(filtered,"x y < y "+string(thr)+" < & y x - "+string(maxdiff)+" < & y x ?",U=2,V=2)
+               \                     : o.mt_lutxy(filtered,"x y < y "+string(thr)+" scalef < & y x - "+string(maxdiff)+" scalef < & y x ?",use_expr=2,U=2,V=2)
 }
 
 
