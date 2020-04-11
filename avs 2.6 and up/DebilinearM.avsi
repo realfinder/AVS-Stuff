@@ -1,4 +1,4 @@
-/* DebilinearM v1.3.1 mod 1.27
+/* DebilinearM v1.3.1 mod 1.28
 
 DebilinearM is a wrapper function for the Debilinear and Debicubic plugins that masks parts of the frame that aren't upscaled,
 such as text overlays, and uses a regular resize kernel to downscale those areas. It works by downscaling the input
@@ -138,18 +138,11 @@ return inflate > 0 ? DebilinearM_inflate(inflclp, inflate-1, U, V, inflmode, ifi
 
 function IResizeResizexwarpForDebilinearM(clip input, int target_width, int target_height, string "kernel", float "a1", float "a2", int "taps", bool "chroma", bool "desampling") {
 desampling     = Default(desampling, false)
-chroma = Default(chroma, true)
-kernel = Default(kernel,"Spline36")
-taps = kernel.LeftStr(6)  == "Spline"          && kernel != "Spline16" && kernel != "Spline36" && kernel != "Spline64" &&
-\                                                 kernel.StrLen() >  6 ? kernel.RightStr(kernel.StrLen()-6).Value().Int()
-\    : kernel.LeftStr(7)  == "Lanczos"         && kernel.StrLen() >  7 ? kernel.RightStr(kernel.StrLen()-7).Value().Int()
-\    : kernel.LeftStr(8)  == "Blackman"        && kernel.LeftStr(15) != "Blackmanminlobe" &&
-\                                                 kernel.StrLen() >  8 ? kernel.RightStr(kernel.StrLen()-8).Value().Int()
-\    : kernel.LeftStr(15) == "Blackmanminlobe" && kernel.StrLen() > 15 ? kernel.RightStr(kernel.StrLen()-15).Value().Int()
-\    : kernel.LeftStr(4)  == "Sinc"            && kernel.StrLen() >  4 ? kernel.RightStr(kernel.StrLen()-4).Value().Int()
-\                                                                      : Default(taps, 3)
-a1 = Default(a1, 1.0/3)
-a2 = Default(a2, 1.0/3)
-return desampling ? input.IResize(target_width,target_height,res_params=""",kernel=""""+kernel+"""",a1="""+string(a1)+""",a2="""+string(a2)+""",taps="""+string(taps)+""", chroma="""+string(chroma)+""", desampling=true""",resifilter="resizex")
-\                 : input.IResize(target_width,target_height,res_params=""",kernel=""""+kernel+"""",a1="""+string(a1)+""",a2="""+string(a2)+""",taps="""+string(taps)+""", chroma="""+string(chroma)+""", desampling=false""",resifilter="resizex")
+chroma = defined(chroma) ? ", chroma="+string(chroma) : ""
+kernel = defined(kernel) ? """, kernel=""""+string(kernel)+""""""" : ""
+taps = defined(taps) ? ", taps="+string(taps) : ""
+a1 = defined(a1) ? ", a1="+string(a1) : ""
+a2 = defined(a2) ? ", a2="+string(a2) : ""
+return desampling ? input.IResize(target_width,target_height,res_params=""", desampling=true"""+kernel+a1+a2+taps+chroma,resifilter="resizex")
+\                 : input.IResize(target_width,target_height,res_params=""", desampling=false"""+kernel+a1+a2+taps+chroma,resifilter="resizex")
 }
