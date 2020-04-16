@@ -190,6 +190,7 @@ function sMCclips(clip input, clip pp_super, clip super, int "mc",
 	\ int "thSAD", int "thSCD1", int "thSCD2", bool "truemotion", bool "chroma", int "blksize", int "search", int "searchparam", int "overlap",
 		\ int "dct", bool "HD")
 {
+	sisphbd = AvsPlusVersionNumber > 2294
 	mc = default(mc, 2).min(5)
 	HD = default(HD, false)
 	truemotion = default(truemotion,true)
@@ -212,6 +213,9 @@ function sMCclips(clip input, clip pp_super, clip super, int "mc",
 	f4vec = mc >  3 ? MAnalyse(pp_super, delta=4, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
 	f5vec = mc == 5 ? MAnalyse(pp_super, delta=5, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
 
+	sbitsn = sisphbd ? input.BitsPerComponent() : 8
+	super = sisphbd ? sbitsn != super.BitsPerComponent() ? super.ConvertBits(sbitsn) : super : super
+	
 	eval("""
 	b5clip = mc == 5 ? MCompensate(input, super, b5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
 	b4clip = mc >  3 ? MCompensate(input, super, b4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
@@ -296,18 +300,21 @@ function sMCwarper(clip input, string "filter", int "mc", val "prefilter", bool 
 		selectEvery(last, mc * 2 + 1, mc)
 }
 
-# mcKNLMeansCL v1.4
+# mcKNLMeansCL v1.45
 function mcKNLMeansCL(clip input, String "device_type", int "device_id", bool "chroma", bool "lsb", bool "lsb_in", float "h", int "d", int "a", String "knlm_params", bool "Y", bool "U", bool "V",
 	\ val "prefilter", bool "TV_range", clip "exmcclip", clip "super", clip "pp_super", int "thSAD", int "thSCD1", int "thSCD2", bool "truemotion", bool "chroma", int "blksize", int "search", int "searchparam", int "overlap", int "dct",
-		\ bool  "HD",bool "slices",float "rStr",float "Amp", int "pel",int "super_filter")
+		\ bool "HD", bool "slices", float "rStr",float "Amp", int "pel", int "super_filter", bool "rprefilter", bool "knlchroma")
 {
+		sisphbd = AvsPlusVersionNumber > 2294
 		d            = Default( d ,1).min(5)
 		a            = Default( a ,2)
 		h            = Default( h ,1.2)
 		lsb_in       = Default( lsb_in  ,false)
 		lsb          = Default( lsb     ,lsb_in)
+		rprefilter   = Default( rprefilter  ,false)
+		knlchroma    = Default( knlchroma  ,false)
                 Assert(!(lsb_in || lsb_in), "mcKNLMeansCL: lsb things not supported yet")
-d==0 ? SH_KNLMeansCL(input, device_type, device_id, chroma, lsb, lsb_in, h, d, a, knlm_params) : \
+d==0 ? SH_KNLMeansCL(input, device_type, device_id, knlchroma, lsb, lsb_in, h, d, a, knlm_params, rclip) : \
         eval("""
      exmc = defined(exmcclip)
 		!exmc ? eval("
@@ -332,7 +339,10 @@ d==0 ? SH_KNLMeansCL(input, device_type, device_id, chroma, lsb, lsb_in, h, d, a
 		super = defined(super) ? super : sppbool ? input.MSuper(levels=1,pel=pel,rfilter=0) : pp_super
 		            ") : nop()
 		exmc ? exmcclip : input.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD)
-		SH_KNLMeansCL(last, device_type, device_id, chroma, lsb, lsb_in, h, d, a, knlm_params)
+		rclip = rprefilter && prefilterdef ? prefilter.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD) : undefined
+		sbitsn = rprefilter && prefilterdef && sisphbd ? input.BitsPerComponent() : 8
+		rclip = rprefilter && prefilterdef ? sisphbd ? rclip.BitsPerComponent() != sbitsn ? rclip.ConvertBits(sbitsn) : rclip : rclip : rclip
+		SH_KNLMeansCL(last, device_type, device_id, knlchroma, lsb, lsb_in, h, d, a, knlm_params, rclip)
 		selectEvery(last, mc * 2 + 1, mc)
 		""")
 }
