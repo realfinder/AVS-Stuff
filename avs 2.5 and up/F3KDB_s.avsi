@@ -17,19 +17,20 @@ isgrYd = defined(grainY)
 lpgra  = default (lastpassgrain, !isgrYd && pass > 1)
 lpmsk  = default (lastpassmask, lpgra && pass > 1)
 grainY = isgrYd && !lpgra ? grainY : pass > 1 ? 0 : pass < 2 && lpgra ? undefined : 0
-grainC = default (grainC, grainY)
+chromad = defined(chroma)
+chroma      = default (chroma, true)
+cb = default (cb, chroma ? undefined : 0)
+cr = default (cr, chroma ? undefined : 0)
+grainC = default (grainC, chromad && chroma ? 64 : chroma ? grainY : 0)
 sisphbd   = AvsPlusVersionNumber > 2294
 sischbd  = sisphbd ? clip.BitsPerComponent() > 8 : false
 input_depth = defined(input_depth) ? input_depth : defined(input_mode) ? input_mode>0 ? 16 : 8 : 8
 output_depth = defined(output_depth) ? output_depth : sischbd ? undefined : defined(output_mode) ? output_mode>0 ? 16 : 8 : 8
 input_mode  = default (input_mode, input_depth==8 || sischbd ? 0 : 1)
 output_mode = default (output_mode, sischbd ? 0 : output_depth==8 ? 0 : 1)
-sislumaonly = sisphbd ? clip.isy() : clip.isy8()
-chroma      = default (chroma, true)
 masking      = default (masking, true)
 sisyuy2 = clip.isyuy2()
-pclip   = sislumaonly ? clip : !chroma ? sisphbd ? clip.converttoy() : clip.converttoy8() : clip
-pclip   = chroma && sisyuy2 ? clip.ConvertToYV16() : pclip
+pclip   = sisyuy2 ? clip.ConvertToYV16() : clip
 pclip   = input_mode==1 ? pclip.ConvertFromStacked(input_depth) : input_mode==2 ? pclip.ConvertFromDoubleWidth(input_depth) : pclip
 
 Assert(!(input_mode>0 && sischbd), "F3KDB_3: lsb/interleaved hack is not Compatible with HBD")
@@ -55,9 +56,6 @@ output_mode==1 ? pclip.convertbits(16,false).ConvertToStacked() : output_mode==2
 		input_depth, output_mode, output_depth, \
 		random_algo_ref, random_algo_grain, \
 		random_param_ref, random_param_grain, chroma, pass - 1, lpgra, masking, mask_thr, mask_radius) : last
-
-
-sislumaonly ? last : !chroma ? sisphbd ? CombinePlanes(last,clpp,planes="YUV",sample_clip=clpp) : ytouv(clpp.utoy8(),clpp.vtoy8(),last) : last
 
 sisyuy2 ? ConvertToYUY2() : last
 
@@ -86,7 +84,11 @@ isgrYd = defined(grainY)
 lpgra  = default (lastpassgrain, !isgrYd && pass > 1)
 lpmsk  = default (lastpassmask, lpgra && pass > 1)
 grainY = isgrYd && !lpgra ? grainY : pass > 1 ? 0 : pass < 2 && lpgra ? undefined : 0
-grainC = default (grainC, grainY)
+chromad = defined(chroma)
+chroma      = default (chroma, true)
+cb = default (cb, chroma ? undefined : 0)
+cr = default (cr, chroma ? undefined : 0)
+grainC = default (grainC, chromad && chroma ? 64 : chroma ? grainY : 0)
 sisphbd   = AvsPlusVersionNumber > 2294
 sischbd  = sisphbd ? clip.BitsPerComponent() > 8 : false
 input_mode  = default (input_mode, 0)
@@ -94,15 +96,10 @@ output_mode = default (output_mode, sischbd ? 3 : input_mode)
 sm4lsb = output_mode != 0 && output_mode != 3 && sample_mode == 4
 sm4i16 = sm4lsb && output_mode == 2
 output_mode = sm4i16 ? 1 : output_mode
-sislumaonly = sisphbd ? clip.isy() : sisavs26 ? clip.isy8() : true
-chroma      = default (chroma, true)
 masking      = default (masking, true)
-Assert(!(!chroma && output_mode != input_mode && !(sischbd && output_mode == 3 && input_mode == 0)), "L_F3KDB_3: chroma=false don't work if output_mode different from input_mode")
-Assert(!(chroma && !sisavs26), "L_F3KDB_3: chroma=false don't work in avs 2.5")
 Assert(masking && output_mode==2 ? sample_mode==4 : true, "L_F3KDB_3: when using output_mode=2 masking only work with sample_mode=4")
 sisyuy2 = clip.isyuy2()
-pclip   = sislumaonly ? clip : !chroma ? sisphbd ? clip.converttoy() : clip.converttoy8() : clip
-pclip   = chroma && sisyuy2 && sisavs26 ? clip.ConvertToYV16() : pclip
+pclip   = sisyuy2 && sisavs26 ? clip.ConvertToYV16() : clip
 
 sample_mode != 4 ? Eval("""
 i_mode  = sischbd ? 2 : input_mode
@@ -171,10 +168,6 @@ sm4i16 ? Bitdepth(from=88, to=16) : last
 		input_depth, output_mode, output_depth, \
 		random_algo_ref, random_algo_grain, \
 		random_param_ref, random_param_grain, chroma, pass - 1, lpgra, masking, mask_thr, mask_radius) : last
-
-yuy26 = sisyuy2 && sisavs26
-clpp = yuy26 && !chroma && !sislumaonly ? clip.ConvertToYV16() : clip
-sislumaonly ? last : !chroma ? sisphbd ? CombinePlanes(last,clpp,planes="YUV",sample_clip=clpp) : ytouv(clpp.utoy8(),clpp.vtoy8(),last) : last
 
 yuy26 ? ConvertToYUY2() : last
 
