@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.10
+# V1.11
 
 
 #################################################
@@ -617,7 +617,7 @@ return yuy2 && lsb_out ? last.Dither_YUY2toInterleaved16().Interleaved2planar(uv
 
 # SH_KNLMeansCL
 
-function SH_KNLMeansCL (clip input, String "device_type", int "device_id", bool "chroma", bool "lsb", bool "lsb_in", float "h", int "d", int "a", String "knlm_params")
+function SH_KNLMeansCL (clip input, String "device_type", int "device_id", bool "chroma", bool "lsb", bool "lsb_in", float "h", int "d", int "a", String "knlm_params", clip "rclip")
 {
 d            = Default( d ,0)
 a            = Default( a ,1)
@@ -635,22 +635,32 @@ lsb          = Default( lsb     ,lsb_in)
                                               chrlsb  = chroma && !fullchr && !nochr
                                               NL_in   = lsb && !lsb_in ? input.Dither_convert_8_to_16() : input
                                               cnl     = chrlsb ? "Y" : input.isrgb() ? "auto" : chroma ? "YUV" : "Y"
+											  drclip  = defined(rclip)
+											  rclip   = drclip ? lsb && !lsb_in ? rclip.Dither_convert_8_to_16() : rclip : nop()
 
 NL_in = !chrlsb && input.isyuy2() ? NL_in.converttoyv16() : NL_in
+rclip = drclip ? !chrlsb && rclip.isyuy2() ? rclip.converttoyv16() : rclip : undefined
 
                                chrlsb ? eval("""
                                               # In a more lucid state I could probably have laid out this block much better... or not...
 
                                               NL_W    = width(NL_in)
                                               Uclip   = sisphbd ? ExtractU(NL_in) : UToY8(NL_in)
+											  Urclip  = drclip ? sisphbd ? ExtractU(rclip) : UToY8(rclip) : nop()
                                               Vclip   = sisphbd ? ExtractV(NL_in) : VToY8(NL_in)
+											  Vrclip  = drclip ? sisphbd ? ExtractV(rclip) : VToY8(rclip) : nop()
                                               NL_lsb  = (chr420 ? StackVertical(  lsb ? StackVertical(Dither_get_msb(uclip),Dither_get_msb(vclip)) : uclip,\
                                                                                   lsb ? StackVertical(Dither_get_lsb(uclip),Dither_get_lsb(vclip)) : vclip) : \
                                                                   StackHorizontal(uclip,vclip))
+                                              rNL_lsb = drclip ? (chr420 ? StackVertical(  lsb ? StackVertical(Dither_get_msb(urclip),Dither_get_msb(vrclip)) : urclip,\
+											                                               lsb ? StackVertical(Dither_get_lsb(urclip),Dither_get_lsb(vrclip)) : vrclip) : \
+                                                                           StackHorizontal(urclip,vrclip)) : \
+																  nop()
 
                                               nlc     = StackHorizontal(sisphbd ? ConvertToY(NL_in) : ConvertToY8(NL_in),NL_lsb)
+											  nlrc    = drclip ? StackHorizontal(sisphbd ? ConvertToY(rclip) : ConvertToY8(rclip),rNL_lsb) : undefined
 
-                                              nlc     = Eval("nlc.KNLMeansCL(D=d, A=a, h=h,stacked=lsb_in || lsb,device_type=device_type,device_id=deviceid,channels=cnl" + knlm_params + ")")
+                                              nlc     = Eval("nlc.KNLMeansCL(D=d, A=a, h=h,stacked=lsb_in || lsb,device_type=device_type,device_id=deviceid,rclip=nlrc,channels=cnl" + knlm_params + ")")
 
                                               uvh = lsb_in || lsb ? uclip.height()/2 : uclip.height()
                                               uvw = uclip.width()
@@ -662,7 +672,7 @@ NL_in = !chrlsb && input.isyuy2() ? NL_in.converttoyv16() : NL_in
                                               nlv = chr420 ? lsb_in || lsb ? StackVertical(Dither_get_msb(nlc).crop(NL_W,uvh, 0,0),Dither_get_lsb(nlc).crop(NL_W,uvh, 0,0)) : nlc.crop(NL_W,uvh, 0,0)                : \
                                                               nlc.crop(NL_W+uvw,0,   0,0)
                                               YToUV(nlu, nlv, nly)
-                                             """) :   Eval("NL_in.KNLMeansCL(D=d, A=a, h=h,stacked=lsb_in || lsb,device_type=device_type,device_id=deviceid,channels=cnl" + knlm_params + ")")
+                                             """) :   Eval("NL_in.KNLMeansCL(D=d, A=a, h=h,stacked=lsb_in || lsb,device_type=device_type,device_id=deviceid,rclip=rclip,channels=cnl" + knlm_params + ")")
 
 !lsb && lsb_in ? Ditherpost(mode=6,slice=false) : last
 input.isyuy2() ? converttoyuy2() : last
