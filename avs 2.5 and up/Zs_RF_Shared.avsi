@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.11
+# V1.12
 
 
 #################################################
@@ -476,60 +476,83 @@ yuy26 ? last.ConvertToYUY2().Interleaved2planar() : last
  # MinBlur   by Didée
  # Nifty Gauss/Median combination (Modified for Planar input)
 
-function MinBlur(clip clp, int "r", int "uv", bool "planar", string "mode", int "abtype", bool "blurrep"){
+function MinBlur(clip clp, int "r", int "uv", bool "planar", string "mode", int "abtype", bool "blurrep", int "y", int "u", int "v"){
 
 r      = default(r,1)
 uv     = default(uv,3)
+u      = defined(u) ? u : uv
+v      = defined(v) ? v : uv
+Y      = Default(Y, 3)
 planar = default(planar,false)
 defmod = defined(mode)
 mode   = default(mode,"Median_Both")
 avs26 = VersionNumber() < 2.60 ? false : true
 yuy26 = avs26 && Isyuy2(clp) && planar
 
-uv2    = (uv==2) ? 1  : uv
-rg4    = (uv==3) ? 4  : -1
-rg11   = (uv==3) ? 11 : -1
-rg20   = (uv==3) ? 20 : -1
-uvm2   = r==2 ? (uv==3?2:uv==2?0:-1) : nop()
-uvm3   = r==3 ? (uv==3?3:uv==2?0:-1) : nop()
-medf   = (uv==3) ? 1 : -200
+ch    = u==1 && v==1
+u2    = (u==2) ? 1  : u
+v2    = (v==2) ? 1  : v
+ch2   = u2==1 && v2==1
+y2    = (y==2) ? 1  : y
+rg4    = (u==3) ? 4  : -1
+rg11   = (u==3) ? 11 : -1
+rg20   = (u==3) ? 20 : -1
+rg4v    = (v==3) ? 4  : -1
+rg11v   = (v==3) ? 11 : -1
+rg20v   = (v==3) ? 20 : -1
+rg4y    = (y==3) ? 4  : -1
+rg11y   = (y==3) ? 11 : -1
+rg20y   = (y==3) ? 20 : -1
+um2   = r==2 ? (u==3?2:u==2?0:-1) : nop()
+um3   = r==3 ? (u==3?3:u==2?0:-1) : nop()
+vm2   = r==2 ? (v==3?2:v==2?0:-1) : nop()
+vm3   = r==3 ? (v==3?3:v==2?0:-1) : nop()
+ym2   = r==2 ? (y==3?2:y==2?0:-1) : nop()
+ym3   = r==3 ? (y==3?3:y==2?0:-1) : nop()
+medf   = (u==3) ? 1 : -200
+medfv   = (v==3) ? 1 : -200
+medfy   = (y==3) ? 1 : -200
 rg4v   = !(defmod && r==1) && (r<=1)
 
 blurrep= default(blurrep,false)
 
-blurstr= mode == "Median_Both" ? "medianblur(r,r*medf,r*medf)" : mode == "average_Both" ? "aBlur(r, abtype, chroma=uv)" : mode == "average_horizontal" ? "aBlur(r, abtype, blurv="+String(r==1 ? 0 : 1)+", chroma=uv)" : mode == "average_vertical" ? "aBlur("+String(r==1 ? 0 : 1)+", abtype, blurv=r, chroma=uv)" : mode
+blurstr= mode == "Median_Both" ? "medianblur(r*medfy,r*medf,r*medf)" : mode == "average_Both" ? "aBlur(r, abtype, chroma=uv)" : mode == "average_horizontal" ? "aBlur(r, abtype, blurv="+String(r==1 ? 0 : 1)+", chroma=uv)" : mode == "average_vertical" ? "aBlur("+String(r==1 ? 0 : 1)+", abtype, blurv=r, chroma=uv)" : mode
 
-RG11D = (r==0) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.sbr(planar=planar).Planar2Interleaved(uv2==1).ConvertToYV16(),U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1) : mt_makediff(clp,clp.sbr(planar=planar),U=uv2,V=uv2)
- \    : (r==1) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.removegrain(11,rg11,planar=planar).Planar2Interleaved(uv2==1).ConvertToYV16(),U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1) : mt_makediff(clp,clp.removegrain(11,rg11,planar=planar),U=uv2,V=uv2)
- \    : (r==2) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.removegrain(11,rg11,planar=planar).removegrain(20,rg20,planar=planar).Planar2Interleaved(uv2==1).ConvertToYV16(),U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1) : mt_makediff(clp,clp.removegrain(11,rg11,planar=planar).removegrain(20,rg20,planar=planar),U=uv2,V=uv2)
- \    :          yuy26 ? mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.removegrain(11,rg11,planar=planar).removegrain(20,rg20,planar=planar).removegrain(20,rg20,planar=planar).Planar2Interleaved(uv2==1).ConvertToYV16(),U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1) : mt_makediff(clp,clp.removegrain(11,rg11,planar=planar).removegrain(20,rg20,planar=planar).removegrain(20,rg20,planar=planar),U=uv2,V=uv2)
-RG4D  = (rg4v) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.removegrain(4,rg4,planar=planar).Planar2Interleaved(uv2==1).ConvertToYV16(),U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1) : mt_makediff(clp,clp.removegrain(4,rg4,planar=planar),U=uv2,V=uv2)
- \    : (r==2) ? avs26 ? yuy26 ? eval("mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.Planar2Interleaved(uv2==1).ConvertToYV16()."+blurstr+",U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1)") : eval("mt_makediff(clp,clp."+blurstr+",U=uv2,V=uv2)") : mt_makediff(clp,clp.Quantile(radius_y=2, radius_u=uvm2, radius_v=uvm2, planar=planar), U=uv2,V=uv2)
- \    :          avs26 ? yuy26 ? eval("mt_makediff(clp.Planar2Interleaved(uv2==1).ConvertToYV16(),clp.Planar2Interleaved(uv2==1).ConvertToYV16()."+blurstr+",U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv2==1)") : eval("mt_makediff(clp,clp."+blurstr+",U=uv2,V=uv2)") : mt_makediff(clp,clp.Quantile(radius_y=3, radius_u=uvm3, radius_v=uvm3, planar=planar), U=uv2,V=uv2)
+RG11D = (r==0) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.sbr(planar=planar,y=y).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.sbr(planar=planar,y=y),y=y2,U=u2,V=v2)
+ \    : (r==1) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.removegrain(rg11y,rg11,planar=planar).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.removegrain(rg11y,rg11,planar=planar),y=y2,U=u2,V=v2)
+ \    : (r==2) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.removegrain(rg11y,rg11,planar=planar).removegrain(rg20y,rg20,planar=planar).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.removegrain(rg11y,rg11,planar=planar).removegrain(rg20y,rg20,planar=planar),y=y2,U=u2,V=v2)
+ \    :          yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.removegrain(rg11y,rg11,planar=planar).removegrain(rg20y,rg20,planar=planar).removegrain(rg20y,rg20,planar=planar).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.removegrain(rg11y,rg11,planar=planar).removegrain(rg20y,rg20,planar=planar).removegrain(rg20y,rg20,planar=planar),y=y2,U=u2,V=v2)
+RG4D  = (rg4v) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.removegrain(rg4y,rg4,planar=planar).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.removegrain(rg4y,rg4,planar=planar),y=y2,U=u2,V=v2)
+ \    : (r==2) ? avs26 ? yuy26 ? eval("mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.Planar2Interleaved(ch2).ConvertToYV16()."+blurstr+",y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2)") : eval("mt_makediff(clp,clp."+blurstr+",y=y2,U=u2,V=v2)") : mt_makediff(clp,clp.Quantile(radius_y=ym2, radius_u=uvm2, radius_v=uvm2, planar=planar),y=y2, U=uv2,V=uv2)
+ \    :          avs26 ? yuy26 ? eval("mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.Planar2Interleaved(ch2).ConvertToYV16()."+blurstr+",y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2)") : eval("mt_makediff(clp,clp."+blurstr+",y=y2,U=u2,V=v2)") : mt_makediff(clp,clp.Quantile(radius_y=ym3, radius_u=uvm3, radius_v=uvm3, planar=planar),y=y2, U=uv2,V=uv2)
 #RG4D  = blurrep ? RG4D.Repair(clp.removegrain(3,uv==3 ? 0 : -1,planar=planar),9,uv==3 ? 0 : -1,planar=planar) : RG4D
-DD    = yuy26 ? mt_lutxy(RG11D.Planar2Interleaved(uv2==1).ConvertToYV16(),RG4D.Planar2Interleaved(uv2==1).ConvertToYV16(),"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?",U=uv2,V=uv2).ConvertToYUY2().Interleaved2planar(uv==1)
-    \ : avs26 ? mt_lutxy(RG11D,RG4D,"x range_half - y range_half - * 0 < range_half x range_half - abs y range_half - abs < x y ? ?",use_expr=1,U=uv2,V=uv2)
-    \         : mt_lutxy(RG11D,RG4D,"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?",U=uv2,V=uv2)
-yuy26 ? clp.Planar2Interleaved(uv==1).ConvertToYV16().mt_makediff(DD.Planar2Interleaved(uv==1).ConvertToYV16(),U=uv,V=uv).ConvertToYUY2().Interleaved2planar(uv==1) : clp.mt_makediff(DD,U=uv,V=uv)
-blurrep ? Repair(clp.removegrain(17,uv==3 ? 0 : -1,planar=planar),9,uv==3 ? 0 : -1,planar=planar) : last
+DD    = yuy26 ? mt_lutxy(RG11D.Planar2Interleaved(ch2).ConvertToYV16(),RG4D.Planar2Interleaved(ch2).ConvertToYV16(),"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?",y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch)
+    \ : avs26 ? mt_lutxy(RG11D,RG4D,"x range_half - y range_half - * 0 < range_half x range_half - abs y range_half - abs < x y ? ?",use_expr=1,y=y2,U=u2,V=v2)
+    \         : mt_lutxy(RG11D,RG4D,"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?",y=y2,U=u2,V=v2)
+yuy26 ? clp.Planar2Interleaved(ch).ConvertToYV16().mt_makediff(DD.Planar2Interleaved(ch).ConvertToYV16(),y=y,U=u,V=v).ConvertToYUY2().Interleaved2planar(ch) : clp.mt_makediff(DD,y=y,U=u,V=v)
+blurrep ? Repair(clp.removegrain(y!=3 ? 0 : 17,u==3 ? 0 : -1,v==3 ? 0 : -1,planar=planar),y!=3 ? 0 : 9,u==3 ? 0 : -1,v==3 ? 0 : -1,planar=planar) : last
  }
 
 
  # helper function: make a highpass on a blur's difference (well, kind of that)
  # Highpass of spatial r=1 Gaussian (like blur(1.0)) (Modified for Planar input)
 
-function sbr(clip c, bool "planar") {
+function sbr(clip c, bool "planar", int "y") {
 
 planar = default(planar,false)
 avs26 = VersionNumber() < 2.60 ? false : true
 yuy26 = avs26 && Isyuy2(c) && planar
+Y      = Default(Y, 3)
 
+Y!=3 ? eval("""
 rg11   = c.removegrain(11,-1,planar=planar)
 rg11D  = yuy26 ? mt_makediff(c.Planar2Interleaved(true).ConvertToYV16(),rg11.Planar2Interleaved(true).ConvertToYV16()).ConvertToYUY2().Interleaved2planar(true) : mt_makediff(c,rg11)
 rg11DD = yuy26 ? mt_makediff(rg11D.Planar2Interleaved(true).ConvertToYV16(),rg11D.removegrain(11,-1,planar=planar).Planar2Interleaved(true).ConvertToYV16()).mt_lutxy(rg11D.Planar2Interleaved(true).ConvertToYV16(),"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?").ConvertToYUY2().Interleaved2planar(true)
      \ : avs26 ? mt_makediff(rg11D,rg11D.removegrain(11,-1,planar=planar)).mt_lutxy(rg11D,"x range_half - y range_half - * 0 < range_half x range_half - abs y range_half - abs < x y ? ?",use_expr=1)
      \         : mt_makediff(rg11D,rg11D.removegrain(11,-1,planar=planar)).mt_lutxy(rg11D,"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?")
-yuy26 ? c.Planar2Interleaved().ConvertToYV16().mt_makediff(rg11DD.Planar2Interleaved().ConvertToYV16(),U=2,V=2).ConvertToYUY2().Interleaved2planar() : c.mt_makediff(rg11DD,U=2,V=2) }
+yuy26 ? c.Planar2Interleaved().ConvertToYV16().mt_makediff(rg11DD.Planar2Interleaved().ConvertToYV16(),U=2,V=2).ConvertToYUY2().Interleaved2planar() : c.mt_makediff(rg11DD,U=2,V=2) 
+""") : c
+}
  
  
 ## cretindesalpes' functions
@@ -1363,21 +1386,26 @@ doyuy2 ? Eval("try { i.PlanarToPacked() } catch(error_msg) { i.converttoyuy2() }
 
 
 ####################
-#### need to be replace with https://forum.doom9.org/showpost.php?p=1897680&postcount=5103
+#### some of StainlessS AvsVersion.avsi https://forum.doom9.org/showpost.php?p=1897680&postcount=5103
 
-function IsAvsNeo()
-{
-      FindStr(VersionString, "AviSynth Neo")  != 0
+# Return length of string S that matches any character in Chars set of characters [Default case insignificant].          # StrMatchChrLen("1234.567abcd","0123456789.") = 8
+Function StrMatchChrLen(String s,String Chars,Bool "Sig")  {
+    Function __StrMatchChrLen_LOW(String s,String Chars,int n) { c=s.MidStr(n+1,1) Return(c==""||Chars.FindStr(c)==0) ? n : s.__StrMatchChrLen_LOW(Chars,n+1) }
+    Sig=Default(False)  # Default Case Insignificant
+    s=(Sig)?s:s.UCASE   Chars=(Sig)?Chars:Chars.UCASE
+    Return __StrMatchChrLen_LOW(s,Chars,0)
 }
 
-
-function IsAvsPlus()
-{
-      FindStr(VersionString, "AviSynth+")  != 0 || IsAvsNeo
+# Return length of string s that DOES NOT match any character in Chars set of characters [Default case insignificant].   # StrBrkChrLen("1234.567,abcd",",.")  = 4
+# If 1st character of s matches any in Chars set, then returns 0.                                                        # StrBrkChrLen("1234.567,abcd","321") = 0
+# If no characters in s match any character in Chars set, then returns length of string s.                               # StrBrkChrLen("1234.567,abcd","NOP") = 13
+Function StrBrkChrLen(String s,String Chars,Bool "Sig") {
+    Function __StrBrkChrLen_LOW(String s,String Chars,int n) {c=s.MidStr(n+1,1) Return(c==""||Chars.FindStr(c)!=0)?n:s.__StrBrkChrLen_LOW(Chars,n+1)}
+    Sig=Default(False)  # Default Case Insignificant
+    s=(Sig)?s:s.UCASE   Chars=(Sig)?Chars:Chars.UCASE
+    Return __StrBrkChrLen_LOW(s,Chars,0)
 }
 
-
-function AvsPlusVersionNumber()
-{
-    IsAvsNeo ? eval(MidStr(VersionString(),20,4)) : IsAvsPlus ? eval(MidStr(VersionString(),17,4)) : 0
-}
+Function IsAvsNeo()               { FindStr(VersionString," Neo")!=0}
+Function IsAvsPlus()              { FindStr(VersionString,"AviSynth+")!=0||IsAvsNeo}
+Function AvsPlusVersionNumber()   { V=VersionString Off=(!IsAvsPlus)?0:FindStr(V,"(r") return (Off==0)?0:V.MidStr(Off+2).Value.Int } # Avs+ & Neo, (More than 4 digits, Max 24 bit, ~16M)
