@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.12
+# V1.121
 
 
 #################################################
@@ -1387,25 +1387,6 @@ doyuy2 ? Eval("try { i.PlanarToPacked() } catch(error_msg) { i.converttoyuy2() }
 
 ####################
 #### some of StainlessS AvsVersion.avsi https://forum.doom9.org/showpost.php?p=1897680&postcount=5103
-
-# Return length of string S that matches any character in Chars set of characters [Default case insignificant].          # StrMatchChrLen("1234.567abcd","0123456789.") = 8
-Function StrMatchChrLen(String s,String Chars,Bool "Sig")  {
-    Function __StrMatchChrLen_LOW(String s,String Chars,int n) { c=s.MidStr(n+1,1) Return(c==""||Chars.FindStr(c)==0) ? n : s.__StrMatchChrLen_LOW(Chars,n+1) }
-    Sig=Default(False)  # Default Case Insignificant
-    s=(Sig)?s:s.UCASE   Chars=(Sig)?Chars:Chars.UCASE
-    Return __StrMatchChrLen_LOW(s,Chars,0)
-}
-
-# Return length of string s that DOES NOT match any character in Chars set of characters [Default case insignificant].   # StrBrkChrLen("1234.567,abcd",",.")  = 4
-# If 1st character of s matches any in Chars set, then returns 0.                                                        # StrBrkChrLen("1234.567,abcd","321") = 0
-# If no characters in s match any character in Chars set, then returns length of string s.                               # StrBrkChrLen("1234.567,abcd","NOP") = 13
-Function StrBrkChrLen(String s,String Chars,Bool "Sig") {
-    Function __StrBrkChrLen_LOW(String s,String Chars,int n) {c=s.MidStr(n+1,1) Return(c==""||Chars.FindStr(c)!=0)?n:s.__StrBrkChrLen_LOW(Chars,n+1)}
-    Sig=Default(False)  # Default Case Insignificant
-    s=(Sig)?s:s.UCASE   Chars=(Sig)?Chars:Chars.UCASE
-    Return __StrBrkChrLen_LOW(s,Chars,0)
-}
-
 Function IsAvsNeo()               { FindStr(VersionString," Neo")!=0}
 Function IsAvsPlus()              { FindStr(VersionString,"AviSynth+")!=0||IsAvsNeo}
 Function AvsPlusVersionNumber()   { V=VersionString Off=(!IsAvsPlus)?0:FindStr(V,"(r") return (Off==0)?0:V.MidStr(Off+2).Value.Int } # Avs+ & Neo, (More than 4 digits, Max 24 bit, ~16M)
