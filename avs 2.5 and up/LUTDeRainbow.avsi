@@ -1,7 +1,7 @@
 #####################################################
 #                                                   #
 # LUTDeRainbow, a derainbowing script by Scintilla  #
-# Last updated 4/19/20                              #
+# Last updated 4/20/20                              #
 #                                                   #
 #####################################################
 #
@@ -9,7 +9,7 @@
 # LUTDeRainbow(clip input, float "cthresh", float "ythresh", bool "y",
 #	\ bool "linkUV", bool "mask")
 #
-# Requires Planar YUV input, frame-based only.
+# Requires Planar YUV input.
 # Is of reasonable speed (faster than aWarpSharp, slower than DeGrainMedian).
 # Suggestions for improvement welcome: scintilla@aquilinestudios.org
 #
@@ -61,7 +61,7 @@
 #	channel or use the same one for both.
 # 10/3/08: Fixed "cthresh" typos in documentation; killed repmode since I realized I
 #	wasn't using Repair anymore; finally upgraded to MaskTools 2.
-# 4/19/20: AVS 2.6 Colors and HBD
+# 4/20/20: AVS 2.6 Colors and HBD
 #
 ###################
 
@@ -85,8 +85,17 @@ ythr=string(ythresh)
 #repmode=default(repmode,11)
 org=input #.SeparateFields()
 
-org_minus=org.Trim(0,-1)+org.Trim(0,org.framecount-1)
-org_plus=org.Trim(1,0)+org.Trim(org.framecount,0)
+fullchr = sisphbd ? org.is444() : org.isyv24()
+chr420  = sisphbd ? org.is420() : org.isyv12()
+nochr   = sisphbd ?   org.isy() : org.isy8()
+
+Assert(!nochr, "LUTDeRainbow: not work with Greyscale video")
+
+sisfield      = input.IsFieldBased()
+
+org_minus=org.Trim(0,-1)+org.Trim(0,org.framecount-2)
+org_minus=sisfield ? org_minus.Trim(0,-1)+org_minus.Trim(0,org.framecount-2) : org_minus
+org_plus=org.Trim(sisfield ? 2 : 1,0)+org.Trim(org.framecount-(sisfield ? 2 : 1),0)
 
 org_u=sisphbd ? ExtractU(org) : sisavs26 ? UToY8(org) : UToY(org)
 org_v=sisphbd ? ExtractV(org) : sisavs26 ? VToY8(org) : VToY(org)
@@ -100,14 +109,15 @@ org_plus_v=sisphbd ? ExtractV(org_plus) : sisavs26 ? VToY8(org_plus) : VToY(org_
 average_u=sisavs26 ? mt_lutxy(org_minus_u,org_plus_u,"x y - abs "+cthr+" scalef < x y + 2 / 0 ?", use_expr=1) : mt_lutxy(org_minus_u,org_plus_u,"x y - abs "+cthr+" < x y + 2 / 0 ?").Greyscale()
 average_v=sisavs26 ? mt_lutxy(org_minus_v,org_plus_v,"x y - abs "+cthr+" scalef < x y + 2 / 0 ?", use_expr=1) : mt_lutxy(org_minus_v,org_plus_v,"x y - abs "+cthr+" < x y + 2 / 0 ?").Greyscale()
 average_y=sisavs26 ? mt_lutxy(org_minus_y,org_plus_y,"x y - abs "+ythr+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_minus_y,org_plus_y,"x y - abs "+ythr+" < 255 0 ?").Greyscale().ReduceBy2()
+average_y=!sisavs26 ? average_y : fullchr ? average_y : IsYV411(org) ? average_y.BilinearResize(org_minus_u.width(), org_minus_v.height(), src_left=-1.5) : average_y.BilinearResize(org_minus_u.width(), org_minus_v.height(), src_left=-0.5)
 
 umask=average_u.mt_Binarize(threshold=20,upper=false)
 umask=(default(y,true)?mt_Logic(umask,average_y,"and"):umask)
 vmask=average_v.mt_Binarize(threshold=20,upper=false)
 vmask=(default(y,true)?mt_Logic(vmask,average_y,"and"):vmask)
 
-themask=mt_Logic(average_u.mt_Binarize(threshold=20,upper=false),average_v.mt_Binarize(threshold=20,upper=false),"and").Greyscale()
-themask=(default(y,true)?mt_Logic(themask,average_y,"and").Greyscale():themask)
+themask=mt_Logic(average_u.mt_Binarize(threshold=20,upper=false),average_v.mt_Binarize(threshold=20,upper=false),"and")
+themask=(default(y,true)?mt_Logic(themask,average_y,"and"):themask)
 
 fixed_u=sisavs26 ? mt_lutxy(average_u,org_u,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(average_u,org_u,"x y + 2 /",y=3,u=2,v=2)
 fixed_v=sisavs26 ? mt_lutxy(average_v,org_v,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(average_v,org_v,"x y + 2 /",y=3,u=2,v=2)

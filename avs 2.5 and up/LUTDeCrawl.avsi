@@ -2,7 +2,7 @@
 #                                                      #
 # LUTDeCrawl, a dot crawl removal script by Scintilla  #
 # Created 10/3/08				       #
-# Last updated 4/19/20                                 #
+# Last updated 4/20/20                                 #
 #                                                      #
 ########################################################
 #
@@ -10,7 +10,7 @@
 # LUTDeCrawl(clip input, int "ythresh", int "cthresh", int "maxdiff",
 #	\ int "scnchg", bool "usemaxdiff", bool "mask")
 #
-# Requires Planar YUV input, frame-based only.
+# Requires Planar YUV input.
 # Is of average speed (faster than VagueDenoiser, slower than HQDN3D).
 # Suggestions for improvement welcome: scintilla@aquilinestudios.org
 #
@@ -55,7 +55,7 @@
 # Changelog:
 #
 # 10/3/08: Is this thing on?
-# 4/19/20: AVS 2.6 Colors and HBD
+# 4/20/20: AVS 2.6 Colors and HBD
 #
 ###################
 
@@ -75,14 +75,25 @@ ythresh=default(ythresh,10)
 cthr=string(cthresh)
 ythr=string(ythresh)
 scnchg=default(scnchg,25)
+scb = sisphbd ? BitsPerComponent(input) > 8 ? BitsPerComponent(input) == 10 ? 4 : BitsPerComponent(input) == 12 ? 8 : BitsPerComponent(input) == 14 ? 64 : nop() : nop() : nop()
+scnchg = sisphbd ? siscfloat ? scnchg/255.0 : BitsPerComponent(input) > 8 ? BitsPerComponent(input) < 16 ? scnchg*scb : scnchg*256 : scnchg : scnchg
 sc=string(scnchg)
 maxdiff=default(maxdiff,50)
 md=string(maxdiff)
 usemaxdiff=default(usemaxdiff,true)
 org=siscfloat ? expr(input, "x", "x 0.5 +", "x 0.5 +") : input
 
-org_minus=org.Trim(0,-1)+org.Trim(0,org.framecount-1)
-org_plus=org.Trim(1,0)+org.Trim(org.framecount,0)
+fullchr = sisphbd ? org.is444() : org.isyv24()
+chr420  = sisphbd ? org.is420() : org.isyv12()
+nochr   = sisphbd ?   org.isy() : org.isy8()
+
+Assert(!nochr, "LUTDeCrawl: not work with Greyscale video")
+
+sisfield      = input.IsFieldBased()
+
+org_minus=org.Trim(0,-1)+org.Trim(0,org.framecount-2)
+org_minus=sisfield ? org_minus.Trim(0,-1)+org_minus.Trim(0,org.framecount-2) : org_minus
+org_plus=org.Trim(sisfield ? 2 : 1,0)+org.Trim(org.framecount-(sisfield ? 2 : 1),0)
 
 org_y=sisphbd ? ExtractY(org) : sisavs26 ? ConvertToY8(org) : org.Greyscale()
 org_minus_y=sisphbd ? ExtractY(org_minus) : sisavs26 ? ConvertToY8(org_minus) : org_minus.Greyscale()
@@ -98,12 +109,12 @@ average_y=sisavs26 ? mt_lutxy(org_minus_y,org_plus_y,"x y - abs "+ythr+" scalef 
 
 diffplus_y =  sisavs26 ? mt_lutxy(org_plus_y,  org_y, "x y - abs "+md+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_plus_y,  org, "x y - abs "+md+" < 255 0 ?")
 diffminus_y = sisavs26 ? mt_lutxy(org_minus_y, org_y, "x y - abs "+md+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_minus_y, org, "x y - abs "+md+" < 255 0 ?")
-diffs_y = mt_logic(diffplus_y, diffminus_y, "and").Greyscale()
+diffs_y = mt_logic(diffplus_y, diffminus_y, "and")
 
 ymask=average_y.mt_Binarize(threshold=0,upper=false)
 ymask=usemaxdiff ? mt_logic(ymask, diffs_y, "and") : ymask
 cmask=mt_logic(average_u.mt_Binarize(upper=false),average_v.mt_Binarize(upper=false),"and")
-cmask=cmask.PointResize(cmask.Width()*2, cmask.Height()*2)
+cmask=sisavs26 ? fullchr ? cmask : IsYV411(org) ? cmask.BilinearResize(input.width(), input.height(), src_left=1.5) : cmask.BilinearResize(input.width(), input.height(), src_left=0.5) : cmask.PointResize(cmask.Width()*2, cmask.Height()*2)
 
 themask=mt_logic(ymask,cmask,"and")
 
