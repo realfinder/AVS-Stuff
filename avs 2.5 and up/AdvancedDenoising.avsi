@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.88
+# Advanced Denoising and anime bob v1.881
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -404,8 +404,8 @@ org_pluse=mcfi ? ieven.Trim(1,0)+ieven.Trim(ieven.framecount-1,0) : nop()
 org_pluso=mcfi ? iodd.Trim(1,0)+iodd.Trim(iodd.framecount-1,0) : nop()
 
 !mcfi ? input : input.selecteven()
-DeCrawing ? LUTDeCrawl(dythresh, dcthresh, maxdiff, scnchg, usemaxdiff, dmask, org_minuse, org_pluse, mc) : last
-DeRainbowing ? LUTDeRainbow(cthresh, ythresh, y, linkUV, mask, org_minuse, org_pluse, mc) : last
+DeCrawing ? LUTDeCrawl(dythresh, dcthresh, maxdiff, scnchg, usemaxdiff, dmask, !mcfi ? org_minus : org_minuse, !mcfi ? org_plus : org_pluse, mc) : last
+DeRainbowing ? LUTDeRainbow(cthresh, ythresh, y, linkUV, mask, !mcfi ? org_minus : org_minuse, !mcfi ? org_plus : org_pluse, mc) : last
 lute = mcfi ? last : nop()
 
 !mcfi ? last : input.selectodd()
