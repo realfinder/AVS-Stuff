@@ -1,7 +1,7 @@
 #####################################################
 #                                                   #
 # LUTDeRainbow, a derainbowing script by Scintilla  #
-# Last updated 4/20/20                              #
+# Last updated 4/22/20                              #
 #                                                   #
 #####################################################
 #
@@ -66,7 +66,7 @@
 ###################
 
 
-function LUTDeRainbow(clip input, float "cthresh", float "ythresh", bool "y", bool "linkUV", bool "mask") {
+function LUTDeRainbow(clip input, float "cthresh", float "ythresh", bool "y", bool "linkUV", bool "mask", clip "org_minus", clip "org_plus", bool "exmc") {
 
 Assert(input.IsPlanar() && !IsRGB(input), "LUTDeRainbow: Planar YUV input only")
 
@@ -82,6 +82,7 @@ cthresh=default(cthresh,10)
 ythresh=default(ythresh,10)
 cthr=string(cthresh)
 ythr=string(ythresh)
+exmc=default(exmc,false)
 #repmode=default(repmode,11)
 org=input #.SeparateFields()
 
@@ -92,10 +93,11 @@ nochr   = sisphbd ?   org.isy() : org.isy8()
 Assert(!nochr, "LUTDeRainbow: not work with Greyscale video")
 
 sisfield      = input.IsFieldBased()
+org_minusd = defined(org_minus)
 
-org_minus=org.Trim(0,-1)+org.Trim(0,org.framecount-2)
-org_minus=sisfield ? org_minus.Trim(0,-1)+org_minus.Trim(0,org.framecount-2) : org_minus
-org_plus=org.Trim(sisfield ? 2 : 1,0)+org.Trim(org.framecount-(sisfield ? 2 : 1),0)
+org_minus=org_minusd ? org_minus : org.Trim(0,-1)+org.Trim(0,org.framecount-2)
+org_minus=!org_minusd && sisfield ? org_minus.Trim(0,-1)+org_minus.Trim(0,org.framecount-2) : org_minus
+org_plus=defined(org_plus) ? org_plus : org.Trim(sisfield ? 2 : 1,0)+org.Trim(org.framecount-(sisfield ? 2 : 1),0)
 
 org_u=sisphbd ? ExtractU(org) : sisavs26 ? UToY8(org) : UToY(org)
 org_v=sisphbd ? ExtractV(org) : sisavs26 ? VToY8(org) : VToY(org)
@@ -119,11 +121,11 @@ vmask=(default(y,true)?mt_Logic(vmask,average_y,"and"):vmask)
 themask=mt_Logic(average_u.mt_Binarize(threshold=20,upper=false),average_v.mt_Binarize(threshold=20,upper=false),"and")
 themask=(default(y,true)?mt_Logic(themask,average_y,"and"):themask)
 
-fixed_u=sisavs26 ? mt_lutxy(average_u,org_u,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(average_u,org_u,"x y + 2 /",y=3,u=2,v=2)
-fixed_v=sisavs26 ? mt_lutxy(average_v,org_v,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(average_v,org_v,"x y + 2 /",y=3,u=2,v=2)
+fixed_u=sisavs26 ? mt_lutxy(exmc ? average_u.selectevery(3, 1) : average_u,org_u,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(exmc ? average_u.selectevery(3, 1) : average_u,org_u,"x y + 2 /",y=3,u=2,v=2)
+fixed_v=sisavs26 ? mt_lutxy(exmc ? average_v.selectevery(3, 1) : average_v,org_v,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(exmc ? average_v.selectevery(3, 1) : average_v,org_v,"x y + 2 /",y=3,u=2,v=2)
 
-output_u=mt_Merge(org_u,fixed_u,default(linkUV,true)?themask:umask)#.Repair(org_u,repmode)
-output_v=mt_Merge(org_v,fixed_v,default(linkUV,true)?themask:vmask)#.Repair(org_v,repmode)
+output_u=mt_Merge(org_u,fixed_u,exmc ? selectevery(default(linkUV,true)?themask:umask,3, 1) : default(linkUV,true)?themask:umask)#.Repair(org_u,repmode)
+output_v=mt_Merge(org_v,fixed_v,exmc ? selectevery(default(linkUV,true)?themask:vmask,3, 1) : default(linkUV,true)?themask:vmask)#.Repair(org_v,repmode)
 
 output=YToUV(output_u,output_v,org)
 
