@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.87
+# Advanced Denoising and anime bob v1.88
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -369,3 +369,64 @@ top != 0 && left != 0 ? overlay(h,last,mode="add") : last
 """)
 sislumaonly ? last : sisphbd ? CombinePlanes(last,clip,planes="YUV",sample_clip=clip) : YToUV(clip.UToY8(),clip.VToY8(),last)
 }
+
+
+# LUTComb by real.finder
+# LUTComb wrapper for LUTDeRainbow and LUTDeCrawl, it can used with MC
+# v1.1
+
+function LUTComb(clip input, float "cthresh", float "ythresh", bool "y", bool "linkUV", bool "mask", float "dythresh", float "dcthresh", float "maxdiff", 
+	          \ float "scnchg", bool "usemaxdiff", bool "dmask", bool "DeCrawing", bool "DeRainbowing", bool "mc", int "thSAD", clip "prefil", bool "chroma") {
+
+sisfield = input.IsFieldBased()
+
+DeCrawing = default (DeCrawing, true)
+DeRainbowing = default (DeRainbowing, true)
+Assert(!(!DeCrawing && !DeRainbowing), "why do you use LUTComb then?!")
+mc = default (mc, true)
+chroma   = default(chroma, false)
+
+exprefil  = defined(prefil)
+mcfi = mc && sisfield
+
+prefil    = mc ? exprefil ? prefil : chroma ? sisfield ? input.MinBlur(3,y=2).Blur(1) : input.MinBlur(3,blurrep=true) : input.Blur(1.5) : nop()
+ieven     = mc ? sisfield ? input.selecteven().mc4LUTComb(prefil.selecteven(),thSAD,chroma) : nop() : nop()
+iodd      = mc ? sisfield ? input.selectodd().mc4LUTComb(prefil.selectodd(),thSAD,chroma) : nop() : nop()
+mcclip    = mc ? sisfield ? nop() : input.mc4LUTComb(prefil,thSAD,chroma) : input
+
+org_minus=mcfi ? nop() : mcclip.Trim(0,-1)+mcclip.Trim(0,mcclip.framecount-2)
+org_minus=mcfi ? nop() : sisfield ? org_minus.Trim(0,-1)+org_minus.Trim(0,mcclip.framecount-2) : org_minus
+org_plus=mcfi ? nop() : mcclip.Trim(sisfield ? 2 : 1,0)+mcclip.Trim(mcclip.framecount-(sisfield ? 2 : 1),0)
+
+org_minuse=mcfi ? ieven.Trim(0,-1)+ieven.Trim(0,ieven.framecount-2) : nop()
+org_minuso=mcfi ? iodd.Trim(0,-1)+iodd.Trim(0,iodd.framecount-2) : nop()
+org_pluse=mcfi ? ieven.Trim(1,0)+ieven.Trim(ieven.framecount-1,0) : nop()
+org_pluso=mcfi ? iodd.Trim(1,0)+iodd.Trim(iodd.framecount-1,0) : nop()
+
+!mcfi ? input : input.selecteven()
+DeCrawing ? LUTDeCrawl(dythresh, dcthresh, maxdiff, scnchg, usemaxdiff, dmask, org_minuse, org_pluse, mc) : last
+DeRainbowing ? LUTDeRainbow(cthresh, ythresh, y, linkUV, mask, org_minuse, org_pluse, mc) : last
+lute = mcfi ? last : nop()
+
+!mcfi ? last : input.selectodd()
+mcfi && DeCrawing ? LUTDeCrawl(dythresh, dcthresh, maxdiff, scnchg, usemaxdiff, dmask, org_minuso, org_pluso, mc) : last
+mcfi && DeRainbowing ? LUTDeRainbow(cthresh, ythresh, y, linkUV, mask, org_minuso, org_pluso, mc) : last
+
+mcfi ? interleave(lute,last) : last
+
+}
+
+
+  function mc4LUTComb(clip input, clip "prefil", int "thSAD", bool "chroma")
+  {
+masuper = prefil.MSuper()
+mcsuper = input.MSuper(levels=1)
+ 
+b1v = MAnalyse(masuper, delta=1, truemotion = true, isb = true, chroma=chroma)
+f1v = MAnalyse(masuper, delta=1, truemotion = true, isb = false, chroma=chroma)
+ 
+f1c = input.MCompensate(mcsuper, f1v)
+b1c = input.MCompensate(mcsuper, b1v)
+
+interleave(f1c,input,b1c)
+  }
