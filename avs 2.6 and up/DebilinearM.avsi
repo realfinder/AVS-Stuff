@@ -1,4 +1,4 @@
-/* DebilinearM v1.3.1 mod 1.28
+/* DebilinearM v1.3.1 mod 1.29
 
 DebilinearM is a wrapper function for the Debilinear and Debicubic plugins that masks parts of the frame that aren't upscaled,
 such as text overlays, and uses a regular resize kernel to downscale those areas. It works by downscaling the input
@@ -43,7 +43,7 @@ Assert(target_width  > 0, "DebilinearM: target width must be greater than 0")
 Assert(target_height > 0, "DebilinearM: target height must be greater than 0")
 Assert(thr >= 0 && thr <= 255, "DebilinearM: thr must be in the range 0 to 255")
 Assert(showmask > -1 && showmask < 3, "DebilinearM: showmask must be 0, 1, or 2")
-Assert(!(lsb_inout && interlaced), "Interlaced 16 bit stacked clip is not a recognized format")
+Assert(!(lsb_inout && use_IRe), "Interlaced 16 bit stacked clip is not a recognized format")
 
 w = input.Width()
 h = lsb_inout ? input.Height()/2 : input.Height()
