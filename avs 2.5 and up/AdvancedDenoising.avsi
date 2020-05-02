@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.882
+# Advanced Denoising and anime bob v1.883
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -308,14 +308,16 @@ LRepair==0 && CRepair==0 ? last : last.Repair(clip,LRepair,CRepair)
 
 
 # scombmask by RF
-# v1.11
-function scombmask(clip c, float "ythr", float "ythr2", float "cthr", bool "ntsc")
+# v1.12
+function scombmask(clip c, float "ythr", float "ythr2", float "cthr", bool "ntsc", bool "prefilter", bool "yexpand")
 {
 sisphbd = AvsPlusVersionNumber > 2294
 sisavs26   = !(VersionNumber() < 2.6)
 ythr=Default(ythr,2)
 ythr2=Default(ythr2,ythr*5)
 cthr=Default(cthr,10)
+prefil=Default(prefilter,true)
+yexpand=Default(yexpand,true)
 ymaskb=ythr!=0
 cmaskb=cthr!=0
 c
@@ -330,7 +332,7 @@ nochr   = sisphbd ?   isy() : sisavs26 ? isy8() : false
 Assert(!nochr, "scombmask: not work with Greyscale video")
 
 ntsc = default (ntsc, !((framerate()==50 || framerate()==25) && Height()!=480))
-MinBlur(uv=ymaskb ? 3 : 0,y=cmaskb ? 3 : 0)
+prefil ? MinBlur(uv=ymaskb ? 3 : 0,y=cmaskb ? 3 : 0) : last
 iqchr  = ymaskb && ntsc ? SwapUV().Tweak(hue=-33) : last
 Y = sisphbd ? ConvertToY() : sisavs26 ? ConvertToY8() : last
 I = sisphbd ? iqchr.ExtractU() : sisavs26 ? iqchr.utoy8() : iqchr.utoy()
@@ -341,7 +343,7 @@ ym = ymaskb ? mt_logic(sisavs26 ? chr.mt_lut("x range_half - abs 2 *", use_expr=
 ym = ymaskb ? ym.Spline36Resize(width(),Height(),chr422 || chr420 ? 0.5 : fullchr ? undefined : 1.5) : nop()
 Chrm = cmaskb ? Y.sypixsub(2).mt_binarize(cthr).Spline36Resize(I.width(),Q.Height(),chr422 || chr420 ? -0.25 : fullchr ? undefined : 0.375) : nop()
 ytouv(cmaskb ? Chrm : I,cmaskb ? Chrm : Q,ymaskb ? ym : Y)
-ymaskb ? mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 2 : 1).mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 2 : 1) : last
+ymaskb && yexpand ? mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 2 : 1).mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 2 : 1) : last
 }
 
 
