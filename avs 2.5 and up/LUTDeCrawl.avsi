@@ -2,7 +2,7 @@
 #                                                      #
 # LUTDeCrawl, a dot crawl removal script by Scintilla  #
 # Created 10/3/08				       #
-# Last updated 4/22/20                                 #
+# Last updated 5/02/20                                 #
 #                                                      #
 ########################################################
 #
@@ -84,9 +84,8 @@ md=string(maxdiff)
 usemaxdiff=default(usemaxdiff,true)
 org=siscfloat ? expr(input, "x", "x 0.5 +", "x 0.5 +") : input
 
-fullchr = sisphbd ? org.is444() : org.isyv24()
-chr420  = sisphbd ? org.is420() : org.isyv12()
-nochr   = sisphbd ?   org.isy() : org.isy8()
+fullchr = sisphbd ? org.is444() : sisavs26 ? org.isyv24() : false
+nochr   = sisphbd ?   org.isy() : sisavs26 ? org.isy8() : false
 
 Assert(!nochr, "LUTDeCrawl: not work with Greyscale video")
 

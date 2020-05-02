@@ -1,7 +1,7 @@
 #####################################################
 #                                                   #
 # LUTDeRainbow, a derainbowing script by Scintilla  #
-# Last updated 4/22/20                              #
+# Last updated 5/02/20                              #
 #                                                   #
 #####################################################
 #
@@ -86,9 +86,8 @@ exmc=default(exmc,false)
 #repmode=default(repmode,11)
 org=input #.SeparateFields()
 
-fullchr = sisphbd ? org.is444() : org.isyv24()
-chr420  = sisphbd ? org.is420() : org.isyv12()
-nochr   = sisphbd ?   org.isy() : org.isy8()
+fullchr = sisphbd ? org.is444() : sisavs26 ? org.isyv24() : false
+nochr   = sisphbd ?   org.isy() : sisavs26 ? org.isy8() : false
 
 Assert(!nochr, "LUTDeRainbow: not work with Greyscale video")
 
