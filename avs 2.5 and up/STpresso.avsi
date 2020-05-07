@@ -1,5 +1,5 @@
-# STPresso by DidÃ©e, MC by SilaSurfer, r.f mod in 2020.04.23 for HBD
-function STPresso(clip clp, float "limit", float "bias", int "RGmode", int "tthr", float "tlimit", float "tbias", float "back", bool "mc")
+# STPresso by Didée, MC by SilaSurfer, r.f mod in 2020.05.07 for HBD
+function STPresso(clip clp, float "limit", float "bias", int "RGmode", int "tthr", float "tlimit", float "tbias", float "back", bool "mc", bool "HD", int "radius")
 {
 sisavs26 = !(VersionNumber() < 2.60)
 limit  = default( limit,   3 )  # spatial limit:  the spatial part won't change a pixel more than this
@@ -10,6 +10,10 @@ tlimit = default( tlimit,  3 )  # the temporal filter won't change a pixel more 
 tbias  = default( tbias,  49 )  # the percentage of the temporal filter that will apply
 back   = default( back,    1 )  # after all changes have been calculated, reduce all pixel changes by this value. (Shift "back" towards original value)
 mc     = default( mc,  false )  # 
+h      = clp.height()
+ishd   = h > 720
+HD     = default( HD,  ishd )  # 
+radius = default( radius,  round(h/540.0) )  # 
 
 LIM1  = (limit>0) ? string( round(limit*100.0/bias-1.0) ) : string( round(100.0/bias) )
 LIM2  = (limit<0) ? "1" : string(limit)
@@ -30,7 +34,7 @@ texpr  = (limit<0) ?  sisavs26 ? "x y - abs "+TLIM1+" scalef < x x 1 x y - x y -
 					           : "x y - abs 1 < x x "+TLIM1+" + y < x "+TLIM2+" + x "+TLIM1+" - y > x "+TLIM2+" - " \ 
                     + "x 100 "+TBIA+" - * y "+TBIA+" * + 100 / ? ? ?"
 
-bzz = clp.removegrain(RGmode)
+bzz = HD ? clp.minblur(radius) : clp.removegrain(RGmode)
 sisavs26 ? mt_lutxy( clp, bzz, expr, scale_inputs=limit<0 ? "floatf" : "none", use_expr=1, U=3,V=3) : mt_lutxy( clp, bzz, expr, U=3,V=3)
 tthr==0 ? last : sisavs26 ? mt_lutxy(last,last.mt_makediff(mt_makediff(bzz,mc ? bzz.STPresso_FluxsmoothTMC(tthr) : bzz.fluxsmootht(tthr),U=3,V=3),U=3,V=3),texpr,scale_inputs=limit<0 ? "floatf" : "none",use_expr=1,U=3,V=3) : mt_lutxy(last,last.mt_makediff(mt_makediff(bzz,mc ? bzz.STPresso_FluxsmoothTMC(tthr) : bzz.fluxsmootht(tthr),U=3,V=3),U=3,V=3),texpr,U=3,V=3)
 back==0 ? last : sisavs26 ? mt_lutxy(last,clp,"x "+BK+" scalef + y < x "+BK+" scalef + x "+BK+" scalef - y > x "+BK+" scalef - y ? ?",U=2,V=2) : mt_lutxy(last,clp,"x "+BK+" + y < x "+BK+" + x "+BK+" - y > x "+BK+" - y ? ?",U=2,V=2)
