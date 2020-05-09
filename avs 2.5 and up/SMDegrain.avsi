@@ -7,7 +7,7 @@
 ###          Special Thanks: Sagekilla, Didée, cretindesalpes, Gavino and MVtools people     ###
 ###                                                                                          ###
 ###                       v3.1.2d (Dogway's mod) - 21 July 2015                              ###
-###   v3.1.2.106s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
+###   v3.1.2.107s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
 ###                     and yuy2 support in avs 2.6 with masktools 2.6                       ###
 ### and medianblur2 now will be used in Minblur instead of Quantile RemoveGrainHD in avs 2.6 ###
 ###                                    and add TV_range bool                                 ###
@@ -33,7 +33,7 @@
 
 function SMDegrain (clip input   , int "tr"      , int "thSAD"    , int  "thSADC" , bool "RefineMotion",  val  "contrasharp", clip "CClip"      , bool "interlaced" ,  int   "plane" ,  int   "Globals",                                  \
                      int "pel"   , int "subpixel", val "prefilter", clip "mfilter", int  "blksize"     , int  "overlap"     ,  int  "search"    , bool "truemotion" , int  "limit"   ,  int   "limitc" ,  int   "thSCD1" , int "thSCD2",  \
-                    bool "chroma", int "hpad"    , int "vpad"     , bool "lsb"    , bool "lsb_in"      ,  bool "lsb_out"    , int  "mode"       , bool  "slices"    , val  "Show"    ,  float "Str"    ,  float "Amp" , bool "TV_range", int "dct", int "device_id", int "searchparam", int "pelsearch", bool "trymany", bool "always_MDegrainN", bool "n16", bool "n16_out", int "divide"){
+                    bool "chroma", int "hpad"    , int "vpad"     , bool "lsb"    , bool "lsb_in"      ,  bool "lsb_out"    , int  "mode"       , bool  "slices"    , val  "Show"    ,  float "Str"    ,  float "Amp" , bool "TV_range", int "dct", int "device_id", int "searchparam", int "pelsearch", bool "trymany", bool "always_MDegrainN", bool "n16", bool "n16_out", int "divide", int "srfilter"){
 
 
 
@@ -46,6 +46,7 @@ thSAD2=int(thSAD/2)
 thSADC       = default( thSADC, thSAD2)
 RefineMotion = default( RefineMotion, false)
 alway_grainN = default( always_MDegrainN, false)
+srfilter     = default( srfilter, 4)
 
 lsb_in       = default( lsb_in,  false)
 lsb_out      = default( lsb_out, false)
@@ -220,12 +221,12 @@ pclip2 = pelclip && !GlobalR  ?  pel==4 ? input8.nnedi3_rpow2(rfactor=2,nns=4).n
 # Motion vectors search
 
 
-super_search =                             pelclip ? MSuper(pref,     pel=pel,               chroma=chroma, hpad=hpad, vpad=vpad,          pelclip=pclip,  rfilter=4, planar=planar) : \
-                                                     MSuper(pref,     pel=pel,sharp=subpixel,chroma=chroma, hpad=hpad, vpad=vpad                        ,  rfilter=4, planar=planar)
-super_render = !GlobalR ?                 (pelclip ? MSuper(input8,   pel=pel,               chroma=plane0, hpad=hpad, vpad=vpad,levels=1, pelclip=pclip2           , planar=planar) : \
-                                                     MSuper(input8,   pel=pel,sharp=subpixel,chroma=plane0, hpad=hpad, vpad=vpad,levels=1                           , planar=planar)): super_search
-Recalculate  = !GlobalR && RefineMotion ? (pelclip ? MSuper(pref,     pel=pel,               chroma=chroma, hpad=hpad, vpad=vpad,levels=1, pelclip=pclip            , planar=planar) : \
-                                                     MSuper(pref,     pel=pel,sharp=subpixel,chroma=chroma, hpad=hpad, vpad=vpad,levels=1                           , planar=planar)): nop()
+super_search =                             pelclip ? MSuper(pref,     pel=pel,               chroma=chroma, hpad=hpad, vpad=vpad,          pelclip=pclip,  rfilter=srfilter, planar=planar) : \
+                                                     MSuper(pref,     pel=pel,sharp=subpixel,chroma=chroma, hpad=hpad, vpad=vpad                        ,  rfilter=srfilter, planar=planar)
+super_render = !GlobalR ?                 (pelclip ? MSuper(input8,   pel=pel,               chroma=plane0, hpad=hpad, vpad=vpad,levels=1, pelclip=pclip2                  , planar=planar) : \
+                                                     MSuper(input8,   pel=pel,sharp=subpixel,chroma=plane0, hpad=hpad, vpad=vpad,levels=1                                  , planar=planar)): super_search
+Recalculate  = !GlobalR && RefineMotion ? (pelclip ? MSuper(pref,     pel=pel,               chroma=chroma, hpad=hpad, vpad=vpad,levels=1, pelclip=pclip                   , planar=planar) : \
+                                                     MSuper(pref,     pel=pel,sharp=subpixel,chroma=chroma, hpad=hpad, vpad=vpad,levels=1                                  , planar=planar)): nop()
 !if3  ? eval("
 t2 = interlaced ? tr > 1 ? tr*2 : tr : tr
 bv12 =   interlaced && (tr > 5)                  ? (!GlobalR  ? super_search.MAnalyse(isb = true, delta =12,  overlap=    overlap,blksize=    blksize,   search=search,chroma=chroma, truemotion=truemotion, divide=divide, dct=dct,searchparam=searchparam,pelsearch=pelsearch, trymany=trymany) : bv12) : nop()
@@ -609,3 +610,21 @@ bug_wa    = defined(bug_wa) ? bug_wa : interlaced && planar && chroma && !avs26 
                                                  inputd.SH_KNLMeansCL(lsb=lsb, lsb_in=lsb_in, device_type=device_type, device_id=device_id, chroma=chroma, h=h, d=d, a=a, knlm_params=knlm_params) : \
                                          Assert(false,    "prefilter must be between -1~4: "+string(prefilter))
 }
+
+
+# Didée MCDegrain, mod
+
+function MCDegrainMod(clip c, int "frames", clip "srch", bool "soft", int "thSAD", bool "TV_range")
+{
+frames = default(frames, 2)
+srch   = default(srch,c)
+soft   = default(soft,false)
+thSAD  = default(thSAD,400)
+bs = (c.width>960) ? 16 : 8
+rg = (c.width<640) ? 11 : (c.width<1200) ? 11 : 20
+rg = soft ? rg : 0
+input = soft ? c.mt_adddiff(mt_makediff(c,c.removegrain(rg)),U=2,V=2)
+ \           : c
+(frames<=0) ? c :\
+                     input.SMDegrain(frames,thsad,pel=2,prefilter=srch,mfilter=c.removegrain(rg),TV_range=TV_range,subpixel=1,srfilter=2,Truemotion=true,vpad=8,hpad=8)
+return(last) }
