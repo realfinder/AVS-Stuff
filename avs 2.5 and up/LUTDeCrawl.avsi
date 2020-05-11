@@ -2,7 +2,7 @@
 #                                                      #
 # LUTDeCrawl, a dot crawl removal script by Scintilla  #
 # Created 10/3/08				       #
-# Last updated 4/22/20                                 #
+# Last updated 5/12/20                                 #
 #                                                      #
 ########################################################
 #
@@ -84,9 +84,8 @@ md=string(maxdiff)
 usemaxdiff=default(usemaxdiff,true)
 org=siscfloat ? expr(input, "x", "x 0.5 +", "x 0.5 +") : input
 
-fullchr = sisphbd ? org.is444() : org.isyv24()
-chr420  = sisphbd ? org.is420() : org.isyv12()
-nochr   = sisphbd ?   org.isy() : org.isy8()
+fullchr = sisphbd ? org.is444() : sisavs26 ? org.isyv24() : false
+nochr   = sisphbd ?   org.isy() : sisavs26 ? org.isy8() : false
 
 Assert(!nochr, "LUTDeCrawl: not work with Greyscale video")
 
@@ -116,7 +115,7 @@ diffs_y = mt_logic(diffplus_y, diffminus_y, "and")
 ymask=average_y.mt_Binarize(threshold=0,upper=false)
 ymask=usemaxdiff ? mt_logic(ymask, diffs_y, "and") : ymask
 cmask=mt_logic(average_u.mt_Binarize(upper=false),average_v.mt_Binarize(upper=false),"and")
-cmask=sisavs26 ? fullchr ? cmask : IsYV411(org) ? cmask.BilinearResize(input.width(), input.height(), src_left=1.5) : cmask.BilinearResize(input.width(), input.height(), src_left=0.5) : cmask.PointResize(cmask.Width()*2, cmask.Height()*2)
+cmask=sisavs26 ? fullchr ? cmask : IsYV411(org) ? cmask.BilinearResize(input.width(), input.height(), src_left=0.375) : cmask.BilinearResize(input.width(), input.height(), src_left=0.25) : cmask.PointResize(cmask.Width()*2, cmask.Height()*2)
 
 themask=mt_logic(ymask,cmask,"and")
 

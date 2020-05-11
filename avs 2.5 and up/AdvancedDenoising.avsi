@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.881
+# Advanced Denoising and anime bob v1.884
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -272,7 +272,7 @@ sisyuy2 ? converttoyuy2() : last
 #########
 # Comb wrapper function
 
-function sComb(clip clip, bool "DeCrawing", bool "DeRainbowing", int "LRepair", int "CRepair", bool "ntsccombmask") {
+function sComb(clip clip, bool "DeCrawing", bool "DeRainbowing", int "LRepair", int "CRepair", bool "ntsccombmask", clip "exmask") {
 DeCrawing = default (DeCrawing, true)
 ntsccombmask = default (ntsccombmask, false)
 DeRainbowing = default (DeRainbowing, true)
@@ -283,26 +283,67 @@ avs26   = !(VersionNumber() < 2.6)
 clip
 sis422  = avs26 ? isyv16() : false
 Assert((isyv12 || sis422), "sComb: only yv12 and yv16 is supported")
-prefil = ntsccombmask ? (VersionNumber() < 2.60) && isyv12(input) ? last.HQdn3d().FFT3DFilter().tweak(sat=1.5) : last.HQdn3d_2().FFT3DFilter().tweak(sat=1.5) : nop()
-iqchr  = ntsccombmask ? prefil.SwapUV().Tweak(hue=-33) : nop()
-I = ntsccombmask ? sisphbd ? iqchr.ExtractU().sypixsub(2,2) : avs26 ? iqchr.utoy8().sypixsub(2,2) : iqchr.utoy().sypixsub(2,2) : nop()
-Q = ntsccombmask ? sisphbd ? iqchr.ExtractV().sypixsub(2,2) : avs26 ? iqchr.Vtoy8().sypixsub(2,2) : iqchr.Vtoy().sypixsub(2,2) : nop()
-m = ntsccombmask ? ytouv(i,q,prefil).sypixsub(2).mt_edge("min/max", 0, 15, 0, 10,u=3,v=3).mt_expand(128,128,y=2,u=3,v=3).mt_expand(128,mode="horizontal",u=2,v=2).mt_inpand(128,mode="horizontal",u=2,v=2) : nop()
-mU = ntsccombmask ? sisphbd ? m.ExtractU() : avs26 ? m.utoy8() : m.utoy() : nop()
-mV = ntsccombmask ? sisphbd ? m.ExtractV() : avs26 ? m.vtoy8() : m.vtoy() : nop()
-y=ntsccombmask ? Overlay(mu,mv,mode="add").Spline36Resize(width(),Height(),0.5) : nop()
-m = ntsccombmask ? sisphbd ? m.ConvertToY() : avs26 ? m.ConvertToY8() : m : nop()
-uv=ntsccombmask ? m.Spline36Resize(mu.width(),mu.Height(),-0.5) : nop()
-m=ntsccombmask ? ytouv(uv,uv,y) : nop()
+isexmask = defined(exmask)
+prefil = !isexmask && ntsccombmask ? (VersionNumber() < 2.60) && isyv12(input) ? last.HQdn3d().FFT3DFilter().tweak(sat=1.5) : last.HQdn3d_2().FFT3DFilter().tweak(sat=1.5) : nop()
+iqchr  = !isexmask && ntsccombmask ? prefil.SwapUV().Tweak(hue=-33) : nop()
+I = !isexmask && ntsccombmask ? sisphbd ? iqchr.ExtractU().sypixsub(2,2) : avs26 ? iqchr.utoy8().sypixsub(2,2) : iqchr.utoy().sypixsub(2,2) : nop()
+Q = !isexmask && ntsccombmask ? sisphbd ? iqchr.ExtractV().sypixsub(2,2) : avs26 ? iqchr.Vtoy8().sypixsub(2,2) : iqchr.Vtoy().sypixsub(2,2) : nop()
+m = !isexmask && ntsccombmask ? ytouv(i,q,prefil).sypixsub(2).mt_edge("min/max", 0, 15, 0, 10,u=3,v=3).mt_expand(128,128,y=2,u=3,v=3).mt_expand(128,mode="horizontal",u=2,v=2).mt_inpand(128,mode="horizontal",u=2,v=2) : nop()
+mU = !isexmask && ntsccombmask ? sisphbd ? m.ExtractU() : avs26 ? m.utoy8() : m.utoy() : nop()
+mV = !isexmask && ntsccombmask ? sisphbd ? m.ExtractV() : avs26 ? m.vtoy8() : m.vtoy() : nop()
+y = !isexmask && ntsccombmask ? Overlay(mu,mv,mode="add").Spline36Resize(width(),Height(),0.5) : nop()
+m = !isexmask && ntsccombmask ? sisphbd ? m.ConvertToY() : avs26 ? m.ConvertToY8() : m : nop()
+uv=!isexmask && ntsccombmask ? m.Spline36Resize(mu.width(),mu.Height(),-0.5) : nop()
+m=!isexmask && ntsccombmask ? ytouv(uv,uv,y) : exmask
 
 DeRainbowing && ntsccombmask ? TComb(mode=1) : last
 SeparateFields()
 oriFiel=last
 DeCrawing ? DDComb(static=true,strong=true,checkmate=ntsccombmask) : last
-DeRainbowing ? ASTDRmc(edgemprefil=oriFiel,chroma=true, nomask=ntsccombmask) : last
-ntsccombmask ? mt_merge(oriFiel,last,m.SeparateFields(),u=3,v=3) : last
+DeRainbowing ? ASTDRmc(edgemprefil=oriFiel,chroma=true, nomask=isexmask || ntsccombmask) : last
+isexmask || ntsccombmask ? mt_merge(oriFiel,last,m.SeparateFields(),u=3,v=3) : last
 Weave()
 LRepair==0 && CRepair==0 ? last : last.Repair(clip,LRepair,CRepair)
+}
+
+
+# scombmask by RF
+# v1.14
+function scombmask(clip c, float "ythr", float "ythr2", float "cthr", bool "ntsc", bool "prefilter", bool "yexpand")
+{
+sisphbd = AvsPlusVersionNumber > 2294
+sisavs26   = !(VersionNumber() < 2.6)
+ythr=Default(ythr,2)
+ythr2=Default(ythr2,ythr*5)
+cthr=Default(cthr,10)
+prefil=Default(prefilter,true)
+yexpand=Default(yexpand,true)
+ymaskb=ythr!=0
+cmaskb=cthr!=0
+c
+
+Assert(IsPlanar() && !IsRGB(), "scombmask: Planar YUV input only")
+
+fullchr = sisphbd ? is444() : sisavs26 ? isyv24() : false
+chr420  = sisphbd ? is420() : isyv12()
+chr422  = sisphbd ? is422() : sisavs26 ? isyv16() : false
+nochr   = sisphbd ?   isy() : sisavs26 ? isy8() : false
+
+Assert(!nochr, "scombmask: not work with Greyscale video")
+
+ntsc = default (ntsc, !((framerate()==50 || framerate()==25) && Height()!=480))
+prefil ? MinBlur(uv=ymaskb ? 3 : 0,y=cmaskb ? 3 : 0) : last
+iqchr  = ymaskb && ntsc ? SwapUV().Tweak(hue=-33) : last
+Y = sisphbd ? ConvertToY() : sisavs26 ? ConvertToY8() : last
+I = sisphbd ? iqchr.ExtractU() : sisavs26 ? iqchr.utoy8() : iqchr.utoy()
+Q = sisphbd ? iqchr.ExtractV() : sisavs26 ? iqchr.vtoy8() : iqchr.vtoy()
+Chr = ymaskb ? sisavs26 ? mt_lutxy(I,Q, "x 0.999999084248 * y -0.001353330381 * -", use_expr=1) : mt_lutxy(I,Q, "x 0.999999084248 * y -0.001353330381 * -") : nop()
+ym = ymaskb ? Chr.sypixsub(2,2).mt_binarize(ythr) : nop()
+ym = ymaskb ? mt_logic(sisavs26 ? Chr.mt_lut("x range_half - abs 2 *", use_expr=2) : Chr.mt_lut("x 128 - abs 2 *"),ym,"min").mt_binarize(ythr2) : nop()
+ym = ymaskb ? ym.Spline36Resize(width(),Height(),chr422 || chr420 ? 0.25 : fullchr ? undefined : 0.375) : nop()
+Chrm = cmaskb ? Y.sypixsub(2).mt_binarize(cthr).Spline36Resize(I.width(),Q.Height(),chr422 || chr420 ? -0.5 : fullchr ? undefined : -1.5) : nop()
+ytouv(cmaskb ? Chrm : I,cmaskb ? Chrm : Q,ymaskb ? ym : Y)
+ymaskb && yexpand ? mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 2 : 1).mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 2 : 1) : last
 }
 
 
