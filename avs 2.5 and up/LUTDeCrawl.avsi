@@ -2,7 +2,7 @@
 #                                                      #
 # LUTDeCrawl, a dot crawl removal script by Scintilla  #
 # Created 10/3/08				       #
-# Last updated 5/02/20                                 #
+# Last updated 5/12/20                                 #
 #                                                      #
 ########################################################
 #
@@ -115,7 +115,7 @@ diffs_y = mt_logic(diffplus_y, diffminus_y, "and")
 ymask=average_y.mt_Binarize(threshold=0,upper=false)
 ymask=usemaxdiff ? mt_logic(ymask, diffs_y, "and") : ymask
 cmask=mt_logic(average_u.mt_Binarize(upper=false),average_v.mt_Binarize(upper=false),"and")
-cmask=sisavs26 ? fullchr ? cmask : IsYV411(org) ? cmask.BilinearResize(input.width(), input.height(), src_left=1.5) : cmask.BilinearResize(input.width(), input.height(), src_left=0.5) : cmask.PointResize(cmask.Width()*2, cmask.Height()*2)
+cmask=sisavs26 ? fullchr ? cmask : IsYV411(org) ? cmask.BilinearResize(input.width(), input.height(), src_left=0.375) : cmask.BilinearResize(input.width(), input.height(), src_left=0.25) : cmask.PointResize(cmask.Width()*2, cmask.Height()*2)
 
 themask=mt_logic(ymask,cmask,"and")
 
