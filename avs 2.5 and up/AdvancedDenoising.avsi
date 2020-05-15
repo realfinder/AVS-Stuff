@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.884
+# Advanced Denoising and anime bob v1.885
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -308,13 +308,15 @@ LRepair==0 && CRepair==0 ? last : last.Repair(clip,LRepair,CRepair)
 
 
 # scombmask by RF
-# v1.14
-function scombmask(clip c, float "ythr", float "ythr2", float "cthr", bool "ntsc", bool "prefilter", bool "yexpand")
+# v1.15
+function scombmask(clip c, float "ythr", float "ythr2", float "ythr3", float "ythr4", float "cthr", bool "ntsc", bool "prefilter", bool "yexpand")
 {
 sisphbd = AvsPlusVersionNumber > 2294
 sisavs26   = !(VersionNumber() < 2.6)
-ythr=Default(ythr,2)
-ythr2=Default(ythr2,ythr*5)
+ythr=Default(ythr,2) #first threshold for chroma Minimal changes between Pixels
+ythr2=Default(ythr2,ythr*4.5) #threshold for chroma changes from zero center vs ythr
+ythr3=Default(ythr3,ythr2*8) #threshold for chroma Maximal vs ythr2
+ythr4=Default(ythr4,ythr3*1.5) #threshold for luma Maximal vs ythr3
 cthr=Default(cthr,10)
 prefil=Default(prefilter,true)
 yexpand=Default(yexpand,true)
@@ -332,16 +334,20 @@ nochr   = sisphbd ?   isy() : sisavs26 ? isy8() : false
 Assert(!nochr, "scombmask: not work with Greyscale video")
 
 ntsc = default (ntsc, !((framerate()==50 || framerate()==25) && Height()!=480))
+prefil ? sminideen(2,cmaskb ? 10 : 0,ymaskb ? 10 : 0) : last
+prefil && ymaskb ? Tweak(sat=1.5) : last
 prefil ? MinBlur(uv=ymaskb ? 3 : 0,y=cmaskb ? 3 : 0) : last
 iqchr  = ymaskb && ntsc ? SwapUV().Tweak(hue=-33) : last
 Y = sisphbd ? ConvertToY() : sisavs26 ? ConvertToY8() : last
 I = sisphbd ? iqchr.ExtractU() : sisavs26 ? iqchr.utoy8() : iqchr.utoy()
 Q = sisphbd ? iqchr.ExtractV() : sisavs26 ? iqchr.vtoy8() : iqchr.vtoy()
 Chr = ymaskb ? sisavs26 ? mt_lutxy(I,Q, "x 0.999999084248 * y -0.001353330381 * -", use_expr=1) : mt_lutxy(I,Q, "x 0.999999084248 * y -0.001353330381 * -") : nop()
-ym = ymaskb ? Chr.sypixsub(2,2).mt_binarize(ythr) : nop()
-ym = ymaskb ? mt_logic(sisavs26 ? Chr.mt_lut("x range_half - abs 2 *", use_expr=2) : Chr.mt_lut("x 128 - abs 2 *"),ym,"min").mt_binarize(ythr2) : nop()
+ym = ymaskb ? prefil ? Chr.LSFmod(defaults="old").sypixsub(2,2).mt_binarize(sisavs26 ? ythr : Round(ythr)) : Chr.sypixsub(2,2).mt_binarize(sisavs26 ? ythr : Round(ythr)) : nop()
+chrd = sisavs26 ? Chr.mt_lut("x range_half - abs 2 *", use_expr=2) : Chr.mt_lut("x 128 - abs 2 *")
+ym = ymaskb ? mt_logic(mt_logic(chrd,ym,"min").mt_binarize(sisavs26 ? ythr2 : Round(ythr2)),chr,"min").mt_binarize(sisavs26 ? ythr3 : Round(ythr3)) : nop()
 ym = ymaskb ? ym.Spline36Resize(width(),Height(),chr422 || chr420 ? 0.25 : fullchr ? undefined : 0.375) : nop()
-Chrm = cmaskb ? Y.sypixsub(2).mt_binarize(cthr).Spline36Resize(I.width(),Q.Height(),chr422 || chr420 ? -0.5 : fullchr ? undefined : -1.5) : nop()
+ym = ymaskb ? mt_logic(ym,y,"min").mt_binarize(sisavs26 ? ythr4 : Round(ythr4)) : ym
+Chrm = cmaskb ? Y.sypixsub(2).mt_binarize(sisavs26 ? cthr : Round(cthr)).Spline36Resize(I.width(),Q.Height(),chr422 || chr420 ? -0.5 : fullchr ? undefined : -1.5) : nop()
 ytouv(cmaskb ? Chrm : I,cmaskb ? Chrm : Q,ymaskb ? ym : Y)
 ymaskb && yexpand ? mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 2 : 1).mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 2 : 1) : last
 }
