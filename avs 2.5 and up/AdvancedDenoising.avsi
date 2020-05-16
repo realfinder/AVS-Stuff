@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.885
+# Advanced Denoising and anime bob v1.886
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -308,18 +308,16 @@ LRepair==0 && CRepair==0 ? last : last.Repair(clip,LRepair,CRepair)
 
 
 # scombmask by RF
-# v1.15
+# v1.16
 function scombmask(clip c, float "ythr", float "ythr2", float "ythr3", float "ythr4", float "cthr", bool "ntsc", bool "prefilter", bool "yexpand")
 {
 sisphbd = AvsPlusVersionNumber > 2294
 sisavs26   = !(VersionNumber() < 2.6)
 ythr=Default(ythr,2) #first threshold for chroma Minimal changes between Pixels
-ythr2=Default(ythr2,ythr*4.5) #threshold for chroma changes from zero center vs ythr
-ythr3=Default(ythr3,ythr2*8) #threshold for chroma Maximal vs ythr2
-ythr4=Default(ythr4,ythr3*1.5) #threshold for luma Maximal vs ythr3
+ythr2=Default(ythr2,6) #threshold for chroma changes vs luma changes
 cthr=Default(cthr,10)
-prefil=Default(prefilter,true)
-yexpand=Default(yexpand,true)
+prefil=Default(prefilter,false)
+yexpand=Default(yexpand,false)
 ymaskb=ythr!=0
 cmaskb=cthr!=0
 c
@@ -338,17 +336,22 @@ prefil ? sminideen(2,cmaskb ? 10 : 0,ymaskb ? 10 : 0) : last
 prefil && ymaskb ? Tweak(sat=1.5) : last
 prefil ? MinBlur(uv=ymaskb ? 3 : 0,y=cmaskb ? 3 : 0) : last
 iqchr  = ymaskb && ntsc ? SwapUV().Tweak(hue=-33) : last
+
 Y = sisphbd ? ConvertToY() : sisavs26 ? ConvertToY8() : last
 I = sisphbd ? iqchr.ExtractU() : sisavs26 ? iqchr.utoy8() : iqchr.utoy()
 Q = sisphbd ? iqchr.ExtractV() : sisavs26 ? iqchr.vtoy8() : iqchr.vtoy()
+
+YD = prefil ? Y.LSFmod(defaults="old").Sharpen(1).sypixsub(2,left=false) : Y.sypixsub(2,left=false)
+Chrm=sisavs26 ? YD.mt_lut("x "+string(cthr)+" scalef > range_max x "+string(cthr/2)+" scalef < 0 range_max x "+string(cthr)+" scalef - range_max "+string(cthr/2)+" scalef "+string(cthr)+" scalef - / * -  ? ?", use_expr=2) : YD.mt_lut("x "+string(cthr)+" > 255 x "+string(cthr/2)+" < 0 255 x "+string(cthr)+" - 255 "+string(cythr/2)+" "+string(cthr)+" - / * -  ? ?")
+YFIQ =Chrm.BilinearResize(I.width(),Q.Height(),chr422 || chr420 ? -0.5 : fullchr ? undefined : -1.5)
+
 Chr = ymaskb ? sisavs26 ? mt_lutxy(I,Q, "x 0.999999084248 * y -0.001353330381 * -", use_expr=1) : mt_lutxy(I,Q, "x 0.999999084248 * y -0.001353330381 * -") : nop()
-ym = ymaskb ? prefil ? Chr.LSFmod(defaults="old").sypixsub(2,2).mt_binarize(sisavs26 ? ythr : Round(ythr)) : Chr.sypixsub(2,2).mt_binarize(sisavs26 ? ythr : Round(ythr)) : nop()
-chrd = sisavs26 ? Chr.mt_lut("x range_half - abs 2 *", use_expr=2) : Chr.mt_lut("x 128 - abs 2 *")
-ym = ymaskb ? mt_logic(mt_logic(chrd,ym,"min").mt_binarize(sisavs26 ? ythr2 : Round(ythr2)),chr,"min").mt_binarize(sisavs26 ? ythr3 : Round(ythr3)) : nop()
-ym = ymaskb ? ym.Spline36Resize(width(),Height(),chr422 || chr420 ? 0.25 : fullchr ? undefined : 0.375) : nop()
-ym = ymaskb ? mt_logic(ym,y,"min").mt_binarize(sisavs26 ? ythr4 : Round(ythr4)) : ym
-Chrm = cmaskb ? Y.sypixsub(2).mt_binarize(sisavs26 ? cthr : Round(cthr)).Spline36Resize(I.width(),Q.Height(),chr422 || chr420 ? -0.5 : fullchr ? undefined : -1.5) : nop()
-ytouv(cmaskb ? Chrm : I,cmaskb ? Chrm : Q,ymaskb ? ym : Y)
+chrd = ymaskb ? prefil ? Chr.LSFmod(defaults="old").Sharpen(1).sypixsub(2,2,left=false,top=ntsc) : Chr.sypixsub(2,2,left=false,top=ntsc) : nop()
+ym = sisavs26 ? chrd.mt_lut("x "+string(ythr)+" scalef > range_max x "+string(ythr/2)+" scalef < 0 range_max x "+string(ythr)+" scalef - range_max "+string(ythr/2)+" scalef "+string(ythr)+" scalef - / * -  ? ?", use_expr=2) : chrd.mt_lut("x "+string(ythr)+" > 255 x "+string(ythr/2)+" < 0 255 x "+string(ythr)+" - 255 "+string(ythr/2)+" "+string(ythr)+" - / * -  ? ?")
+chrfy = ymaskb ? ym.BilinearResize(width(),Height(),chr422 || chr420 ? 0.25 : fullchr ? undefined : 0.375) : nop()
+chrfy = ymaskb ? mt_logic(chrfy,sisavs26 ? YD.mt_lut("x "+string(ythr2)+" scalef > range_max x "+string(ythr2/2)+" scalef < 0 range_max x "+string(ythr2)+" scalef - range_max "+string(ythr2/2)+" scalef "+string(ythr2)+" scalef - / * -  ? ?", use_expr=2) : YD.mt_lut("x "+string(ythr2)+" > 255 x "+string(ythr2/2)+" < 0 255 x "+string(ythr2)+" - 255 "+string(ythr2/2)+" "+string(ythr2)+" - / * -  ? ?"),"min") : nop()
+chrfy = ymaskb ? mt_logic(chrfy,y,"min") : ym
+ytouv(cmaskb ? YFIQ : I,cmaskb ? YFIQ : Q,ymaskb ? chrfy : Y)
 ymaskb && yexpand ? mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 2 : 1).mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 2 : 1) : last
 }
 
@@ -383,36 +386,38 @@ filtering_wsb(src,filter,oneborder,linesm,clip4lines,mmy,mmLuma,mmuv,minflate)
 
 
 ##############
-# sypixsub 1.3, Subtracting one luma pixel with the neighboring pixel on the left or the top
-Function sypixsub(clip clip, int "left", int "top", bool "expr")
+# sypixsub 1.35, Subtracting one luma pixel with the neighboring pixel on the X or the Y
+Function sypixsub(clip clip, int "X", int "Y", bool "expr", bool "left", bool "top")
 {
-left=Default(left, 1) #set the "left" to 2 will make it 2 pass since the subtract mode in overlay ignore the negative result of subtracting, set it to -1 and will show the negative result only
-top=Default(top, 0) #same as "left" parameter
+X=Default(X, 1) #set the "X" to 2 will make it 2 pass since the subtract mode in overlay ignore the negative result of subtracting, set it to -1 and will show the negative result only
+Y=Default(Y, 0) #same as "X" parameter
 expr=Default(expr, true)
+top=Default(top, true)
+left=Default(left, true)
 sisphbd = AvsPlusVersionNumber > 2294
 expr=sisphbd ? expr : false
 
-Assert(!(left>2 || left<-1 || top>2 || top<-1), "sypixsub: left and top modes must be between -1 to 2")
-Assert(!(left==0 && top==0), "sypixsub: why you use sypixsub then?!!!!")
+Assert(!(X>2 || X<-1 || Y>2 || Y<-1), "sypixsub: X and Y modes must be between -1 to 2")
+Assert(!(X==0 && Y==0), "sypixsub: why you use sypixsub then?!!!!")
 
 sislumaonly = sisphbd ? clip.isy() : VersionNumber() < 2.6 ? true : clip.isy8()
 c= sislumaonly ? clip : sisphbd ? clip.converttoy() : clip.converttoy8()
-lexp = left==-1 ? "x[-1,0] x -" : left==0 ? "" : "x x[-1,0] -" + string(left>1 ? " abs" : "")
-texp = top==-1 ? " x[0,-1] x -" : top==0 ? "" : " x x[0,-1] -" + string(top>1 ? " abs" : "")
-expr ? c.Expr(lexp + texp + (top != 0 && left != 0 ? " +" : "")) : eval("""
+Xexp = X==-1 ? "x[" + string(left ? "-1" : "1") + ",0] x -" : X==0 ? "" : "x x[" + string(left ? "-1" : "1") + ",0] -" + string(X>1 ? " abs" : "")
+Yexp = Y==-1 ? " x[0," + string(top ? "-1" : "1") + "] x -" : Y==0 ? "" : " x x[0," + string(top ? "-1" : "1") + "] -" + string(Y>1 ? " abs" : "")
+expr ? c.Expr(Xexp + Yexp + (Y != 0 && X != 0 ? " +" : "")) : eval("""
 c
-left != 0 ? PointResize(Width(), Height(), src_left=-1) : last
-leftsub1 = left != 0 ? overlay(c,last,mode="Subtract") : last
-leftsub2 = left == -1 || left > 1 ? overlay(last,c,mode="Subtract") : nop()
-left > 1 ? overlay(leftsub1,leftsub2,mode="add") : left == -1 ? leftsub2 : leftsub1
+X != 0 ? PointResize(Width(), Height(), src_left=left ? -1 : 1) : last
+Xsub1 = X != 0 ? overlay(c,last,mode="Subtract") : last
+Xsub2 = X == -1 || X > 1 ? overlay(last,c,mode="Subtract") : nop()
+X > 1 ? overlay(Xsub1,Xsub2,mode="add") : X == -1 ? Xsub2 : Xsub1
 h=last
-top != 0 ? c : last
-top != 0 ? PointResize(Width(), Height(), src_top=-1) : last
-topsub1 = top != 0 ? overlay(c,last,mode="Subtract") : last
-topsub2 = top == -1 || top > 1 ? overlay(last,c,mode="Subtract") : nop()
-top > 1 ? overlay(topsub1,topsub2,mode="add") : top == -1 ? topsub2 : topsub1
+Y != 0 ? c : last
+Y != 0 ? PointResize(Width(), Height(), src_top=top ? -1 : 1) : last
+Ysub1 = Y != 0 ? overlay(c,last,mode="Subtract") : last
+Ysub2 = Y == -1 || Y > 1 ? overlay(last,c,mode="Subtract") : nop()
+Y > 1 ? overlay(Ysub1,Ysub2,mode="add") : Y == -1 ? Ysub1 : Ysub2
 
-top != 0 && left != 0 ? overlay(h,last,mode="add") : last
+Y != 0 && X != 0 ? overlay(h,last,mode="add") : last
 """)
 sislumaonly ? last : sisphbd ? CombinePlanes(last,clip,planes="YUV",sample_clip=clip) : YToUV(clip.UToY8(),clip.VToY8(),last)
 }
