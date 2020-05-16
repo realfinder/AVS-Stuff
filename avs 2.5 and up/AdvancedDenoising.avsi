@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.886
+# Advanced Denoising and anime bob v1.887
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -425,7 +425,7 @@ sislumaonly ? last : sisphbd ? CombinePlanes(last,clip,planes="YUV",sample_clip=
 
 # LUTComb by real.finder
 # LUTComb wrapper for LUTDeRainbow and LUTDeCrawl, it can used with MC
-# v1.1
+# v1.11
 
 function LUTComb(clip input, float "cthresh", float "ythresh", bool "y", bool "linkUV", bool "mask", float "dythresh", float "dcthresh", float "maxdiff", 
 	          \ float "scnchg", bool "usemaxdiff", bool "dmask", bool "DeCrawing", bool "DeRainbowing", bool "mc", int "thSAD", clip "prefil", bool "chroma") {
@@ -436,49 +436,28 @@ DeCrawing = default (DeCrawing, true)
 DeRainbowing = default (DeRainbowing, true)
 Assert(!(!DeCrawing && !DeRainbowing), "why do you use LUTComb then?!")
 mc = default (mc, true)
-chroma   = default(chroma, false)
+chroma   = default(chroma, true)
 
-exprefil  = defined(prefil)
-mcfi = mc && sisfield
+prefil    = mc ? defined(prefil) ? prefil : chroma ? sisfield ? input.MinBlur(3,y=2).Blur(1) : input.MinBlur(3,blurrep=true) : input.Blur(1.5) : nop()
+masuper = mc ? prefil.MSuper() : nop()
+mcsuper = mc ? input.MSuper(levels=1) : nop()
+ 
+b1ve = mc ? sisfield ? MAnalyse(masuper.selecteven(), delta=1, truemotion = true, isb = true, chroma=chroma) : MAnalyse(masuper, delta=1, truemotion = true, isb = true, chroma=chroma) : nop()
+b1vo = mc ? sisfield ? MAnalyse(masuper.selectodd(), delta=1, truemotion = true, isb = true, chroma=chroma) : nop() : nop()
+f1ve = mc ? sisfield ? MAnalyse(masuper.selecteven(), delta=1, truemotion = true, isb = false, chroma=chroma) : MAnalyse(masuper, delta=1, truemotion = true, isb = false, chroma=chroma) : nop()
+f1vo = mc ? sisfield ? MAnalyse(masuper.selectodd(), delta=1, truemotion = true, isb = false, chroma=chroma) : nop() : nop()
+ 
+b1ce = mc ? sisfield ? input.selecteven().MCompensate(mcsuper.selectodd(), b1ve, thSAD=thSAD) : input.MCompensate(mcsuper, b1ve, thSAD=thSAD) : nop()
+b1co = mc ? sisfield ? input.selectodd().MCompensate(mcsuper.selectodd(), b1vo, thSAD=thSAD) : nop() : nop()
+f1ce = mc ? sisfield ? input.selecteven().MCompensate(mcsuper.selecteven(), f1ve, thSAD=thSAD) : input.MCompensate(mcsuper, f1ve, thSAD=thSAD) : nop()
+f1co = mc ? sisfield ? input.selectodd().MCompensate(mcsuper.selecteven(), f1vo, thSAD=thSAD) : nop() : nop()
 
-prefil    = mc ? exprefil ? prefil : chroma ? sisfield ? input.MinBlur(3,y=2).Blur(1) : input.MinBlur(3,blurrep=true) : input.Blur(1.5) : nop()
-ieven     = mc ? sisfield ? input.selecteven().mc4LUTComb(prefil.selecteven(),thSAD,chroma) : nop() : nop()
-iodd      = mc ? sisfield ? input.selectodd().mc4LUTComb(prefil.selectodd(),thSAD,chroma) : nop() : nop()
-mcclip    = mc ? sisfield ? nop() : input.mc4LUTComb(prefil,thSAD,chroma) : input
+org_minus=mc ? sisfield ? interleave(b1ce,b1co) : b1ce : input.Trim(0,-1)+input.Trim(0,input.framecount-2)
+org_minus=!mc && sisfield ? org_minus.Trim(0,-1)+org_minus.Trim(0,input.framecount-2) : org_minus
+org_plus=mc ? sisfield ? interleave(f1ce,f1co) : f1ce : input.Trim(sisfield ? 2 : 1,0)+input.Trim(input.framecount-(sisfield ? 2 : 1),0)
 
-org_minus=mcfi ? nop() : mcclip.Trim(0,-1)+mcclip.Trim(0,mcclip.framecount-2)
-org_minus=mcfi ? nop() : sisfield ? org_minus.Trim(0,-1)+org_minus.Trim(0,mcclip.framecount-2) : org_minus
-org_plus=mcfi ? nop() : mcclip.Trim(sisfield ? 2 : 1,0)+mcclip.Trim(mcclip.framecount-(sisfield ? 2 : 1),0)
+input
 
-org_minuse=mcfi ? ieven.Trim(0,-1)+ieven.Trim(0,ieven.framecount-2) : nop()
-org_minuso=mcfi ? iodd.Trim(0,-1)+iodd.Trim(0,iodd.framecount-2) : nop()
-org_pluse=mcfi ? ieven.Trim(1,0)+ieven.Trim(ieven.framecount-1,0) : nop()
-org_pluso=mcfi ? iodd.Trim(1,0)+iodd.Trim(iodd.framecount-1,0) : nop()
-
-!mcfi ? input : input.selecteven()
-DeCrawing ? LUTDeCrawl(dythresh, dcthresh, maxdiff, scnchg, usemaxdiff, dmask, !mcfi ? org_minus : org_minuse, !mcfi ? org_plus : org_pluse, mc) : last
-DeRainbowing ? LUTDeRainbow(cthresh, ythresh, y, linkUV, mask, !mcfi ? org_minus : org_minuse, !mcfi ? org_plus : org_pluse, mc) : last
-lute = mcfi ? last : nop()
-
-!mcfi ? last : input.selectodd()
-mcfi && DeCrawing ? LUTDeCrawl(dythresh, dcthresh, maxdiff, scnchg, usemaxdiff, dmask, org_minuso, org_pluso, mc) : last
-mcfi && DeRainbowing ? LUTDeRainbow(cthresh, ythresh, y, linkUV, mask, org_minuso, org_pluso, mc) : last
-
-mcfi ? interleave(lute,last) : last
-
+DeCrawing ? LUTDeCrawl(dythresh, dcthresh, maxdiff, scnchg, usemaxdiff, dmask, org_minus, org_plus) : last
+DeRainbowing ? LUTDeRainbow(cthresh, ythresh, y, linkUV, mask, org_minus, org_plus) : last
 }
-
-
-  function mc4LUTComb(clip input, clip "prefil", int "thSAD", bool "chroma")
-  {
-masuper = prefil.MSuper()
-mcsuper = input.MSuper(levels=1)
- 
-b1v = MAnalyse(masuper, delta=1, truemotion = true, isb = true, chroma=chroma)
-f1v = MAnalyse(masuper, delta=1, truemotion = true, isb = false, chroma=chroma)
- 
-f1c = input.MCompensate(mcsuper, f1v)
-b1c = input.MCompensate(mcsuper, b1v)
-
-interleave(f1c,input,b1c)
-  }

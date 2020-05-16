@@ -1,20 +1,6 @@
 #.mp4 guy unbt
 # 2020.05.16 mod
 
-  function mc4unbt(clip input, clip "prefil", int "thSAD", bool "chroma")
-  {
-masuper = prefil.MSuper()
-mcsuper = input.MSuper(levels=1)
- 
-b1v = MAnalyse(masuper, delta=1, truemotion = true, isb = true, chroma=chroma)
-f1v = MAnalyse(masuper, delta=1, truemotion = true, isb = false, chroma=chroma)
- 
-f1c = input.MCompensate(mcsuper, f1v)
-b1c = input.MCompensate(mcsuper, b1v)
-
-interleave(f1c,input,b1c)
-  }
-
 function unbtmc(clip c, int "taps", int "strong", int "thSAD", clip "prefil", bool "chroma"){
 
 chroma   = default(chroma, false)
@@ -23,11 +9,14 @@ exprefil  = defined(prefil)
 
 prefil    = exprefil ? prefil : chroma ? c.MinBlur(3,blurrep=true) : c.Blur(1.5)
 
-mcclip    = c.mc4unbt(prefil,thSAD,chroma)
-
-t1=mcclip.Trim(0,-1)+mcclip.Trim(0,mcclip.framecount-2)
-
-t3=mcclip.Trim(1,0)+mcclip.Trim(mcclip.framecount-1,0)
+masuper = prefil.MSuper()
+mcsuper = c.MSuper(levels=1)
+ 
+b1v = MAnalyse(masuper, delta=1, truemotion = true, isb = true, chroma=chroma)
+f1v = MAnalyse(masuper, delta=1, truemotion = true, isb = false, chroma=chroma)
+ 
+t3 = c.MCompensate(mcsuper, f1v, thSAD=thSAD)
+t1 = c.MCompensate(mcsuper, b1v, thSAD=thSAD)
 
 c.unbt(taps, strong, t1, t3)
 
