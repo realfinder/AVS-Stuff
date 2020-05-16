@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.887
+# Advanced Denoising and anime bob v1.888
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -425,7 +425,7 @@ sislumaonly ? last : sisphbd ? CombinePlanes(last,clip,planes="YUV",sample_clip=
 
 # LUTComb by real.finder
 # LUTComb wrapper for LUTDeRainbow and LUTDeCrawl, it can used with MC
-# v1.11
+# v1.12
 
 function LUTComb(clip input, float "cthresh", float "ythresh", bool "y", bool "linkUV", bool "mask", float "dythresh", float "dcthresh", float "maxdiff", 
 	          \ float "scnchg", bool "usemaxdiff", bool "dmask", bool "DeCrawing", bool "DeRainbowing", bool "mc", int "thSAD", clip "prefil", bool "chroma") {
@@ -447,10 +447,10 @@ b1vo = mc ? sisfield ? MAnalyse(masuper.selectodd(), delta=1, truemotion = true,
 f1ve = mc ? sisfield ? MAnalyse(masuper.selecteven(), delta=1, truemotion = true, isb = false, chroma=chroma) : MAnalyse(masuper, delta=1, truemotion = true, isb = false, chroma=chroma) : nop()
 f1vo = mc ? sisfield ? MAnalyse(masuper.selectodd(), delta=1, truemotion = true, isb = false, chroma=chroma) : nop() : nop()
  
-b1ce = mc ? sisfield ? input.selecteven().MCompensate(mcsuper.selectodd(), b1ve, thSAD=thSAD) : input.MCompensate(mcsuper, b1ve, thSAD=thSAD) : nop()
+b1ce = mc ? sisfield ? input.selecteven().MCompensate(mcsuper.selecteven(), b1ve, thSAD=thSAD) : input.MCompensate(mcsuper, b1ve, thSAD=thSAD) : nop()
 b1co = mc ? sisfield ? input.selectodd().MCompensate(mcsuper.selectodd(), b1vo, thSAD=thSAD) : nop() : nop()
 f1ce = mc ? sisfield ? input.selecteven().MCompensate(mcsuper.selecteven(), f1ve, thSAD=thSAD) : input.MCompensate(mcsuper, f1ve, thSAD=thSAD) : nop()
-f1co = mc ? sisfield ? input.selectodd().MCompensate(mcsuper.selecteven(), f1vo, thSAD=thSAD) : nop() : nop()
+f1co = mc ? sisfield ? input.selectodd().MCompensate(mcsuper.selectodd(), f1vo, thSAD=thSAD) : nop() : nop()
 
 org_minus=mc ? sisfield ? interleave(b1ce,b1co) : b1ce : input.Trim(0,-1)+input.Trim(0,input.framecount-2)
 org_minus=!mc && sisfield ? org_minus.Trim(0,-1)+org_minus.Trim(0,input.framecount-2) : org_minus
