@@ -1,7 +1,7 @@
 #####################################################
 #                                                   #
 # LUTDeRainbow, a derainbowing script by Scintilla  #
-# Last updated 5/02/20                              #
+# Last updated 5/16/20                              #
 #                                                   #
 #####################################################
 #
@@ -66,7 +66,7 @@
 ###################
 
 
-function LUTDeRainbow(clip input, float "cthresh", float "ythresh", bool "y", bool "linkUV", bool "mask", clip "org_minus", clip "org_plus", bool "exmc") {
+function LUTDeRainbow(clip input, float "cthresh", float "ythresh", bool "y", bool "linkUV", bool "mask", clip "org_minus", clip "org_plus") {
 
 Assert(input.IsPlanar() && !IsRGB(input), "LUTDeRainbow: Planar YUV input only")
 
@@ -82,9 +82,11 @@ cthresh=default(cthresh,10)
 ythresh=default(ythresh,10)
 cthr=string(cthresh)
 ythr=string(ythresh)
-exmc=default(exmc,false)
 #repmode=default(repmode,11)
 org=input #.SeparateFields()
+linkUV=default(linkUV,true)
+mask=default(mask,false)
+y=default(y,true)
 
 fullchr = sisphbd ? org.is444() : sisavs26 ? org.isyv24() : false
 nochr   = sisphbd ?   org.isy() : sisavs26 ? org.isy8() : false
@@ -113,21 +115,21 @@ average_y=sisavs26 ? mt_lutxy(org_minus_y,org_plus_y,"x y - abs "+ythr+" scalef 
 average_y=!sisavs26 ? average_y : fullchr ? average_y : IsYV411(org) ? average_y.BilinearResize(org_minus_u.width(), org_minus_v.height(), src_left=-1.5) : average_y.BilinearResize(org_minus_u.width(), org_minus_v.height(), src_left=-0.5)
 
 umask=average_u.mt_Binarize(threshold=20,upper=false)
-umask=(default(y,true)?mt_Logic(umask,average_y,"and"):umask)
+umask=(y?mt_Logic(umask,average_y,"and"):umask)
 vmask=average_v.mt_Binarize(threshold=20,upper=false)
-vmask=(default(y,true)?mt_Logic(vmask,average_y,"and"):vmask)
+vmask=(y?mt_Logic(vmask,average_y,"and"):vmask)
 
-themask=mt_Logic(average_u.mt_Binarize(threshold=20,upper=false),average_v.mt_Binarize(threshold=20,upper=false),"and")
-themask=(default(y,true)?mt_Logic(themask,average_y,"and"):themask)
+themask=linkUV || mask ? mt_Logic(average_u.mt_Binarize(threshold=20,upper=false),average_v.mt_Binarize(threshold=20,upper=false),"and") : nop()
+themask=linkUV || mask ? (y?mt_Logic(themask,average_y,"and"):themask) : nop()
 
-fixed_u=sisavs26 ? mt_lutxy(exmc ? average_u.selectevery(3, 1) : average_u,org_u,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(exmc ? average_u.selectevery(3, 1) : average_u,org_u,"x y + 2 /",y=3,u=2,v=2)
-fixed_v=sisavs26 ? mt_lutxy(exmc ? average_v.selectevery(3, 1) : average_v,org_v,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(exmc ? average_v.selectevery(3, 1) : average_v,org_v,"x y + 2 /",y=3,u=2,v=2)
+fixed_u=sisavs26 ? mt_lutxy(average_u,org_u,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(average_u,org_u,"x y + 2 /",y=3,u=2,v=2)
+fixed_v=sisavs26 ? mt_lutxy(average_v,org_v,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(average_v,org_v,"x y + 2 /",y=3,u=2,v=2)
 
-output_u=mt_Merge(org_u,fixed_u,exmc ? selectevery(default(linkUV,true)?themask:umask,3, 1) : default(linkUV,true)?themask:umask)#.Repair(org_u,repmode)
-output_v=mt_Merge(org_v,fixed_v,exmc ? selectevery(default(linkUV,true)?themask:vmask,3, 1) : default(linkUV,true)?themask:vmask)#.Repair(org_v,repmode)
+output_u=mt_Merge(org_u,fixed_u,linkUV?themask:umask)#.Repair(org_u,repmode)
+output_v=mt_Merge(org_v,fixed_v,linkUV?themask:vmask)#.Repair(org_v,repmode)
 
 output=YToUV(output_u,output_v,org)
 
-return (default(mask,false)?themask.PointResize(org.width,org.height):siscfloat?expr(output,"x","x 0.5 -","x 0.5 -"):output)
+return (mask?themask.PointResize(org.width,org.height):siscfloat?expr(output,"x","x 0.5 -","x 0.5 -"):output)
 
 }

@@ -2,7 +2,7 @@
 #                                                      #
 # LUTDeCrawl, a dot crawl removal script by Scintilla  #
 # Created 10/3/08				       #
-# Last updated 5/12/20                                 #
+# Last updated 5/16/20                                 #
 #                                                      #
 ########################################################
 #
@@ -60,7 +60,7 @@
 ###################
 
 function LUTDeCrawl(clip input, float "ythresh", float "cthresh", float "maxdiff", 
-	          \ float "scnchg", bool "usemaxdiff", bool "mask", clip "org_minus", clip "org_plus", bool "exmc") {
+	          \ float "scnchg", bool "usemaxdiff", bool "mask", clip "org_minus", clip "org_plus") {
 
 Assert(input.IsPlanar() && !IsRGB(input), "LUTDeCrawl: Planar YUV input only")
 
@@ -75,7 +75,6 @@ ythresh=default(ythresh,10)
 cthr=string(cthresh)
 ythr=string(ythresh)
 scnchg=default(scnchg,25)
-exmc=default(exmc,false)
 scb = sisphbd ? BitsPerComponent(input) > 8 ? BitsPerComponent(input) == 10 ? 4 : BitsPerComponent(input) == 12 ? 8 : BitsPerComponent(input) == 14 ? 64 : nop() : nop() : nop()
 scnchg = sisphbd ? siscfloat ? scnchg/255.0 : BitsPerComponent(input) > 8 ? BitsPerComponent(input) < 16 ? scnchg*scb : scnchg*256 : scnchg : scnchg
 sc=string(scnchg)
@@ -108,8 +107,8 @@ average_u=sisavs26 ? mt_lutxy(org_minus_u,org_plus_u,"x y - abs "+cthr+" scalef 
 average_v=sisavs26 ? mt_lutxy(org_minus_v,org_plus_v,"x y - abs "+cthr+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_minus_v,org_plus_v,"x y - abs "+cthr+" < 255 0 ?")
 average_y=sisavs26 ? mt_lutxy(org_minus_y,org_plus_y,"x y - abs "+ythr+" scalef < x y + 2 / 0 ?", use_expr=1) : mt_lutxy(org_minus_y,org_plus_y,"x y - abs "+ythr+" < x y + 2 / 0 ?")
 
-diffplus_y =  sisavs26 ? mt_lutxy(exmc ? org_plus_y.selectevery(3, 1) : org_plus_y,  org_y, "x y - abs "+md+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(exmc ? org_plus_y.selectevery(3, 1) : org_plus_y,  org, "x y - abs "+md+" < 255 0 ?")
-diffminus_y = sisavs26 ? mt_lutxy(exmc ? org_minus_y.selectevery(3, 1) : org_minus_y, org_y, "x y - abs "+md+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(exmc ? org_minus_y.selectevery(3, 1) : org_minus_y, org, "x y - abs "+md+" < 255 0 ?")
+diffplus_y =  sisavs26 ? mt_lutxy(org_plus_y,  org_y, "x y - abs "+md+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_plus_y,  org, "x y - abs "+md+" < 255 0 ?")
+diffminus_y = sisavs26 ? mt_lutxy(org_minus_y, org_y, "x y - abs "+md+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_minus_y, org, "x y - abs "+md+" < 255 0 ?")
 diffs_y = mt_logic(diffplus_y, diffminus_y, "and")
 
 ymask=average_y.mt_Binarize(threshold=0,upper=false)
@@ -119,10 +118,10 @@ cmask=sisavs26 ? fullchr ? cmask : IsYV411(org) ? cmask.BilinearResize(input.wid
 
 themask=mt_logic(ymask,cmask,"and")
 
-fixed_y=sisavs26 ? mt_lutxy(exmc ? average_y.selectevery(3, 1) : average_y,org_y,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(exmc ? average_y.selectevery(3, 1) : average_y,org_y,"x y + 2 /",y=3,u=2,v=2)
+fixed_y=sisavs26 ? mt_lutxy(average_y,org_y,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(average_y,org_y,"x y + 2 /",y=3,u=2,v=2)
 
-output=mt_Merge(org_y,fixed_y,exmc ? themask.selectevery(3, 1) : themask)
-output=MergeChroma(sisavs26 ? YToUV(exmc ? average_u.selectevery(3, 1) : average_u,exmc ? average_v.selectevery(3, 1) : average_v,output) : output,input)
+output=mt_Merge(org_y,fixed_y,themask)
+output=MergeChroma(sisavs26 ? YToUV(average_u,average_v,output) : output,input)
 output=ConditionalFilter(input, input, output, "YDifferenceFromPrevious()", ">", sc)
 output=ConditionalFilter(input, input, output, "YDifferenceToNext()", ">", sc)
 

@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.121
+# V1.122
 
 
 #################################################
@@ -256,7 +256,7 @@ return pass > 0 ? eval("spasses(i." + filter + ", pass-1, filter)") : i
 
 Function sminideen(clip input, int "radius", int "thrY", int "thrUV", int "Y", int "U", int "V")
 {
-try { input.minideen(radius, thrY, thrUV, Y, U, V) } catch(error_msg) { input.deen("a2d", radius, thrY, thrUV)  }
+try { input.minideen(radius=radius, thrY=thrY, thrUV=thrUV, Y=Y, U=U, V=V) } catch(error_msg) { input.deen("a2d", radius, thrY, thrUV)  }
 }
 
 
