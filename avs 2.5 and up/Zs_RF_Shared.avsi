@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.122
+# V1.123
 
 
 #################################################
@@ -518,7 +518,7 @@ blurrep= default(blurrep,false)
 
 blurstr= mode == "Median_Both" ? "medianblur(r*medfy,r*medf,r*medf)" : mode == "average_Both" ? "aBlur(r, abtype, chroma=uv)" : mode == "average_horizontal" ? "aBlur(r, abtype, blurv="+String(r==1 ? 0 : 1)+", chroma=uv)" : mode == "average_vertical" ? "aBlur("+String(r==1 ? 0 : 1)+", abtype, blurv=r, chroma=uv)" : mode
 
-RG11D = (r==0) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.sbr(planar=planar,y=y).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.sbr(planar=planar,y=y),y=y2,U=u2,V=v2)
+RG11D = (r==0) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.sbr(planar=planar,y=y2,U=u2,V=v2).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.sbr(planar=planar,y=y2,U=u2,V=v2),y=y2,U=u2,V=v2)
  \    : (r==1) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.removegrain(rg11y,rg11,planar=planar).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.removegrain(rg11y,rg11,planar=planar),y=y2,U=u2,V=v2)
  \    : (r==2) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.removegrain(rg11y,rg11,planar=planar).removegrain(rg20y,rg20,planar=planar).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.removegrain(rg11y,rg11,planar=planar).removegrain(rg20y,rg20,planar=planar),y=y2,U=u2,V=v2)
  \    :          yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.removegrain(rg11y,rg11,planar=planar).removegrain(rg20y,rg20,planar=planar).removegrain(rg20y,rg20,planar=planar).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.removegrain(rg11y,rg11,planar=planar).removegrain(rg20y,rg20,planar=planar).removegrain(rg20y,rg20,planar=planar),y=y2,U=u2,V=v2)
@@ -537,21 +537,37 @@ blurrep ? Repair(clp.removegrain(y!=3 ? 0 : 17,u==3 ? 0 : -1,v==3 ? 0 : -1,plana
  # helper function: make a highpass on a blur's difference (well, kind of that)
  # Highpass of spatial r=1 Gaussian (like blur(1.0)) (Modified for Planar input)
 
-function sbr(clip c, bool "planar", int "y") {
+function sbr(clip c, bool "planar", int "y", int "r", int "U", int "V") {
 
 planar = default(planar,false)
 avs26 = VersionNumber() < 2.60 ? false : true
 yuy26 = avs26 && Isyuy2(c) && planar
 Y      = Default(Y, 3)
+r      = Default(r,    1)
+U      = Default(U,    3)
+V      = Default(V,    3)
+chroma = U==3 || V==3
+nochr  = U==1 && V==1
+Yt     = Y == 3
+Ut     = U == 3
+Vt     = V == 3
+Y31    = Yt ? 3 : 1
+U31    = Ut ? 3 : 1
+V31    = Vt ? 3 : 1
+Y11    = (Y==3) ? 11 : -1
+Y20    = (Y==3) ? 20 : -1
+U11    = (U==3) ? 11 : -1
+U20    = (U==3) ? 20 : -1
+V11    = (V==3) ? 11 : -1
+V20    = (V==3) ? 20 : -1
 
-Y!=3 ? eval("""
-rg11   = c.removegrain(11,-1,planar=planar)
-rg11D  = yuy26 ? mt_makediff(c.Planar2Interleaved(true).ConvertToYV16(),rg11.Planar2Interleaved(true).ConvertToYV16()).ConvertToYUY2().Interleaved2planar(true) : mt_makediff(c,rg11)
-rg11DD = yuy26 ? mt_makediff(rg11D.Planar2Interleaved(true).ConvertToYV16(),rg11D.removegrain(11,-1,planar=planar).Planar2Interleaved(true).ConvertToYV16()).mt_lutxy(rg11D.Planar2Interleaved(true).ConvertToYV16(),"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?").ConvertToYUY2().Interleaved2planar(true)
-     \ : avs26 ? mt_makediff(rg11D,rg11D.removegrain(11,-1,planar=planar)).mt_lutxy(rg11D,"x range_half - y range_half - * 0 < range_half x range_half - abs y range_half - abs < x y ? ?",use_expr=1)
-     \         : mt_makediff(rg11D,rg11D.removegrain(11,-1,planar=planar)).mt_lutxy(rg11D,"x 128 - y 128 - * 0 < 128 x 128 - abs y 128 - abs < x y ? ?")
-yuy26 ? c.Planar2Interleaved().ConvertToYV16().mt_makediff(rg11DD.Planar2Interleaved().ConvertToYV16(),U=2,V=2).ConvertToYUY2().Interleaved2planar() : c.mt_makediff(rg11DD,U=2,V=2) 
-""") : c
+rg11   = (r<=1) ? c.removegrain(Y11, U11, V11,planar=planar) : (r==2) ? c.removegrain(Y11, U11, V11,planar=planar).removegrain(Y20, U20, V20,planar=planar) : c.removegrain(Y11, U11, V11,planar=planar).removegrain(Y20, U20, V20,planar=planar).removegrain(Y20, U20, V20,planar=planar)
+rg11D  = yuy26 ? mt_makediff(c.Planar2Interleaved(!chroma).ConvertToYV16(),rg11.Planar2Interleaved(!chroma).ConvertToYV16(), Y=Y31, U=U31, V=V31).ConvertToYUY2().Interleaved2planar(!chroma) : mt_makediff(c,rg11, Y=Y31, U=U31, V=V31)
+RG11DS = (r<=1) ? rg11D.removegrain(Y11, U11, V11,planar=planar) : (r==2) ? rg11D.removegrain(Y11, U11, V11,planar=planar).removegrain(Y20, U20, V20,planar=planar) : rg11D.removegrain(Y11, U11, V11,planar=planar).removegrain(Y20, U20, V20,planar=planar).removegrain(Y20, U20, V20,planar=planar)
+rg11DD = yuy26 ? mt_lutxy(RG11D.Planar2Interleaved(!chroma).ConvertToYV16(),RG11DS.Planar2Interleaved(!chroma).ConvertToYV16(),"x y - x 128 - * 0 < 128 x y - abs x 128 - abs < x y - 128 + x ? ?", Y=Y31, U=U31, V=V31).ConvertToYUY2().Interleaved2planar(!chroma)
+     \ : avs26 ? mt_lutxy(RG11D, RG11DS, "x y - x range_half - * 0 < range_half x y - abs x range_half - abs < x y - range_half + x ? ?", Y=Y31, U=U31, V=V31,use_expr=1)
+     \         : mt_lutxy(RG11D, RG11DS, "x y - x 128 - * 0 < 128 x y - abs x 128 - abs < x y - 128 + x ? ?", Y=Y31, U=U31, V=V31)
+yuy26 ? c.Planar2Interleaved(nochr).ConvertToYV16().mt_makediff(rg11DD.Planar2Interleaved(nochr).ConvertToYV16(), Y=Y, U=U, V=V).ConvertToYUY2().Interleaved2planar(nochr) : c.mt_makediff(rg11DD, Y=Y, U=U, V=V) 
 }
  
  

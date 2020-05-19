@@ -1,5 +1,5 @@
 #################################################################################################
-###### HQDering mod v1.8         ######      by mawen1250      ######      2020.04.18      ######
+###### HQDering mod v1.8         ######      by mawen1250      ######      2020.05.19      ######
 #################################################################################################
 ###### Requirements: masktools v2.0a48, dither v1.25.1, dfttest v1.9.4,                    ######
 ######               RgTools v0.92.1, MedianBlur2 v0.94, SmoothAdjust v3.00                ######
@@ -34,7 +34,7 @@ sischbd = sisphbd ? input.BitsPerComponent() > 8 : false
     lsb_in   = Default(lsb_in, False   )    # input  clip is 16-bit stacked or not
     lsb      = Default(lsb,    False   )    # smooth clip is 16-bit stacked or not, processing precision is 16-bit or not
     lsb_out  = Default(lsb_out,lsb     )    # output clip is 16-bit stacked or not
-	Assert(!((lsb || lsb_in) && sischbd), """HQDeringmod: you can't use lsb hacks with HBD input""")
+	Assert(!((lsb || lsb_in || lsb_out) && sischbd), """HQDeringmod: you can't use lsb hacks with HBD input""")
     tv_range = Default(tv_range,True   )    # input  clip is TV-range or PC-range
     dither   = tv_range ? Default(dither, 6) : Default(dither, 50)    # dither mode for 16-bit to 8-bit conversion
     show     = Default(show,   False   )    # whether to output mask clip instead of filtered clip
