@@ -1,13 +1,13 @@
 #################################################################################################
 ###### GrainStabilizeMC v1.0     ######      by mawen1250      ######      2014.03.22      ######
-######                                       2020.05.18 mod                                ######
+######                                    2020.05.20 HBD mod                               ######
 #################################################################################################
 ###### Requirements: masktools v2.0a48, mvtools v2.6.0.5, dither v1.25.1,                  ######
 ######               RgTools v0.92.1, MedianBlur2 v0.94, SmoothAdjust v3.00                ######
 #################################################################################################
 
 
-Function GSMC(clip input, clip "p", clip "Lmaskl", string "Preset", int "nrmode", int "radius", int "adapt", int "rep",
+Function GSMC(clip input, clip "p", clip "Lmaskl", string "Preset", int "nrmode", int "radius", float "adapt", int "rep",
 \             int "Y", int "U", int "V", bool "lsb_in", bool "lsb", bool "lsb_out", bool "tv_range", int "dither",
 \             bool "chromamv", int "blksize", int "overlap", int "thSAD", int "thSADC", int "thSCD1", int "thSCD2", int "limit", int "limitc",
 \             bool "truemotion", bool "MVglobal", int "pel", int "pelsearch", int "search", int "searchparam", int "MVsharp", int "DCT")
@@ -125,6 +125,8 @@ sischbd = sisphbd ? input.BitsPerComponent() > 8 : false
     # Parameters for post-processing
     
     adapt    = Default(adapt,  -1      )
+    fadapt   = adapt
+    adapt    = int(adapt)
     # Threshold for luma-adaptative mask
     # -1: off,  0: source,  255: invert.
     # or define your own luma mask clip "Lmaskl".
@@ -207,13 +209,13 @@ sischbd = sisphbd ? input.BitsPerComponent() > 8 : false
     \        : adapt == -1     ? NOP()
     \        : adapt == 0      ? input8.RemoveGrain(19, -1)
     \        : adapt == 255    ? input8.mt_invert(U=1, V=1).RemoveGrain(19, -1)
-    \        :                   sisavs26 ? input8.mt_lut("x "+string(adapt)+" scalef - abs range_max * "+string(adapt)+" scalef range_half - abs range_half + /", clamp_float=true, use_expr=2, U=1, V=1).RemoveGrain(19, -1) : input8.mt_lut("x "+string(adapt)+" - abs 255 * "+string(adapt)+" 128 - abs 128 + /", U=1, V=1).RemoveGrain(19, -1)
-    Lmask    = adapt == -1     ? NOP() : !sischbd && (Ut || Vt)  ? Lmaskl.GSMC_YtoYUV() : Lmaskl
+    \        :                   sisavs26 ? input8.mt_lut("x "+string(fadapt)+" scalef - abs range_max * "+string(fadapt)+" scalef range_half - abs range_half + /", clamp_float=true, use_expr=2, U=1, V=1).RemoveGrain(19, -1) : input8.mt_lut("x "+string(adapt)+" - abs 255 * "+string(adapt)+" 128 - abs 128 + /", U=1, V=1).RemoveGrain(19, -1)
+    Lmask    = adapt == -1     ? NOP() : (!sisvs26 || lsb) && (Ut || Vt)  ? Lmaskl.GSMC_YtoYUV() : Lmaskl
     
     stable8  = !lsb ? mt_adddiff(pre_nr8, dif_sb, Y=Y31, U=U31, V=V31) : NOP()
     stable8  = !lsb ? rep   ==  0 ? stable8  : stable8.Repair(input8, Yt?rep:-1, Ut?rep:-1, Vt?rep:-1) : NOP()
     mL8      = !lsb ? adapt == -1 ? mt_lutxy(input8, stable8, Y=Y421, U=U421, V=V421)
-    \                             : mt_merge(input8, stable8, Lmask, luma=False, Y=Y, U=U, V=V) : NOP()
+    \                             : mt_merge(input8, stable8, Lmask, luma=sisavs26 && (Ut || Vt), Y=Y, U=U, V=V) : NOP()
     
     stable16 =  lsb ? Dither_add16(pre_nr16, dif_sb, Y=Y31, U=U31, V=V31, dif=True) : NOP()
     stable16 =  lsb ? rep   ==  0 ? stable16 : stable16.Dither_repair16(input16, Yt?rep:-1, Ut?rep:-1, Vt?rep:-1) : NOP()
