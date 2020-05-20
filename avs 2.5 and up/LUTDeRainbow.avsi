@@ -1,7 +1,7 @@
 #####################################################
 #                                                   #
 # LUTDeRainbow, a derainbowing script by Scintilla  #
-# Last updated 5/16/20                              #
+# Last updated 5/20/20                              #
 #                                                   #
 #####################################################
 #
@@ -111,8 +111,8 @@ org_plus_v=sisphbd ? ExtractV(org_plus) : sisavs26 ? VToY8(org_plus) : VToY(org_
 
 average_u=sisavs26 ? mt_lutxy(org_minus_u,org_plus_u,"x y - abs "+cthr+" scalef < x y + 2 / 0 ?", use_expr=1) : mt_lutxy(org_minus_u,org_plus_u,"x y - abs "+cthr+" < x y + 2 / 0 ?").Greyscale()
 average_v=sisavs26 ? mt_lutxy(org_minus_v,org_plus_v,"x y - abs "+cthr+" scalef < x y + 2 / 0 ?", use_expr=1) : mt_lutxy(org_minus_v,org_plus_v,"x y - abs "+cthr+" < x y + 2 / 0 ?").Greyscale()
-average_y=sisavs26 ? mt_lutxy(org_minus_y,org_plus_y,"x y - abs "+ythr+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_minus_y,org_plus_y,"x y - abs "+ythr+" < 255 0 ?").Greyscale().ReduceBy2()
-average_y=!sisavs26 ? average_y : fullchr ? average_y : IsYV411(org) ? average_y.BilinearResize(org_minus_u.width(), org_minus_v.height(), src_left=-1.5) : average_y.BilinearResize(org_minus_u.width(), org_minus_v.height(), src_left=-0.5)
+average_y=y ? sisavs26 ? mt_lutxy(org_minus_y,org_plus_y,"x y - abs "+ythr+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_minus_y,org_plus_y,"x y - abs "+ythr+" < 255 0 ?").Greyscale().ReduceBy2() : nop()
+average_y=y ? !sisavs26 ? average_y : fullchr ? average_y : IsYV411(org) ? average_y.BilinearResize(org_minus_u.width(), org_minus_v.height(), src_left=-1.5) : average_y.BilinearResize(org_minus_u.width(), org_minus_v.height(), src_left=-0.5) : nop()
 
 umask=average_u.mt_Binarize(threshold=20,upper=false)
 umask=(y?mt_Logic(umask,average_y,"and"):umask)
