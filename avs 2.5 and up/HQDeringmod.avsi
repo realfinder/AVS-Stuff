@@ -202,7 +202,7 @@ sischbd = sisphbd ? input.BitsPerComponent() > 8 : false
     \             : minp > 0 ? fmask.mt_inflate(U=1, V=1).mt_inpand(U=1, V=1)
     \             :            fmask
     ringmaskl     = Defined(ringmask) ? ringmask : incedge ? omask : sisavs26 ? omask.mt_lutxy(imask, "x range_max y - * range_max /", scale_inputs="floatf", clamp_float=true, use_expr=1, U=show?-128:1, V=show?-128:1) : omask.mt_lutxy(imask, "x 255 y - * 255 /", U=show?-128:1, V=show?-128:1)
-    ringmask      = (!sisvs26 || lsb || lsb_out) && (Ut || Vt) ? ringmaskl.HQDeringmod_YtoYUV() : ringmaskl
+    ringmask      = (!sisavs26 || lsb || lsb_out) && (Ut || Vt) ? ringmaskl.HQDeringmod_YtoYUV() : ringmaskl
     
     ###############################################################################################################################
     ###############################################################################################################################
@@ -212,7 +212,7 @@ sischbd = sisphbd ? input.BitsPerComponent() > 8 : false
     \           : lsb ? lsb_out ? Dither_merge16_8(input16, limitclp                                                , ringmask, luma=False, y=Y, u=U, v=V)
     \                           : mt_merge        (input8 , limitclp.HQDeringmod_Down8(tv_range, Yt, Ut, Vt, dither), ringmask, luma=False, Y=Y, U=U, V=V)
     \                 : lsb_out ? Dither_merge16_8(input16, limitclp.HQDeringmod_U16  (tv_range, Yt, Ut, Vt)        , ringmask, luma=False, y=Y, u=U, v=V)
-    \                           : mt_merge        (input8,  limitclp                                                , ringmask, luma=!sisvs26 && (Ut || Vt), Y=Y, U=U, V=V)
+    \                           : mt_merge        (input8,  limitclp                                                , ringmask, luma=sisavs26 && (Ut || Vt), Y=Y, U=U, V=V)
 }
 
 
