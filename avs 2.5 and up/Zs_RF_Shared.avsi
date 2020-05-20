@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.123
+# V1.124
 
 
 #################################################
@@ -1398,6 +1398,25 @@ doyv16 ? Eval("try { i.PackedToPlanar() } catch(error_msg) { i.converttoyv16() }
 function nonyuy2clipout(clip i, bool "doyuy2")
 {
 doyuy2 ? Eval("try { i.PlanarToPacked() } catch(error_msg) { i.converttoyuy2() }") : i
+}
+
+
+# StainlessS script port of Kassandro LimitChange with HBD support
+Function sh_LimitChange(clip Src,clip Denoised,float LimitY,float "LimitU",float "LimitV") 
+{
+sisavs26   = !(VersionNumber() < 2.6)
+    LimitU=Default(LimitU,LimitY)           LimitV=Default(LimitV,LimitU)
+    Lim_Y = String(LimitY,"%.0f")           Lim_U = String(LimitU,"%.0f")           Lim_V = String(LimitV,"%.0f")
+    # "min(max(Denoised,Src-LimitY),Src+LimitY)"
+    # Infix = "min(max(x,y-LimitY),x+LimitY)"           # where x is Denoised and y = Src
+    # RPN   = "x y LimitY - max y LimitY + min"
+    RPN_1 = "x y "
+    RPN_2 = " - max y "
+    RPN_3 = " + min"
+    Expr_Y = RPN_1 + Lim_Y + String(sisavs26 ? " yscalef" : "") + RPN_2 + Lim_Y + String(sisavs26 ? " yscalef" : "") + RPN_3
+    Expr_U = RPN_1 + Lim_U + String(sisavs26 ? " yscalef" : "") + RPN_2 + Lim_U + String(sisavs26 ? " yscalef" : "") + RPN_3
+    Expr_V = RPN_1 + Lim_V + String(sisavs26 ? " yscalef" : "") + RPN_2 + Lim_V + String(sisavs26 ? " yscalef" : "") + RPN_3
+    Return sisavs26 ? mt_lutxy(Denoised,Src,YExpr=Expr_Y,UExpr=Expr_U,VExpr=Expr_V,U=3,V=3, use_expr=1) : mt_lutxy(Denoised,Src,YExpr=Expr_Y,UExpr=Expr_U,VExpr=Expr_V,U=3,V=3)      # MUST SET U=3 and V=3 (Even when UExpr and VEXpr explicitly supplied, ELSE dont work proper).
 }
 
 
