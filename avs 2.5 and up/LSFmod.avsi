@@ -8,13 +8,15 @@
 ###                                                                                          ###
 ###                            another Modded Version by A.SONY.                             ###
 ###                                                                                          ###
-###                                v2.186 - 19 September 2019                                ###
+###                                    v2.187 - 25 May 2020                                  ###
 ###                                                                                          ###
 ################################################################################################
 ###
 ### +-----------+
 ### | CHANGELOG |
 ### +-----------+
+###
+### v2.187 : - fix bug in show=true
 ###
 ### v2.185 : - new avs26_optimize (bool) true by default, you can set it to false for smode=1 and smode=2 since not all filter updated to avs 2.6 colors
 ###
@@ -643,11 +645,11 @@ output = edgemode!=-1    ? output
    scale = resoH - ( 2 * outH )
 
    i = input.spline36resize(outW,outH)
-   i = scale > 0 ? i.addborders(0,scale/4,0,scale/4,true) : i
+   i = scale > 0 ? i.addborders(0,scale/4,0,scale/4) : i
    i = scale < 0 ? i.crop(0,-scale/4,0,scale/4,true) : i
 
    o = output.spline36resize(outW,outH)
-   o = scale > 0 ? o.addborders(0,scale/4,0,scale/4,true) : o
+   o = scale > 0 ? o.addborders(0,scale/4,0,scale/4) : o
    o = scale < 0 ? o.crop(0,-scale/4,0,scale/4,true) : o
 
    e = blankclip(input, width=384, height=resoH)
