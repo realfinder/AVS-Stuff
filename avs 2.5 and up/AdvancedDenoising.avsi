@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.888
+# Advanced Denoising and anime bob v1.889
 # Collections of Functions
 
 # MotionThresh by mf, mod by A.SONY
@@ -284,7 +284,7 @@ clip
 sis422  = avs26 ? isyv16() : false
 Assert((isyv12 || sis422), "sComb: only yv12 and yv16 is supported")
 isexmask = defined(exmask)
-prefil = !isexmask && ntsccombmask ? (VersionNumber() < 2.60) && isyv12(input) ? last.HQdn3d().FFT3DFilter().tweak(sat=1.5) : last.HQdn3d_2().FFT3DFilter().tweak(sat=1.5) : nop()
+prefil = !isexmask && ntsccombmask ? (VersionNumber() < 2.60) && isyv12(input) ? last.HQdn3d().FFT3DFilter().tweak(sat=1.5) : last.HQdn3d_2().sneo_FFT3D().tweak(sat=1.5) : nop()
 iqchr  = !isexmask && ntsccombmask ? prefil.SwapUV().Tweak(hue=-33) : nop()
 I = !isexmask && ntsccombmask ? sisphbd ? iqchr.ExtractU().sypixsub(2,2) : avs26 ? iqchr.utoy8().sypixsub(2,2) : iqchr.utoy().sypixsub(2,2) : nop()
 Q = !isexmask && ntsccombmask ? sisphbd ? iqchr.ExtractV().sypixsub(2,2) : avs26 ? iqchr.Vtoy8().sypixsub(2,2) : iqchr.Vtoy().sypixsub(2,2) : nop()
@@ -460,4 +460,37 @@ input
 
 DeCrawing ? LUTDeCrawl(dythresh, dcthresh, maxdiff, scnchg, usemaxdiff, dmask, org_minus, org_plus) : last
 DeRainbowing ? LUTDeRainbow(cthresh, ythresh, y, linkUV, mask, org_minus, org_plus) : last
+}
+
+
+# sGConvolution by R.F
+# v1.01
+function sGConvolution (clip clp, string "matrix", string "UVmatrix", float "bias", float "divisor", bool "auto", bool "luma", bool "chroma", bool "alpha")
+{
+sisphbd = AvsPlusVersionNumber > 2294
+sisavs26   = !(VersionNumber() < 2.6)
+sispngc = AvsPlusVersionNumber >= 2768
+clp.isrgb32 ? sispngc ? clp.GeneralConvolution(bias,matrix,divisor,auto,luma,chroma,alpha) : clp.GeneralConvolution(bias,matrix,divisor,auto) : \
+eval("""
+Assert(clp.isyuv(), "sGConvolution: only work with YUV and RGB32" )
+fullchr = sisphbd ? clp.is444() : sisavs26 ? clp.isyv24() : false
+sislumaonly = sisphbd ? clp.isy() : sisavs26 ? clp.isy8() : false
+
+luma = default (luma, true)
+chroma = default (chroma, false)
+chroma = sislumaonly ? false : chroma
+UVmatrix = default (UVmatrix, matrix)
+
+y=!sispngc ? sisphbd ? clp.ExtractY() : sisavs26 ? clp.converttoy8() : clp.ConvertToYV12() : clp
+u=!sispngc ? sisphbd ? clp.ExtractU() : sisavs26 ? clp.UToY8() : clp.UToY().ConvertToYV12() : nop()
+v=!sispngc ? sisphbd ? clp.ExtractV() : sisavs26 ? clp.VToY8() : clp.VToY().ConvertToYV12() : nop()
+
+yc=luma ? sispngc ? y.GeneralConvolution(bias,matrix,divisor,auto,true,false,alpha) : MergeRGB(y,y,y).GeneralConvolution(bias,matrix,divisor,auto).ShowRed(sisavs26 ? "Y8" : "YV12") : y
+uv=sispngc ? chroma ? yc.GeneralConvolution(bias,matrix,divisor,auto,false,true,alpha) : yc : chroma ? MergeRGB(u,v,v).GeneralConvolution(bias,UVmatrix,divisor,auto) : nop()
+uv=sispngc ? uv : chroma ? Interleave(uv.ShowRed(sisavs26 ? "Y8" : "YV12"),uv.ShowGreen(sisavs26 ? "Y8" : "YV12")) : nop()
+
+sispngc ? uv : YToUV (chroma ? uv.SelectEven() : u, chroma ? uv.SelectOdd() : v, yc)
+
+""")
+
 }

@@ -1,10 +1,10 @@
 #Motion-Compensated Anti-aliasing with contra-sharpening by A.SONY
 #some ideas was taken from Didée scripts daa and this http://forum.doom9.org/showthread.php?t=153219
 #created because when applied daa3 to fixed scenes, it could damage some details and other issues.
-# v3.58
+# v3.59
 
 function mcdaa3(clip input) {
-sup    = input.HQdn3d().FFT3DFilter().MSuper(pel=2,sharp=1)
+sup    = input.HQdn3d().sneo_FFT3D().MSuper(pel=2,sharp=1)
 fv1    = sup.MAnalyse(isb=false,delta=1,DCT=2,Truemotion=false)
 fv2    = sup.MAnalyse(isb=true,delta=1,DCT=2,Truemotion=true)
 csaa   = input.daa3mod()
