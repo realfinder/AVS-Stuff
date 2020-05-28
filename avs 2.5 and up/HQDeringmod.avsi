@@ -1,7 +1,7 @@
 #################################################################################################
-###### HQDering mod v1.8         ######      by mawen1250      ######      2020.05.20      ######
+###### HQDering mod v1.8         ######      by mawen1250      ######      2020.05.28      ######
 #################################################################################################
-###### Requirements: masktools v2.0a48, dither v1.25.1, dfttest v1.9.4,                    ######
+###### Requirements: masktools v2.0a48, dither v1.25.1, dfttest v1.9.4 or neo-dfttest r7,  ######
 ######               RgTools v0.92.1, MedianBlur2 v0.94, SmoothAdjust v3.00                ######
 #################################################################################################
 ###### applies deringing by using a smart smoother near edges (where ringing occurs) only  ######
@@ -133,13 +133,19 @@ sischbd = sisphbd ? input.BitsPerComponent() > 8 : false
     ###############################################################################################################################
     # Kernel: Smoothing
     
-    smoothc  = nrmodec <= 0 ? input.dfttest(Y=False, U=Ut, V=Vt,
+    smoothc  = nrmodec <= 0 ? lsb || lsb_in ? input.dfttest(Y=False, U=Ut, V=Vt,
     \                                       sbsize=sbsize, sosize=sosize, tbsize=1, lsb_in=lsb_in, lsb=lsb,
     \                                       sstring="0.0:"+sigma2+" 0.05:"+sigma+" 0.5:"+sigma+" 0.75:"+sigma2+" 1.0:0.0")
+	\                                       : input.sneo_dfttest(Y=2, U=Ut?3:2, V=Vt?3:2,
+    \                                       sbsize=sbsize, sosize=sosize, tbsize=1,
+    \                                       slocation="0.0:"+sigma2+" 0.05:"+sigma+" 0.5:"+sigma+" 0.75:"+sigma2+" 1.0:0.0")
     \                       : sischbd ? input.MinBlur(nrmodec, Y=1, U=U, V=V) : input.HQDeringmod_MinBlur(nrmodec, lsb_in=lsb_in, lsb=lsb, tv_range=tv_range, dither=dither, Y=1, U=U, V=V)
-    smoothy  = nrmode  <= 0 ? input.dfttest(Y=Yt, U=(nrmode==nrmodec||!(Ut||Vt))?Ut:False, V=(nrmode==nrmodec||!(Ut||Vt))?Vt:False,
+    smoothy  = nrmode  <= 0 ? lsb || lsb_in ? input.dfttest(Y=Yt, U=(nrmode==nrmodec||!(Ut||Vt))?Ut:False, V=(nrmode==nrmodec||!(Ut||Vt))?Vt:False,
     \                                        sbsize=sbsize, sosize=sosize, tbsize=1, lsb_in=lsb_in, lsb=lsb,
     \                                      sstring="0.0:"+sigma2+" 0.05:"+sigma+" 0.5:"+sigma+" 0.75:"+sigma2+" 1.0:0.0")
+	\                                       : input.sneo_dfttest(Y=Yt?3:2, U=((nrmode==nrmodec||!(Ut||Vt))?Ut:False)?3:2, V=((nrmode==nrmodec||!(Ut||Vt))?Vt:False)?3:2,
+    \                                        sbsize=sbsize, sosize=sosize, tbsize=1,
+    \                                      slocation="0.0:"+sigma2+" 0.05:"+sigma+" 0.5:"+sigma+" 0.75:"+sigma2+" 1.0:0.0")
     \                       : sischbd ? input.MinBlur(nrmode, Y=Y, U=(nrmode==nrmodec||!(Ut||Vt))?U:1, V=(nrmode==nrmodec||!(Ut||Vt))?V:1) : input.HQDeringmod_MinBlur(nrmode, lsb_in=lsb_in, lsb=lsb, tv_range=tv_range, dither=dither,
     \                                                   Y=Y, U=(nrmode==nrmodec||!(Ut||Vt))?U:1, V=(nrmode==nrmodec||!(Ut||Vt))?V:1)
     
