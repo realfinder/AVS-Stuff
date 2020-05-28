@@ -1,5 +1,21 @@
-# Advanced Denoising and anime bob v1.889
+# Advanced Denoising and anime bob v1.891
 # Collections of Functions
+
+### Functions list:-
+# MotionThresh
+# MotionRamp
+# admfilter
+# edgesidebleed
+# chromasidebleed
+# sComb
+# scombmask
+# filtering_wsb
+# filtering_wbb
+# sypixsub
+# LUTComb
+# sGConvolution
+
+####################################################
 
 # MotionThresh by mf, mod by A.SONY
 # Simple scenechange-proof motion threshold

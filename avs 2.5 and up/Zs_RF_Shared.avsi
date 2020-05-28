@@ -1,7 +1,7 @@
 # Shared Functions and utility
-# V1.125
+# V1.126
 
-# Function list:-
+### Functions list:-
 # sh_StrReplace
 # sAverageLumaMask
 # m4_sh
@@ -71,9 +71,6 @@
 # IsAvsNeo
 # IsAvsPlus
 # AvsPlusVersionNumber
-
-
-
 
 #################################################
 
