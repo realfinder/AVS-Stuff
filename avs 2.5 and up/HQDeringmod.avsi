@@ -463,7 +463,7 @@ Function HQDeringmod_YtoYUV(clip inputl, string "colorspace")
     wmod4       = sw/4*4 == sw ? True : False
     hmod4       = sh/4*4 == sh ? True : False
    
-    icolorspace = inputl.YtoYUV_GetCSP()
+    icolorspace = inputl.sh_GetCSP()
     ocolorspace = Defined(colorspace) ? colorspace : icolorspace
     
     try {
@@ -482,26 +482,6 @@ Function HQDeringmod_YtoYUV(clip inputl, string "colorspace")
     }
     
     return output
-    
-    Function YtoYUV_GetCSP(clip c)
-    {
-        return c.IsPlanar ? c.IsYV12 ? "YV12" :
-        \                   c.IsYV16 ? "YV16" :
-        \                   c.IsYV24 ? "YV24" : c.GetCSP_Y8_YV411() :
-        \      c.IsYUY2   ? "YUY2"   :
-        \      c.IsRGB32  ? "RGB32"  :
-        \      c.IsRGB24  ? "RGB24"  : "Unknown"
-        
-        Function GetCSP_Y8_YV411(clip c) {
-            try {
-                c.UtoY
-                csp = "YV411"
-            } catch (error_msg) {
-                csp = "Y8"
-            }
-            return csp
-        }
-    }
 }
 
 
