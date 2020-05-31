@@ -1,4 +1,4 @@
-# Last updated: 2020/05/30
+# Last updated: 2020/05/31
 #
 # By Scintilla, with the third line of themask's definition
 # borrowed from Shodan's derainbower
@@ -63,7 +63,7 @@ first_v=sisfield2 ? eval("interleave(org_ve."+string(uFlux5 ? flux5str : fluxtst
                 \ : eval("org_ve."+string(uFlux5 ? flux5str : fluxtstr)+".Blur(1.5)")
 
 themask=subtract(org,YtoUV(first_u,first_v,org)).Levels(108,1,148,0,255)
-	\ .MSharpen(mask=true,threshold=maskthresh).Invert()
+	\ .svsMSharpen(mask=true,threshold=maskthresh).Invert()
 	\ .Blur(0.5).Levels(0,2,255,0,255).Blur(0.5)
 
 fixed_u=sisfield2 ? eval("interleave(org_ue."+string(uFlux5 ? fluxststr + flux5str : fluxststr + fluxtstr)+".sminiDeen(4,14,14,u=1,v=1).Blur(1.0), org_uo."+string(uFlux5 ? fluxststr + flux5str : fluxststr + fluxtstr)+".sminiDeen(4,14,14,u=1,v=1).Blur(1.0))")
