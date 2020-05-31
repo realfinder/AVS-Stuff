@@ -5,7 +5,7 @@
 ###                                                     v1.4.20 by "LaTo INV."                                                   ###
 ###                                                                                                                              ###
 ###                                                           2 July 2010                                                        ###
-###                                                          24 April 2020                                                       ###
+###                                                          28 April 2020                                                       ###
 ###                                                                                                                              ###
 ####################################################################################################################################
 ### 
@@ -696,9 +696,9 @@ Assert( m16 ? true : false, chr(10) + "This is not a MOD16 clip! Please use crop
 ### PREFILTERING
 p = defined(p)                   ? p.pointresize(xn,yn,-xf/2,-yf/2,xn,yn)
 \ : (sigma==0)                   ? i
-\ : (GPU==false&&fixband==false) ? i.FFT3Dfilter(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,plane=chroma?4:0,bt=bt,ncpu=ncpu)
+\ : (GPU==false&&fixband==false) ? i.sneo_FFT3D(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,u=chroma?3:2,v=chroma?3:2,bt=bt)
 \ : (GPU==true &&fixband==false) ? i.FFT3Dgpu(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,plane=chroma?4:0,bt=bt,precision=precision)
-\ : (GPU==false&&fixband==true ) ? i.FFT3Dfilter(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,plane=chroma?4:0,bt=bt,ncpu=ncpu).gradfun2db(thr=1.0+sigma*0.05)
+\ : (GPU==false&&fixband==true ) ? i.sneo_FFT3D(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,u=chroma?3:2,v=chroma?3:2,bt=bt).gradfun2db(thr=1.0+sigma*0.05)
 \ :                                i.FFT3Dgpu(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,plane=chroma?4:0,bt=bt,precision=precision).gradfun2db(thr=1.0+sigma*0.05)
 
 
@@ -861,7 +861,7 @@ smL = (twopass==false) ? smL
 
 ### POST-DENOISING: FFT3D
 smP = (post==0)    ? smL
-\   : (GPU==false) ? smL.FFT3Dfilter(sigma=post*0.8,sigma2=post*0.6,sigma3=post*0.4,sigma4=post*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,plane=chroma?4:0,bt=bt,ncpu=ncpu)
+\   : (GPU==false) ? smL.sneo_FFT3D(sigma=post*0.8,sigma2=post*0.6,sigma3=post*0.4,sigma4=post*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,u=chroma?3:2,v=chroma?3:2,bt=bt)
 \   :                smL.FFT3Dgpu(sigma=post*0.8,sigma2=post*0.6,sigma3=post*0.4,sigma4=post*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,plane=chroma?4:0,bt=bt,precision=precision)
 smP = (post==0)        ? smP
 \   : (fixband==false) ? smP

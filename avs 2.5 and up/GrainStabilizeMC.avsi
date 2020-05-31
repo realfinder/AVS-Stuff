@@ -1,6 +1,6 @@
 #################################################################################################
 ###### GrainStabilizeMC v1.0     ######      by mawen1250      ######      2014.03.22      ######
-######                                    2020.05.20 HBD mod                               ######
+######                                    2020.05.28 HBD mod                               ######
 #################################################################################################
 ###### Requirements: masktools v2.0a48, mvtools v2.6.0.5, dither v1.25.1,                  ######
 ######               RgTools v0.92.1, MedianBlur2 v0.94, SmoothAdjust v3.00                ######
@@ -242,7 +242,7 @@ Function GSMC_YtoYUV(clip inputl, string "colorspace")
     wmod4       = sw/4*4 == sw ? True : False
     hmod4       = sh/4*4 == sh ? True : False
    
-    icolorspace = inputl.YtoYUV_GetCSP()
+    icolorspace = inputl.sh_GetCSP()
     ocolorspace = Defined(colorspace) ? colorspace : icolorspace
     
     try {
@@ -261,26 +261,6 @@ Function GSMC_YtoYUV(clip inputl, string "colorspace")
     }
     
     return output
-    
-    Function YtoYUV_GetCSP(clip c)
-    {
-        return c.IsPlanar ? c.IsYV12 ? "YV12" :
-        \                   c.IsYV16 ? "YV16" :
-        \                   c.IsYV24 ? "YV24" : c.GetCSP_Y8_YV411() :
-        \      c.IsYUY2   ? "YUY2"   :
-        \      c.IsRGB32  ? "RGB32"  :
-        \      c.IsRGB24  ? "RGB24"  : "Unknown"
-        
-        Function GetCSP_Y8_YV411(clip c) {
-            try {
-                c.UtoY
-                csp = "YV411"
-            } catch (error_msg) {
-                csp = "Y8"
-            }
-            return csp
-        }
-    }
 }
 
 

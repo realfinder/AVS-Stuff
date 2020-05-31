@@ -1,4 +1,4 @@
-# Last updated: 2020/05/20
+# Last updated: 2020/05/30
 #
 # By Scintilla, with the third line of themask's definition
 # borrowed from Shodan's derainbower
@@ -32,7 +32,7 @@ Assert(org.IsYUV(),"DFMDeRainbow: YUV input only")
 Assert(!(org.IsY8()), "DFMDeRainbow: not work with Greyscale video")
 
 sisavs26   = !(VersionNumber() < 2.6)
-#sisphbd = AvsPlusVersionNumber > 2294
+sisphbd = AvsPlusVersionNumber > 2294
 
 maskthresh = default(maskthresh, 10)
 mask       = default(mask, false)
@@ -44,15 +44,13 @@ sisfield = org.IsFieldBased()
 org = interlaced==true? org.separatefields() : org
 sisfield2 = interlaced || sisfield
 
-#org_u=sisphbd ? org.ExtractU() : sisavs26 ? org.UtoY8() : org.UtoY()
-#org_v=sisphbd ? org.ExtractV() : sisavs26 ? org.VtoY8() : org.VtoY()
-org_u=org.UtoY()
-org_v=org.VtoY()
+org_u=sisphbd ? org.ExtractU() : sisavs26 ? org.UtoY8() : org.UtoY()
+org_v=sisphbd ? org.ExtractV() : sisavs26 ? org.VtoY8() : org.VtoY()
 
-org_ue=sisfield2 ? org_u.selecteven() : org_ue
+org_ue=sisfield2 ? org_u.selecteven() : org_u
 org_uo=sisfield2 ? org_u.selectodd() : nop()
 
-org_ve=sisfield2 ? org_v.selecteven() : org_ve
+org_ve=sisfield2 ? org_v.selecteven() : org_v
 org_vo=sisfield2 ? org_v.selectodd() : nop()
 
 fluxtstr = mc ? "DFMDeRainbow_FluxsmoothSTMC(17, -1,chroma=false)" : "FluxSmoothT(17"+string(sisavs26 ? ",chroma=false" : "")+")"
