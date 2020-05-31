@@ -26,34 +26,29 @@ function insertsign(clip mainclip, clip overlayclip, int startframe, int "endfra
 	return final
 }
 
-# insert_types 1.00 for avs by A.SONY
+# insert_types 1.01 for avs by A.SONY, clean up by StainlessS
 # need RT_Stats, and in non plus avs it also need GSCript
-Function insert_types(clip clp, string "dir", string "container", string "sourcecall") {
-
-Assert(Defined(dir), "insert_types: you must set the dir")
-
-WildCard=Default(container,"*.AVI")
-sourcecall=Default(sourcecall,"ffms2")
-
-	clp
-    TMPFile="~AVIVid.TMP"
+Function insert_types(clip clp, string dir, string "container", string "sourcecall") {
+    Assert(dir!="", "insert_types: you must set the dir")                               # We made Dir Non Optional
+    WildCard=Default(container,"*.AVI")
+    sourcecall=Default(sourcecall,"ffms2")
+    clp
+    eS=RightStr(dir,1)
+    Path=(eS!="\" && eS!="/") ? dir+"\" : dir                                           # Ensure End Slash
+    TestPath=LeftStr(Path,Strlen(Path)-1)                                               # Test PATH Exist without End Slash, else Error
+    Assert(Exist(TestPath),"insert_types: Path Does not exist ("+Path+")")
+    SearchString = Path + WildCard
+    TMPFile=RT_GetSystemEnv("TEMP") + "\~AVIVid_" + RT_LocalTimeString(file=True) + ".TMP"      # Unique name in User TEMP directory
+    LineCount = RT_WriteFileList(SearchString,TMPFile)
     scstr= """
-        eS=RightStr(dir,1)
-        Path=(eS!="\" && eS!="/") ? dir+"\" : dir                   # Ensure End Slash
-        TestPath=LeftStr(Path,Strlen(Path)-1)                       # Test PATH Exist without End Slash, else Error
-        Assert(Exist(TestPath),"insert_types: Path Does not exist ("+Path+")")
-        SearchString = Path + WildCard
-        Got = RT_WriteFileList(SearchString,TMPFile)
-        while(Got > 0) {
-            SS=RT_ReadTxtFromFile(TMPFile)                          # Read multiline list of filenames
-            got=Got-1
-                S=RT_TxtGetLine(SS,Got)
-				fi=FindStr(s,"_")
-				fr=s.MidStr(fi+1).Value.Int
-                last.insertsign(eval(sourcecall+string("(s)")),fr)
+        for(Line = 0, LineCount - 1) {                                                  # Line = zero relative line number
+            s=TMPFile.RT_ReadTxtFromFile(Lines=1,Start=Line).RT_TxtGetLine(Line=0)      # Read single Line from file, convert to single line string [not multi-line ie strip NewLine Chr(10)]
+            fi=FindStr(s,"_")
+            fr=s.MidStr(fi+1).Value.Int
+            last.insertsign(eval(sourcecall+string("(s)")),fr)
         }
-        RT_FileDelete(TMPFile)
+        RT_FileDelete(TMPFile)                                                          # Dump file when done with it
     """
-    IsAvsPlus ? eval(scstr) : GSCript(scstr)
+    IsAvsPlus ? eval(scstr) : GSCript(scstr)                                            # External dll overrides builtin plugs, perhaps user intended GScript to be used if is in Plugins dir.
     return last
 }
