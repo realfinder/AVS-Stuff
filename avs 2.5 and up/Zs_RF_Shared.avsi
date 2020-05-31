@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.126
+# V1.127
 
 ### Functions list:-
 # sh_StrReplace
@@ -68,6 +68,8 @@
 # sh_LimitChange
 # sneo_FFT3D
 # sneo_dfttest
+# svsTTempSmooth
+# svsMSharpen
 # IsAvsNeo
 # IsAvsPlus
 # AvsPlusVersionNumber
@@ -1512,6 +1514,24 @@ y=defined(y) ? y==3 : undefined
 u=defined(u) ? u==3 : undefined
 v=defined(v) ? v==3 : undefined
 input.dfttest(ftype=ftype, sigma=sigma, sigma2=sigma2, pmin=pmin, pmax=pmax, sbsize=sbsize, smode=smode, sosize=sosize, tbsize=tbsize, tmode=tmode, tosize=tosize, swin=swin, twin=twin, sbeta=sbeta, tbeta=tbeta, zmean=zmean, f0beta=f0beta, nstring=nstring , sstring=sstring, ssx=ssx, ssy=ssy, sst=sst                   , dither=dither, Y=y, U=u, V=v, opt=opt, threads=threads)  }
+}
+
+
+Function svsTTempSmooth(clip input, int "maxr", int "lthresh", int "cthresh", int "lmdiff", bool "cmdiff", int "strength", bool "fp", bool "y", bool "u", bool "v", clip "pfclip")
+{
+	   try { input.vsTTempSmooth(ythresh=lthresh, uthresh=cthresh, vthresh=cthresh, ymdiff=lmdiff, umdiff=cmdiff, vmdiff=cmdiff, strength=strength, fp=fp, y=y, u=u, v=v, pfclip=pfclip)
+} catch(error_msg) { 
+input.TTempSmooth(maxr=maxr, lthresh=lthresh, cthresh=cthresh, lmdiff=lmdiff, cmdiff=cmdiff, strength=strength, scthresh=0, fp=fp, pfclip=pfclip)  }
+}
+
+
+Function svsMSharpen(clip input, float "threshold", float "strength", bool "mask", bool "luma", bool "chroma")
+{
+threshold=Default(threshold,15)
+strength=Default(strength,100)
+	   try { input.vsMSharpen(threshold=threshold/2.55, strength=strength/2.55, mask=mask, luma=luma, chroma=chroma)
+} catch(error_msg) { 
+input.MSharpen (threshold=round(threshold), strength=round(strength), mask=mask)   }
 }
 
 
