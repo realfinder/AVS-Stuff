@@ -1,4 +1,4 @@
-# Last updated: 2020/05/31
+# Last updated: 2020/06/01
 #
 # By Scintilla, with the third line of themask's definition
 # borrowed from Shodan's derainbower
@@ -29,10 +29,10 @@
 function DFMDeRainbow(clip org, int "maskthresh", bool "mask", bool "interlaced", bool "mc", bool "use_Flux5framesT")
 {
 Assert(org.IsYUV(),"DFMDeRainbow: YUV input only")
-Assert(!(org.IsY8()), "DFMDeRainbow: not work with Greyscale video")
-
 sisavs26   = !(VersionNumber() < 2.6)
 sisphbd = AvsPlusVersionNumber > 2294
+sislumaonly = sisphbd ? org.isy() : sisavs26 ? org.isy8() : false
+Assert(!sislumaonly, "DFMDeRainbow: not work with Greyscale video")
 
 maskthresh = default(maskthresh, 10)
 mask       = default(mask, false)
@@ -91,8 +91,8 @@ sthr = default( sthr, 12 )
 
 super = clp.MSuper(pel=2, sharp=1)
 
-bv1  = manalyse(super,isb=true, truemotion=false, delta=1,blksize=16,overlap=8)
-fv1  = manalyse(super,Isb=false, truemotion=false, delta=1,blksize=16,overlap=8)
+bv1  = manalyse(super,isb=true, truemotion=false, delta=1,blksize=16,overlap=8,chroma=chroma)
+fv1  = manalyse(super,Isb=false, truemotion=false, delta=1,blksize=16,overlap=8,chroma=chroma)
 
 bc1  = mcompensate(clp, super,bv1)
 fc1  = mcompensate(clp, super,fv1)
@@ -177,13 +177,15 @@ Return(result)
 function Flux5framesTfast(clip c,int "th",int "thC",bool "chromamotion")
 {
 sisavs26   = !(VersionNumber() < 2.6)
-chromamotion = default(chromamotion, true)
 sisphbd = AvsPlusVersionNumber > 2294
-u=sisphbd ? c.ExtractU() : sisavs26 ? c.utoy8() : c.utoy()
-v=sisphbd ? c.ExtractV() : sisavs26 ? c.vtoy8() : c.vtoy()
+chromamotion = default(chromamotion, true)
+sislumaonly = sisphbd ? c.isy() : sisavs26 ? c.isy8() : false
+u=sislumaonly ? nop() : sisphbd ? c.ExtractU() : sisavs26 ? c.utoy8() : c.utoy()
+v=sislumaonly  ? nop() : sisphbd ? c.ExtractV() : sisavs26 ? c.vtoy8() : c.vtoy()
+y=sislumaonly ? c : sisphbd ? c.ExtractY() : sisavs26 ? c.converttoy8() : c
 	th  = default(th, 7)
 	thC = default(thC, chromamotion ? th : 0)
-	med = chromamotion ? ytouv(u.median5t(), v.median5t(), c.median5t()) : c.median5t().mergechroma(c)
+	med = sislumaonly ? y.median5t() : sisavs26 ? ytouv(chromamotion ? u.median5t() : u, chromamotion ? v.median5t() : v, y.median5t()) : y.median5t().mergechroma(c)
 	avg = c.temporalsoften(2, th, thC, 24, 2)
 	output = interleave(c, med, avg).clense(grey=!chromamotion).selectevery(3,1)
 	return output
