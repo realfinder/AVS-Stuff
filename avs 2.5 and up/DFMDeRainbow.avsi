@@ -1,4 +1,4 @@
-# Last updated: 2020/06/01
+# Last updated: 2020/06/02
 #
 # By Scintilla, with the third line of themask's definition
 # borrowed from Shodan's derainbower
@@ -26,7 +26,7 @@
 #
 ###################
 
-function DFMDeRainbow(clip org, int "maskthresh", bool "mask", bool "interlaced", bool "mc", bool "use_Flux5framesT")
+function DFMDeRainbow(clip org, int "maskthresh", bool "mask", bool "interlaced", bool "mc", bool "use_Flux5framesT", bool "less_Temporal")
 {
 Assert(org.IsYUV(),"DFMDeRainbow: YUV input only")
 sisavs26   = !(VersionNumber() < 2.6)
@@ -39,6 +39,7 @@ mask       = default(mask, false)
 interlaced = default(interlaced, false)
 mc         = default(mc, false)
 uFlux5     = default(use_Flux5framesT, false)
+less_Tempo = default(less_Temporal, false)
 
 sisfield = org.IsFieldBased()
 org = interlaced==true? org.separatefields() : org
@@ -65,6 +66,9 @@ first_v=sisfield2 ? eval("interleave(org_ve."+string(uFlux5 ? flux5str : fluxtst
 themask=subtract(org,YtoUV(first_u,first_v,org)).Levels(108,1,148,0,255)
 	\ .svsMSharpen(mask=true,threshold=maskthresh).Invert()
 	\ .Blur(0.5).Levels(0,2,255,0,255).Blur(0.5)
+
+flux5str = less_Tempo ? "" : flux5str
+fluxststr = uFlux5 && less_Tempo ? LeftStr(fluxststr,StrLen(fluxststr)-1) : fluxststr
 
 fixed_u=sisfield2 ? eval("interleave(org_ue."+string(uFlux5 ? fluxststr + flux5str : fluxststr + fluxtstr)+".sminiDeen(4,14,14,u=1,v=1).Blur(1.0), org_uo."+string(uFlux5 ? fluxststr + flux5str : fluxststr + fluxtstr)+".sminiDeen(4,14,14,u=1,v=1).Blur(1.0))")
                 \ : eval("org_ue."+string(uFlux5 ? fluxststr + flux5str : fluxststr + fluxtstr)+".sminiDeen(4,14,14,u=1,v=1).Blur(1.0)")
