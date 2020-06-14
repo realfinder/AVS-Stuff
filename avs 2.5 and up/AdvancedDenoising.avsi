@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.891
+# Advanced Denoising and anime bob v1.892
 # Collections of Functions
 
 ### Functions list:-
@@ -496,6 +496,7 @@ luma = default (luma, true)
 chroma = default (chroma, false)
 chroma = sislumaonly ? false : chroma
 UVmatrix = default (UVmatrix, matrix)
+bias=defined(bias) && !sispngc ? round(bias) : bias
 
 y=!sispngc ? sisphbd ? clp.ExtractY() : sisavs26 ? clp.converttoy8() : clp.ConvertToYV12() : clp
 u=!sispngc ? sisphbd ? clp.ExtractU() : sisavs26 ? clp.UToY8() : clp.UToY().ConvertToYV12() : nop()
