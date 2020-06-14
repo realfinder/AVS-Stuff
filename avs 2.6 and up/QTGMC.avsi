@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------#
 #                                                                   #
-#           QTGMC 3.366, by Vit, 2012, 2020 mod by A.SONY           #
+#           QTGMC 3.367, by Vit, 2012, 2020 mod by A.SONY           #
 #                                                                   #
 #   A high quality deinterlacer using motion-compensated temporal   #
 #  smoothing, with a range of features for quality and convenience  #
@@ -12,9 +12,10 @@
 #
 # --- LATEST CHANGES ---
 #
-# v3.366s
+# v3.367s
 # - bug fix (thanks to missuse)
 # - make it work with original mvtools2 (for manolito)
+# - add keep_tv_range bool
 #
 # v3.365s
 # - support neo_FFT3D and neo_dfttest
@@ -168,7 +169,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
                     float "NoiseRestore", string "NoiseDeint", bool "StabilizeNoise", int "InputType", float "ProgSADMask", int "FPSDivisor", \
                     int "ShutterBlur", float "ShutterAngleSrc", float "ShutterAngleOut", int "SBlurLimit", bool "Border", bool "Precise", string "Tuning", \
                     bool "ShowSettings", string "GlobalNames", string "PrevGlobals", int "ForceTR", \
-                    val "BT", val "DetailRestore", val "MotionBlur", val "MBlurLimit", val "NoiseBypass", float "Str", float "Amp", bool "TV_range", bool "useEdiExt", int "DftDither", bool "lsbd", bool "lsb", bool "n16" )
+                    val "BT", val "DetailRestore", val "MotionBlur", val "MBlurLimit", val "NoiseBypass", float "Str", float "Amp", bool "TV_range", bool "useEdiExt", int "DftDither", bool "lsbd", bool "lsb", bool "n16", bool "keep_tv_range" )
 {
 	# EdiMode="RepcYadif"/"cYadif" require the Yadif plugin, which doesn't autoload. Typically the calling script would load it.
 
@@ -181,13 +182,14 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	#---------------------------------------
 	# Presets
-    lsbd         = default( lsbd,      false)
-    lsb          = default( lsb,       false)
-    n16          = default( n16,       false)
-    useEdiExt    = default( useEdiExt, false)
-    Str          = default( Str,        1.0 )
-    Amp          = default( Amp,     0.0625 )
-    TV_range     = default( TV_range,   !(Isrgb(input)))
+    lsbd          = default( lsbd,      false)
+    lsb           = default( lsb,       false)
+    n16           = default( n16,       false)
+    useEdiExt     = default( useEdiExt, false)
+    Str           = default( Str,        1.0 )
+    Amp           = default( Amp,     0.0625 )
+    TV_range      = default( TV_range, !(Isrgb(input)))
+    keep_tv_range = default( keep_tv_range,      false)
 
         sisphbd = AvsPlusVersionNumber > 2294
 	sisphbd  ? Assert( !(Input.BitsPerComponent() > 8 && (lsb || lsbd)), "QTGMC: lsb hack is not Compatible with native high bit depth" ) : nop()
@@ -814,6 +816,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	# >>>> Restore YUY2 to interleaved
 	output = (ShowNoise == 0.0) ? cropped : finalNoise.mt_lut( "x range_half - " + string(ShowNoise) + " * range_half +", clamp_float=true, use_expr=2, U=CNmt128,V=CNmt128 )
 	output = yuy2 ? output.nonyuy2clipout(true) : output
+	output = keep_tv_range ? sisphbd ? output.Limiter(16, 235, 16, 240, autoscale=true) : output.Limiter(16, 235, 16, 240) : output
 	return (ShowSettings == false) ? output : \
 		output.Subtitle( "TR0=" + string(TR0) + " | TR1=" + string(TR1) + " | TR2=" + string(TR2) + " | Rep0=" + string(Rep0) + " | Rep1=" + string(Rep1) + \
 		" | Rep2=" + string(Rep2) + " | RepChroma=" + string(RepChroma) + "\nEdiMode='" + EdiMode + "' | NNSize=" + string(NNSize) + " | NNeurons=" + \
@@ -1044,6 +1047,7 @@ function QTGMC_ApplySourceMatch( clip Deinterlace, int InputType, val Source, va
 	# >>>> YUY2: 'Deinterlace' is planar, 'Source' is interleaved (changed to planar here for all processing except interpolation) - returns planar result
 	yuy2 = Source.IsYUY2()
 	Source = yuy2 ? Source.nonyuy2clipin(true) : Source
+	sMDegnl  = n16 ? ", out16=n16" : lsb ? ", lsb=lsb" : ""
 
 	# Basic source-match. Find difference between source clip & equivalent fields in interpolated/smoothed clip (called the "error" in formula below). Ideally
 	# there should be no difference, we want the fields in the output to be as close as possible to the source whilst remaining shimmer-free. So adjust the
