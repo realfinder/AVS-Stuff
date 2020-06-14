@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------#
 #                                                                   #
-#           QTGMC 3.365, by Vit, 2012, 2020 mod by A.SONY           #
+#           QTGMC 3.366, by Vit, 2012, 2020 mod by A.SONY           #
 #                                                                   #
 #   A high quality deinterlacer using motion-compensated temporal   #
 #  smoothing, with a range of features for quality and convenience  #
@@ -11,6 +11,10 @@
 # Full documentation is in the 'QTGMC' html file that may comes with this script, or even better see avisynth wiki
 #
 # --- LATEST CHANGES ---
+#
+# v3.366s
+# - bug fix (thanks to missuse)
+# - make it work with original mvtools2 (for manolito)
 #
 # v3.365s
 # - support neo_FFT3D and neo_dfttest
@@ -598,7 +602,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	                                                fullClip.MCompensate( fullSuper, bVec2, thSCD1=ThSCD1,thSCD2=ThSCD2 ) )
 	noiseWindow = yuy2 && (Denoiser == "fft3df") && NoiseTR > 0 ? noiseWindow.nonyuy2clipout(true) : noiseWindow
 	dnWindow = (NoiseProcess == 0)      ? NOP() : \
-	           (Denoiser == "dfttest")  ? !lsbd ? noiseWindow.sneo_dfttest(U=ChromaNoise?3:2, V==ChromaNoise?3:2, sigma=Sigma*4, tbsize=noiseTD, threads=FftThreads, Dither=DftDither ) : noiseWindow.dfttest( Y=true, U=ChromaNoise, V=ChromaNoise, sigma=Sigma*4, tbsize=noiseTD, threads=FftThreads, Dither=DftDither, lsb=true ) : \
+	           (Denoiser == "dfttest")  ? !lsbd ? noiseWindow.sneo_dfttest(U=ChromaNoise?3:2, V=ChromaNoise?3:2, sigma=Sigma*4, tbsize=noiseTD, threads=FftThreads, Dither=DftDither ) : noiseWindow.dfttest( Y=true, U=ChromaNoise, V=ChromaNoise, sigma=Sigma*4, tbsize=noiseTD, threads=FftThreads, Dither=DftDither, lsb=true ) : \
 	        (Denoiser == "KNLMeansCL")  ? noiseWindow.SH_KNLMeansCL(Chroma=ChromaNoise, lsb=lsbd, a=2, d=NoiseTR, h=Sigma, device_type="GPU" ) : \
 	                                      noiseWindow.sneo_FFT3D( u=ChromaNoise ? 3 : 2,v=ChromaNoise ? 3 : 2, sigma=Sigma, bt=noiseTD )
 	dnwindow = (Denoiser == "KNLMeansCL" || Denoiser == "dfttest") && (NoiseProcess != 0) && lsbd ? dnWindow.ditherpost(mode=6, U=ChromaNoise?3:2, V=ChromaNoise?3:2, slice=false) : dnWindow
@@ -665,6 +669,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	fComp3   = (SLRad > 1 && temporalSL) ? edi.MCompensate( ediSuper, fVec3, thSCD1=ThSCD1,thSCD2=ThSCD2              ) : NOP()
 	tMax     = (SLRad > 1 && temporalSL) ? tMax.mt_logic( fComp3, "max", U=3,V=3 ).mt_logic( bComp3, "max", U=3,V=3 )   : tMax
 	tMin     = (SLRad > 1 && temporalSL) ? tMin.mt_logic( fComp3, "min", U=3,V=3 ).mt_logic( bComp3, "min", U=3,V=3 )   : tMin
+	sMDegnl  = n16 ? ", out16=n16" : lsb ? ", lsb=lsb" : ""
 
 
 	#---------------------------------------
@@ -673,9 +678,9 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	# Use motion vectors to blur interpolated image (edi) with motion-compensated previous and next frames. As above, this is done to remove shimmer from
 	# alternate frames so the same binomial kernels are used. However, by using motion-compensated smoothing this time we avoid motion blur. The use of
 	# MDegrain1 (motion compensated) rather than TemporalSmooth makes the weightings *look* different, but they evaluate to the same values
-	# Create linear weightings of neighbors first                                                                                -2    -1     0    1     2
-	degrain1 = (TR1 > 0) ? edi.MDegrain1( ediSuper, bVec1,fVec1, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16) : NOP()  # 0.00  0.33  0.33  0.33  0.00
-	degrain2 = (TR1 > 1) ? edi.MDegrain1( ediSuper, bVec2,fVec2, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16) : NOP()  # 0.33  0.00  0.33  0.00  0.33
+	# Create linear weightings of neighbors first                                                                                             -2    -1     0    1     2
+	degrain1 = (TR1 > 0) ? eval("edi.MDegrain1( ediSuper, bVec1,fVec1, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()  # 0.00  0.33  0.33  0.33  0.00
+	degrain2 = (TR1 > 1) ? eval("edi.MDegrain1( ediSuper, bVec2,fVec2, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()  # 0.33  0.00  0.33  0.00  0.33
 	degrain1 = (TR1 > 0) ? lsb ? degrain1.ditherpost(mode=6, slice=false) : n16 ? degrain1.ConvertTo8bit(dither=1) : degrain1 : degrain1
 	degrain2 = (TR1 > 1) ? lsb ? degrain2.ditherpost(mode=6, slice=false) : n16 ? degrain2.ConvertTo8bit(dither=1) : degrain2 : degrain2
 
@@ -741,12 +746,12 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	# Final light linear temporal smooth for denoising
 	stableSuper = (TR2 > 0) ? addNoise1.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
 	stable  = (TR2 == 0) ? addNoise1 : \
-	          (TR2 == 1) ? addNoise1.MDegrain1( stableSuper, bVec1,fVec1,                                                                  thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16 ) : \
-	          (TR2 == 2) ? addNoise1.MDegrain2( stableSuper, bVec1,fVec1, bVec2,fVec2,                                                     thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16 ) : \
- 	          (TR2 == 3) ? addNoise1.MDegrain3( stableSuper, bVec1,fVec1, bVec2,fVec2, bVec3,fVec3,                                        thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16 ) : \
- 	          (TR2 == 4) ? addNoise1.MDegrain4( stableSuper, bVec1,fVec1, bVec2,fVec2, bVec3,fVec3, bVec4,fVec4,                           thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16 ) : \
- 	          (TR2 == 5) ? addNoise1.MDegrain5( stableSuper, bVec1,fVec1, bVec2,fVec2, bVec3,fVec3, bVec4,fVec4, bVec5,fVec5,              thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16 ) : \
- 	                       addNoise1.MDegrain6( stableSuper, bVec1,fVec1, bVec2,fVec2, bVec3,fVec3, bVec4,fVec4, bVec5,fVec5, bVec6,fVec6, thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16 )
+	          (TR2 == 1) ? eval("addNoise1.MDegrain1( stableSuper, bVec1,fVec1,                                                                  thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : \
+	          (TR2 == 2) ? eval("addNoise1.MDegrain2( stableSuper, bVec1,fVec1, bVec2,fVec2,                                                     thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : \
+ 	          (TR2 == 3) ? eval("addNoise1.MDegrain3( stableSuper, bVec1,fVec1, bVec2,fVec2, bVec3,fVec3,                                        thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : \
+ 	          (TR2 == 4) ? eval("addNoise1.MDegrain4( stableSuper, bVec1,fVec1, bVec2,fVec2, bVec3,fVec3, bVec4,fVec4,                           thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : \
+ 	          (TR2 == 5) ? eval("addNoise1.MDegrain5( stableSuper, bVec1,fVec1, bVec2,fVec2, bVec3,fVec3, bVec4,fVec4, bVec5,fVec5,              thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : \
+ 	                       eval("addNoise1.MDegrain6( stableSuper, bVec1,fVec1, bVec2,fVec2, bVec3,fVec3, bVec4,fVec4, bVec5,fVec5, bVec6,fVec6, thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")")
 	stable  = (TR2 > 0) ? lsb ? stable.ditherpost(mode=6, slice=false) : n16 ? stable.ConvertTo8bit(dither=1) : stable : stable
 
 	# Remove areas of difference between final output & basic interpolated image that are not bob-shimmer fixes: repairs motion blur caused by temporal smooth
@@ -1061,8 +1066,8 @@ function QTGMC_ApplySourceMatch( clip Deinterlace, int InputType, val Source, va
 	                                     .QTGMC_Interpolate( InputType, MatchEdi, MatchNNSize, MatchNNeurons, MatchEdiQual, MatchEdiMaxD, EdiThreads ) \
 	                                     .nonyuy2clipin(true)
 	match1Super    = (SourceMatch > 0 && MatchTR1 > 0) ? match1Edi.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
-	match1Degrain1 = (SourceMatch > 0 && MatchTR1 > 0) ? match1Edi.MDegrain1( match1Super, bVec1,fVec1, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16 ) : NOP()
-	match1Degrain2 = (SourceMatch > 0 && MatchTR1 > 1) ? match1Edi.MDegrain1( match1Super, bVec2,fVec2, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16 ) : NOP()
+	match1Degrain1 = (SourceMatch > 0 && MatchTR1 > 0) ? eval("match1Edi.MDegrain1( match1Super, bVec1,fVec1, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()
+	match1Degrain2 = (SourceMatch > 0 && MatchTR1 > 1) ? eval("match1Edi.MDegrain1( match1Super, bVec2,fVec2, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()
 	match1Degrain1 = (SourceMatch > 0 && MatchTR1 > 0) ? lsb ? match1Degrain1.ditherpost(mode=6, slice=false) : n16 ? match1Degrain1.ConvertTo8bit(dither=1) : match1Degrain1 : match1Degrain1
 	match1Degrain2 = (SourceMatch > 0 && MatchTR1 > 1) ? lsb ? match1Degrain2.ditherpost(mode=6, slice=false) : n16 ? match1Degrain2.ConvertTo8bit(dither=1) : match1Degrain2 : match1Degrain2
 	match1         = (SourceMatch < 1) ? Deinterlace : \
@@ -1085,8 +1090,8 @@ function QTGMC_ApplySourceMatch( clip Deinterlace, int InputType, val Source, va
 	                                   .QTGMC_Interpolate( InputType, MatchEdi2, MatchNNSize2, MatchNNeurons2, MatchEdiQual2, MatchEdiMaxD2, EdiThreads ) \
 	                                   .nonyuy2clipin(true)
 	match2Super    = (SourceMatch > 1 && MatchTR2 > 0) ? match2Edi.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
-	match2Degrain1 = (SourceMatch > 1 && MatchTR2 > 0) ? match2Edi.MDegrain1( match2Super, bVec1,fVec1, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16 ) : NOP()
-	match2Degrain2 = (SourceMatch > 1 && MatchTR2 > 1) ? match2Edi.MDegrain1( match2Super, bVec2,fVec2, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16 ) : NOP()
+	match2Degrain1 = (SourceMatch > 1 && MatchTR2 > 0) ? eval("match2Edi.MDegrain1( match2Super, bVec1,fVec1, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()
+	match2Degrain2 = (SourceMatch > 1 && MatchTR2 > 1) ? eval("match2Edi.MDegrain1( match2Super, bVec2,fVec2, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()
 	match2Degrain1 = (SourceMatch > 1 && MatchTR2 > 0) ? lsb ? match2Degrain1.ditherpost(mode=6, slice=false) : n16 ? match2Degrain1.ConvertTo8bit(dither=1) : match2Degrain1 : match2Degrain1
 	match2Degrain2 = (SourceMatch > 1 && MatchTR2 > 1) ? lsb ? match2Degrain2.ditherpost(mode=6, slice=false) : n16 ? match2Degrain2.ConvertTo8bit(dither=1) : match2Degrain2 : match2Degrain2
 	match2         = (SourceMatch < 2) ? match1 : \
@@ -1099,8 +1104,8 @@ function QTGMC_ApplySourceMatch( clip Deinterlace, int InputType, val Source, va
 	match3Update   = (SourceMatch < 3 || MatchTR2 == 0) \
 	                     ? match2Edi : mt_lutxy( match2Edi, match2, "x " + string(errorAdjust2 + 1) + " * y " + string(errorAdjust2) + " * -", clamp_float=true, use_expr=2, U=3,V=3 )
 	match3Super    = (SourceMatch > 2 && MatchTR2 > 0) ? match3Update.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
-	match3Degrain1 = (SourceMatch > 2 && MatchTR2 > 0) ? match3Update.MDegrain1( match3Super, bVec1,fVec1, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16 ) : NOP()
-	match3Degrain2 = (SourceMatch > 2 && MatchTR2 > 1) ? match3Update.MDegrain1( match3Super, bVec2,fVec2, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2, lsb=lsb, out16=n16 ) : NOP()
+	match3Degrain1 = (SourceMatch > 2 && MatchTR2 > 0) ? eval("match3Update.MDegrain1( match3Super, bVec1,fVec1, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()
+	match3Degrain2 = (SourceMatch > 2 && MatchTR2 > 1) ? eval("match3Update.MDegrain1( match3Super, bVec2,fVec2, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()
 	match3Degrain1 = (SourceMatch > 2 && MatchTR2 > 0) ? lsb ? match3Degrain1.ditherpost(mode=6, slice=false) : n16 ? match3Degrain1.ConvertTo8bit(dither=1) : match3Degrain1 : match3Degrain1
 	match3Degrain2 = (SourceMatch > 2 && MatchTR2 > 1) ? lsb ? match3Degrain2.ditherpost(mode=6, slice=false) : n16 ? match3Degrain2.ConvertTo8bit(dither=1) : match3Degrain2 : match3Degrain2
 	match3         = (SourceMatch < 3) ? match2 : \
