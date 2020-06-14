@@ -1,4 +1,4 @@
-# Last updated: 2020/05/30
+# Last updated: 2020/06/02
 #
 # By Scintilla, with the third line of themask's definition
 # borrowed from Shodan's derainbower
@@ -26,19 +26,20 @@
 #
 ###################
 
-function DFMDeRainbow(clip org, int "maskthresh", bool "mask", bool "interlaced", bool "mc", bool "use_Flux5framesT")
+function DFMDeRainbow(clip org, int "maskthresh", bool "mask", bool "interlaced", bool "mc", bool "use_Flux5framesT", bool "less_Temporal")
 {
 Assert(org.IsYUV(),"DFMDeRainbow: YUV input only")
-Assert(!(org.IsY8()), "DFMDeRainbow: not work with Greyscale video")
-
 sisavs26   = !(VersionNumber() < 2.6)
 sisphbd = AvsPlusVersionNumber > 2294
+sislumaonly = sisphbd ? org.isy() : sisavs26 ? org.isy8() : false
+Assert(!sislumaonly, "DFMDeRainbow: not work with Greyscale video")
 
 maskthresh = default(maskthresh, 10)
 mask       = default(mask, false)
 interlaced = default(interlaced, false)
 mc         = default(mc, false)
 uFlux5     = default(use_Flux5framesT, false)
+less_Tempo = default(less_Temporal, false)
 
 sisfield = org.IsFieldBased()
 org = interlaced==true? org.separatefields() : org
@@ -63,8 +64,11 @@ first_v=sisfield2 ? eval("interleave(org_ve."+string(uFlux5 ? flux5str : fluxtst
                 \ : eval("org_ve."+string(uFlux5 ? flux5str : fluxtstr)+".Blur(1.5)")
 
 themask=subtract(org,YtoUV(first_u,first_v,org)).Levels(108,1,148,0,255)
-	\ .MSharpen(mask=true,threshold=maskthresh).Invert()
+	\ .svsMSharpen(mask=true,threshold=maskthresh).Invert()
 	\ .Blur(0.5).Levels(0,2,255,0,255).Blur(0.5)
+
+flux5str = less_Tempo ? "" : flux5str
+fluxststr = uFlux5 && less_Tempo ? LeftStr(fluxststr,StrLen(fluxststr)-1) : fluxststr
 
 fixed_u=sisfield2 ? eval("interleave(org_ue."+string(uFlux5 ? fluxststr + flux5str : fluxststr + fluxtstr)+".sminiDeen(4,14,14,u=1,v=1).Blur(1.0), org_uo."+string(uFlux5 ? fluxststr + flux5str : fluxststr + fluxtstr)+".sminiDeen(4,14,14,u=1,v=1).Blur(1.0))")
                 \ : eval("org_ue."+string(uFlux5 ? fluxststr + flux5str : fluxststr + fluxtstr)+".sminiDeen(4,14,14,u=1,v=1).Blur(1.0)")
@@ -91,8 +95,8 @@ sthr = default( sthr, 12 )
 
 super = clp.MSuper(pel=2, sharp=1)
 
-bv1  = manalyse(super,isb=true, truemotion=false, delta=1,blksize=16,overlap=8)
-fv1  = manalyse(super,Isb=false, truemotion=false, delta=1,blksize=16,overlap=8)
+bv1  = manalyse(super,isb=true, truemotion=false, delta=1,blksize=16,overlap=8,chroma=chroma)
+fv1  = manalyse(super,Isb=false, truemotion=false, delta=1,blksize=16,overlap=8,chroma=chroma)
 
 bc1  = mcompensate(clp, super,bv1)
 fc1  = mcompensate(clp, super,fv1)
@@ -177,13 +181,15 @@ Return(result)
 function Flux5framesTfast(clip c,int "th",int "thC",bool "chromamotion")
 {
 sisavs26   = !(VersionNumber() < 2.6)
-chromamotion = default(chromamotion, true)
 sisphbd = AvsPlusVersionNumber > 2294
-u=sisphbd ? c.ExtractU() : sisavs26 ? c.utoy8() : c.utoy()
-v=sisphbd ? c.ExtractV() : sisavs26 ? c.vtoy8() : c.vtoy()
+chromamotion = default(chromamotion, true)
+sislumaonly = sisphbd ? c.isy() : sisavs26 ? c.isy8() : false
+u=sislumaonly ? nop() : sisphbd ? c.ExtractU() : sisavs26 ? c.utoy8() : c.utoy()
+v=sislumaonly  ? nop() : sisphbd ? c.ExtractV() : sisavs26 ? c.vtoy8() : c.vtoy()
+y=sislumaonly ? c : sisphbd ? c.ExtractY() : sisavs26 ? c.converttoy8() : c
 	th  = default(th, 7)
 	thC = default(thC, chromamotion ? th : 0)
-	med = chromamotion ? ytouv(u.median5t(), v.median5t(), c.median5t()) : c.median5t().mergechroma(c)
+	med = sislumaonly ? y.median5t() : sisavs26 ? ytouv(chromamotion ? u.median5t() : u, chromamotion ? v.median5t() : v, y.median5t()) : y.median5t().mergechroma(c)
 	avg = c.temporalsoften(2, th, thC, 24, 2)
 	output = interleave(c, med, avg).clense(grey=!chromamotion).selectevery(3,1)
 	return output
