@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.127
+# V1.128
 
 ### Functions list:-
 # sh_StrReplace
@@ -1533,6 +1533,22 @@ strength=Default(strength,100)
 } catch(error_msg) { 
 input.MSharpen (threshold=round(threshold), strength=round(strength), mask=mask)   }
 }
+
+VersionNumber() < 2.60 ? eval("""
+# Undefined
+#
+#   Generates an "undefined" variable value.  This function can be used to
+#   set an already-defined variable to an undefined state.
+#
+# USAGE:
+#   x = Undefined() # Subsequent calls to Defined(x) will return false.
+#
+function Undefined(val "dummyArg")
+{
+    Assert(!Defined(dummyArg), "Undefined: Cannot be called with any arguments.")
+    return dummyArg
+}
+""") : nop()
 
 
 ####################
