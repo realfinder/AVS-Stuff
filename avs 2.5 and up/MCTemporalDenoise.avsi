@@ -5,7 +5,7 @@
 ###                                                     v1.4.20 by "LaTo INV."                                                   ###
 ###                                                                                                                              ###
 ###                                                           2 July 2010                                                        ###
-###                                                          28 April 2020                                                       ###
+###                                                           25 June 2020                                                       ###
 ###                                                                                                                              ###
 ####################################################################################################################################
 ### 
@@ -471,6 +471,7 @@ function MCTemporalDenoise( clip i, int "radius", int "sigma", bool "twopass", b
 \                           bool "show", int "screenW", int "screenH" )
 {
 sisavs26 = !(VersionNumber() < 2.60)
+sisphbd = AvsPlusVersionNumber > 2294
 ### VERSION
 version = "v1.4.20"
 sisavs26 ? nop() : Assert(isYV12(i) == True ? true : false, chr(10) + "This is not an YV12 clip ! Please convert color space to YV12 before using MCTemporalDenoise()" + chr(10))
@@ -485,6 +486,7 @@ settings_num = (settings == "medium")    ? 2 : settings_num
 settings_num = (settings == "high")      ? 3 : settings_num
 settings_num = (settings == "very high") ? 4 : settings_num
 Assert(settings_num >=0 ? true : false, chr(10) + "These settings do not exist !" + chr(10))
+sischbd  = sisphbd ? i.BitsPerComponent() > 8 : false
 
    function MCTD_Defaults(clip clp, int "settings_num", string "setting")
    {
@@ -621,7 +623,8 @@ stabilize   = default(stabilize,    MCTD_Defaults( i, settings_num, "stabilize" 
 maxr        = default(maxr,         MCTD_Defaults( i, settings_num, "maxr"        ) )
 TTstr       = default(TTstr,        MCTD_Defaults( i, settings_num, "TTstr"       ) )
 
-enhance     = default(enhance,      MCTD_Defaults( i, settings_num, "enhance"     ) )
+denhance    =            !sischbd ? MCTD_Defaults( i, settings_num, "enhance"     )  : false
+enhance     = default(enhance,      denhance                                        )
 GFthr       = default(GFthr,        MCTD_Defaults( i, settings_num, "GFthr"       ) )
 AGstr       = default(AGstr,        MCTD_Defaults( i, settings_num, "AGstr"       ) )
 bias        = default(bias,         MCTD_Defaults( i, settings_num, "bias"        ) )
@@ -784,7 +787,7 @@ b6v = (radius<6) ? nullclip
    \ : nullclip
 
    
-   sm = c.TTempSmooth(radius,255,255,1,1,strength=radius+1,pfclip=SAD_m,fp=false,scthresh=99.9)
+   sm = c.svsTTempSmooth(radius,255,255,1,1,strength=radius+1,pfclip=SAD_m,fp=false,scthresh=99.9)
    sm = sm.SelectEvery(1+radius*2,radius)
    
    return sm
@@ -1069,7 +1072,7 @@ smP = (post==0)        ? smP
 
 
    ### STABILIZING & ENHANCING
-   TTc = (stabilize==true) ? sL.TTempSmoothF(maxr=maxr,strength=TTstr)
+   TTc = (stabilize==true) ? sisavs26 ? sL.svsTTempSmooth(maxr=maxr, lmdiff=255, cmdiff=255,strength=TTstr) : sL.TTempSmoothF(maxr=maxr,strength=TTstr)
    \   :                     sL
    GFc = (enhance==true) ? TTc.GradFun2DBmod(thr=GFthr,thrC=chroma?GFthr:1.0,mode=0,str=AGstr,strC=0.0,temp=temp,adapt=bias,mask=false,show=false)
    \   :                   TTc
