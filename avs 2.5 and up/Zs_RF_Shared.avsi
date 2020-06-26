@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.129
+# V1.130
 
 ### Functions list:-
 # sh_StrReplace
@@ -1517,7 +1517,7 @@ input.dfttest(ftype=ftype, sigma=sigma, sigma2=sigma2, pmin=pmin, pmax=pmax, sbs
 }
 
 
-Function svsTTempSmooth(clip input, int "maxr", int "lthresh", int "cthresh", int "lmdiff", bool "cmdiff", int "strength", bool "fp", bool "y", bool "u", bool "v", clip "pfclip")
+Function svsTTempSmooth(clip input, int "maxr", int "lthresh", int "cthresh", int "lmdiff", int "cmdiff", int "strength", bool "fp", bool "y", bool "u", bool "v", clip "pfclip")
 {
 	   try { input.vsTTempSmooth(maxr=maxr, ythresh=lthresh, uthresh=cthresh, vthresh=cthresh, ymdiff=lmdiff, umdiff=cmdiff, vmdiff=cmdiff, strength=strength, fp=fp, y=y, u=u, v=v, pfclip=pfclip)
 } catch(error_msg) { 
