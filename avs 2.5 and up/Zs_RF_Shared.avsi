@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.130
+# V1.131
 
 ### Functions list:-
 # sh_StrReplace
@@ -69,6 +69,7 @@
 # sneo_FFT3D
 # sneo_dfttest
 # svsTTempSmooth
+# svsTTempSmoothf
 # svsMSharpen
 # IsAvsNeo
 # IsAvsPlus
@@ -1517,11 +1518,19 @@ input.dfttest(ftype=ftype, sigma=sigma, sigma2=sigma2, pmin=pmin, pmax=pmax, sbs
 }
 
 
-Function svsTTempSmooth(clip input, int "maxr", int "lthresh", int "cthresh", int "lmdiff", int "cmdiff", int "strength", bool "fp", bool "y", bool "u", bool "v", clip "pfclip")
+Function svsTTempSmooth(clip input, int "maxr", int "lthresh", int "cthresh", int "lmdiff", int "cmdiff", int "strength", float "scthresh", bool "fp", bool "y", bool "u", bool "v", clip "pfclip")
 {
-	   try { input.vsTTempSmooth(maxr=maxr, ythresh=lthresh, uthresh=cthresh, vthresh=cthresh, ymdiff=lmdiff, umdiff=cmdiff, vmdiff=cmdiff, strength=strength, fp=fp, y=y, u=u, v=v, pfclip=pfclip)
+	   try { input.vsTTempSmooth(maxr=maxr, ythresh=lthresh, uthresh=cthresh, vthresh=cthresh, ymdiff=lmdiff, umdiff=cmdiff, vmdiff=cmdiff, strength=strength, scthresh=scthresh, fp=fp, y=y, u=u, v=v, pfclip=pfclip)
 } catch(error_msg) { 
-input.TTempSmooth(maxr=maxr, lthresh=lthresh, cthresh=cthresh, lmdiff=lmdiff, cmdiff=cmdiff, strength=strength, scthresh=0, fp=fp, pfclip=pfclip)  }
+input.TTempSmooth(maxr=maxr, lthresh=lthresh, cthresh=cthresh, lmdiff=lmdiff, cmdiff=cmdiff, strength=strength, scthresh=strength, fp=fp, pfclip=pfclip)  }
+}
+
+
+Function svsTTempSmoothf(clip input, int "maxr", int "lthresh", int "cthresh", int "strength", float "scthresh", bool "fp", bool "y", bool "u", bool "v", clip "pfclip")
+{
+	   try { input.vsTTempSmooth(maxr=maxr, ythresh=lthresh, uthresh=cthresh, vthresh=cthresh, ymdiff=255, umdiff=255, vmdiff=255, strength=strength, scthresh=scthresh, fp=fp, y=y, u=u, v=v, pfclip=pfclip)
+} catch(error_msg) { 
+input.TTempSmoothf(maxr=maxr, lthresh=lthresh, cthresh=cthresh, strength=strength, scthresh=scthresh, fp=fp, pfclip=pfclip)  }
 }
 
 
