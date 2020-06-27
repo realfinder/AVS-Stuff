@@ -7,7 +7,7 @@
 ###          Special Thanks: Sagekilla, Didée, cretindesalpes, Gavino and MVtools people     ###
 ###                                                                                          ###
 ###                       v3.1.2d (Dogway's mod) - 21 July 2015                              ###
-###   v3.1.2.108s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
+###   v3.1.2.109s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
 ###                     and yuy2 support in avs 2.6 with masktools 2.6                       ###
 ### and medianblur2 now will be used in Minblur instead of Quantile RemoveGrainHD in avs 2.6 ###
 ###                                    and add TV_range bool                                 ###
@@ -32,7 +32,7 @@
 ################################################################################################
 
 function SMDegrain (clip input   , int "tr"      , int "thSAD"    , int  "thSADC" , bool "RefineMotion",  val  "contrasharp", clip "CClip"      , bool "interlaced" ,  int   "plane" ,  int   "Globals",                                  \
-                     int "pel"   , int "subpixel", val "prefilter", clip "mfilter", int  "blksize"     , int  "overlap"     ,  int  "search"    , bool "truemotion" , int  "limit"   ,  int   "limitc" ,  int   "thSCD1" , int "thSCD2",  \
+                     int "pel"   , int "subpixel", val "prefilter", clip "mfilter", int  "blksize"     , int  "overlap"     ,  int  "search"    , bool "truemotion" , float "limit"  ,  float "limitc" ,  int   "thSCD1" , int "thSCD2",  \
                     bool "chroma", int "hpad"    , int "vpad"     , bool "lsb"    , bool "lsb_in"      ,  bool "lsb_out"    , int  "mode"       , bool  "slices"    , val  "Show"    ,  float "Str"    ,  float "Amp" , bool "TV_range", int "dct", int "device_id", int "searchparam", int "pelsearch", bool "trymany", bool "always_MDegrainN", bool "n16", bool "n16_out", int "divide", int "srfilter"){
 
 
@@ -117,6 +117,8 @@ hpad         = blksize
 vpad         = blksize
 limit        = default( limit,  255 )
 limitc       = default( limitc,limit)
+limit        = avs26 ? limit : round(limit)
+limitc       = avs26 ? limitc : round(limit)
 
 Show         = default( Show,  false)
 
@@ -134,7 +136,7 @@ Show         = default( Show,  false)
 MFilterB        ? Assert(IsClip(mfilter),              "'mfilter' only accepts clip inputs")                        : nop()
 interlaced      ? Assert(h%4==0,                       "Interlaced sources require mod 4 height sizes")             : nop()
 lsb_in          ? Assert(!interlaced,                  "Interlaced 16 bit stacked clip is not a recognized format") : nop()
-planar && if0   ? Assert(ifC,                          "LSFmod doesn't support YUY2 sources")                       : nop()
+planar && if0   ? Assert(ifC || avs26,                 "LSFmod doesn't support YUY2 sources")                       : nop()
 RefineMotion    ? Assert(blksize > 7,                  "For RefineMotion you need a blksize of at least 8")         : nop()
 lsb_in          ? Assert(lsb,                          "lsb_in  requires: lsb=true")                                : nop()
 lsb_out         ? Assert(lsb,                          "lsb_out requires: lsb=true")                                : nop()
@@ -299,7 +301,7 @@ output  = !GlobalO ? interlaced ?
 
 type  = avs26 ? input.PixelType() : "YV12"
 
-outputI= !GlobalO && planar && (lsb || ifC) ? output.Planar2Interleaved()                                                                                             : nop()
+outputI= !GlobalO && planar && (lsb || if0) ? output.Planar2Interleaved()                                                                                             : nop()
 !GlobalO && lsb   ? eval("
 blnkclp= lsb_in  || (if2 && !planar) ? BlankClip (lsb_in?input8h:input8, pixel_type=type, color_yuv=0)                                          : nop()
 output = lsb && planar               ? Dither_YUY2toPlanar16(outputI)                                                                                                 : output
@@ -338,7 +340,8 @@ CClip = planar ?  (if1 ?  (lsb_in ? (ref8 ? CClip.Interleaved2planar(true) : CCl
 OutTO8  = output.DitherPost(mode=-1,u=1,v=1)
 OutTO8P = planar  ? OutTO8.Dither_YUY2toInterleaved()                                                                                               : nop()
 ctr16   = ifC     ? ContrasharpeningHD (planar ? OutTO8P.Interleaved2planar(true):OutTO8, CClip, planar=planar, HD=if4)                             : \
-                    LSFmod(OutTO8,source=CClip,defaults="+Chr(34)+"slow"+Chr(34)+",strength=Contrasharp,soothe=false,Lmode=0,soft=-2,keep=0)
+                    LSFmod(planar ? OutTO8P : OutTO8,source=planar ? CClip.planar2Interleaved(true):CClip,defaults="+Chr(34)+"slow"+Chr(34)+",strength=Contrasharp,soothe=false,Lmode=0,soft=-2,keep=0)
+ctr16   = ifC     ? ctr16 : planar ? ctr16.Interleaved2planar(true) : ctr16
 
 
 ctr16P  = planar  ? ctr16.Planar2Interleaved(true)  : ctr16
@@ -415,7 +418,8 @@ global Rtr             = tr")) : nop()
 # Output
 
 output = !GlobalO && !lsb && if0 ? ifC ? ContraSharpeningHD(output, CClip, planar=planar, HD=if4) : \
-			               LSFmod(output,source=CClip,defaults="slow",strength=Contrasharp,soothe=false,Lmode=0,soft=-2,keep=0) \
+			               planar ? LSFmod(output.planar2Interleaved(),source=CClip.planar2Interleaved(true),defaults="slow",strength=Contrasharp,soothe=false,Lmode=0,soft=-2,keep=0).Interleaved2planar() : \
+			               		LSFmod(output,source=CClip,defaults="slow",strength=Contrasharp,soothe=false,Lmode=0,soft=-2,keep=0) \
 			    : output
 
 !GlobalO ? n16_out ? output : n16 ? output.ConvertBits(sbitsn,dither=mode) : \
