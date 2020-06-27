@@ -5,7 +5,7 @@
 ###                                                     v1.4.20 by "LaTo INV."                                                   ###
 ###                                                                                                                              ###
 ###                                                           2 July 2010                                                        ###
-###                                                           25 June 2020                                                       ###
+###                                                           27 June 2020                                                       ###
 ###                                                                                                                              ###
 ####################################################################################################################################
 ### 
@@ -1072,7 +1072,7 @@ smP = (post==0)        ? smP
 
 
    ### STABILIZING & ENHANCING
-   TTc = (stabilize==true) ? sisavs26 ? sL.svsTTempSmooth(maxr=maxr, lmdiff=255, cmdiff=255,strength=TTstr) : sL.TTempSmoothF(maxr=maxr,strength=TTstr)
+   TTc = (stabilize==true) ? sL.svsTTempSmoothF(maxr=maxr,strength=TTstr)
    \   :                     sL
    GFc = (enhance==true) ? TTc.GradFun2DBmod(thr=GFthr,thrC=chroma?GFthr:1.0,mode=0,str=AGstr,strC=0.0,temp=temp,adapt=bias,mask=false,show=false)
    \   :                   TTc
