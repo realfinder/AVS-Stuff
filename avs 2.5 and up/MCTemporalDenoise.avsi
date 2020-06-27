@@ -636,7 +636,8 @@ blksize     = default(blksize,      MCTD_Defaults( i, settings_num, "blksize"   
 overlap     = default(overlap,      MCTD_Defaults( i, settings_num, "overlap"     ) )
 
 GPU         = default(GPU,          MCTD_Defaults( i, settings_num, "GPU"         ) )
-fixband     = default(fixband,      MCTD_Defaults( i, settings_num, "fixband"     ) )
+dfixband    =            !sischbd ? MCTD_Defaults( i, settings_num, "fixband"     )  : false
+fixband     = default(fixband,      dfixband                                        )
 bt          = default(bt,           MCTD_Defaults( i, settings_num, "bt"          ) )
 ncpu        = default(ncpu,         MCTD_Defaults( i, settings_num, "ncpu"        ) )
 precision   = default(precision,    MCTD_Defaults( i, settings_num, "precision"   ) )
@@ -701,8 +702,10 @@ p = defined(p)                   ? p.pointresize(xn,yn,-xf/2,-yf/2,xn,yn)
 \ : (sigma==0)                   ? i
 \ : (GPU==false&&fixband==false) ? i.sneo_FFT3D(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,u=chroma?3:2,v=chroma?3:2,bt=bt)
 \ : (GPU==true &&fixband==false) ? i.FFT3Dgpu(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,plane=chroma?4:0,bt=bt,precision=precision)
-\ : (GPU==false&&fixband==true ) ? i.sneo_FFT3D(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,u=chroma?3:2,v=chroma?3:2,bt=bt).gradfun2db(thr=1.0+sigma*0.05)
-\ :                                i.FFT3Dgpu(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,plane=chroma?4:0,bt=bt,precision=precision).gradfun2db(thr=1.0+sigma*0.05)
+\ : (GPU==false&&fixband==true ) ? sisavs26 ? i.sneo_FFT3D(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,u=chroma?3:2,v=chroma?3:2,bt=bt).gradfun2db3(thr=1.0+sigma*0.05)
+\ :                                           i.sneo_FFT3D(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,u=chroma?3:2,v=chroma?3:2,bt=bt).gradfun2db(thr=1.0+sigma*0.05)
+\ :                                sisavs26 ? i.FFT3Dgpu(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,plane=chroma?4:0,bt=bt,precision=precision).gradfun2db3(thr=1.0+sigma*0.05)
+\ :                                           i.FFT3Dgpu(sigma=sigma*0.8,sigma2=sigma*0.6,sigma3=sigma*0.4,sigma4=sigma*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,plane=chroma?4:0,bt=bt,precision=precision).gradfun2db(thr=1.0+sigma*0.05)
 
 
 ### DEBLOCKING
@@ -868,7 +871,7 @@ smP = (post==0)    ? smL
 \   :                smL.FFT3Dgpu(sigma=post*0.8,sigma2=post*0.6,sigma3=post*0.4,sigma4=post*0.2,bw=bwbh,bh=bwbh,ow=owoh,oh=owoh,plane=chroma?4:0,bt=bt,precision=precision)
 smP = (post==0)        ? smP
 \   : (fixband==false) ? smP
-\   :                    mt_makediff(smL,mt_makediff(smL,smP,U=chr31,V=chr31).gradfun2DB(thr=1.0+post*0.5),U=chr31,V=chr31)
+\   :                    mt_makediff(smL,sisavs26 ? mt_makediff(smL,smP,U=chr31,V=chr31).gradfun2DB3(thr=1.0+post*0.5) : mt_makediff(smL,smP,U=chr31,V=chr31).gradfun2DB(thr=1.0+post*0.5),U=chr31,V=chr31)
 
 
 ### POST-PROCESSING
