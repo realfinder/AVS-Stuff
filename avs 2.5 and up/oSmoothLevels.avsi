@@ -1,16 +1,17 @@
 #########################################################################################
 ###                                                                                   ###
-###                      function Smooth Levels : oSmoothLevels()                      ###
+###                     function Smooth Levels : oSmoothLevels()                      ###
 ###                                                                                   ###
 ###                                v1.02 by "LaTo INV."                               ###
 ###                                                                                   ###
 ###                                  28 January 2009                                  ###
-###                                   24 April 2020                                   ###
+###                                   28 June 2020                                    ###
 ###                                                                                   ###
 #########################################################################################
 ### 
 ### 
-### /!\ Needed filters : Masktools (v2.0a35), Removegrain (v1.0PR), GradFun2db (v1.0).
+### /!\ Needed filters : for avs2.5 Masktools2, Removegrain (v1.0PR or better), GradFun2db (v1.0 or better).
+###                      for avs2.6 and avs+ (ToDo)
 ### --------------------
 ### 
 ###
@@ -189,6 +190,7 @@ function oSmoothLevels(clip input, float "input_low", float "gamma", float "inpu
 \                     bool "show", int "screenW", int "screenH", string "preset")
 {
 sisavs26 = !(VersionNumber() < 2.60)
+sisphbd = AvsPlusVersionNumber > 2294
 ### VERSION
 version = "v1.02"
 sisavs26 ? nop() : Assert(isYV12(input) == True ? true : false, chr(10) + "This is not an YV12 clip ! Please convert color space to YV12 before using SmoothLevels()" + chr(10))
@@ -199,6 +201,7 @@ preset_num = (preset == "default") ? 0 : preset_num
 preset_num = (preset == "pc2tv")   ? 1 : preset_num
 preset_num = (preset == "tv2pc")   ? 2 : preset_num
 Assert(preset_num >=0 ? true : false, chr(10) + "This preset does not exist !" + chr(10))
+sischbd     = sisphbd ? input.BitsPerComponent() > 8 : false
 
 
 ### PRESET_DEFAULT                                       #  DEFAULT  #   PC2TV   #   TV2PC   #
@@ -221,7 +224,8 @@ Ecurve      = Default(Ecurve,        Select(preset_num   ,   0       ,   0      
 Smode       = Default(Smode,         Select(preset_num   ,   -2      ,   1       ,   1       ) )
 Mfactor     = Default(Mfactor,       Select(preset_num   ,   2       ,   4       ,   4       ) )
 RGmode      = Default(RGmode,        Select(preset_num   ,   12      ,   19      ,   19      ) )
-useGF       = Default(useGF,         Select(preset_num   ,   True    ,   True    ,   True    ) )
+duseGF      =      sischbd ? false : Select(preset_num   ,   True    ,   True    ,   True    )
+useGF       = Default(useGF,       duseGF                                                      )
 
 show        = Default(show,          Select(preset_num   ,   False   ,   False   ,   False   ) )
 screenW     = Default(screenW,       Select(preset_num   ,   1280    ,   1280    ,   1280    ) )
@@ -285,7 +289,7 @@ limitI = ( limiter == 1 || limiter == 3 ) ? sisavs26 ? mt_lut(input, expr="x "+s
 level   = sisavs26 ? mt_lut(limitI, Yexpr=exprL+" "+exprP+" * "+exprY+" x - * x +", scale_inputs="allf", use_expr=2, Uexpr=exprC, Vexpr=exprC, U=chr31, V=chr31) : mt_lut(limitI, Yexpr=exprL+" "+exprP+" * "+exprY+" x - * x +", Uexpr=exprC, Vexpr=exprC, U=chr31, V=chr31)
 diff    = sisavs26 ? mt_lutxy(limitI, level, "x y - "+string(Mfactor)+" * range_half +", use_expr=2, U=chr31, V=chr31) : mt_lutxy(limitI, level, "x y - "+string(Mfactor)+" * 128 +", U=chr31, V=chr31)
 process = diff.RemoveGrain(RGmode,RGmodeUV)
-process = ( useGF == True ) ? sisavs26 ? process.mt_lut("x range_half - "+string(Mfactor)+" / range_half +", use_expr=2, U=chr31, V=chr31).addborders(16,16,16,16,color=$808080).GradFun2DB(thrshld).crop(16,16,-16,-16) : process.mt_lut("x 128 - "+string(Mfactor)+" / 128 +", U=chr31, V=chr31).addborders(16,16,16,16,color=$808080).GradFun2DB(thrshld).crop(16,16,-16,-16)
+process = ( useGF == True ) ? sisavs26 ? process.mt_lut("x range_half - "+string(Mfactor)+" / range_half +", use_expr=2, U=chr31, V=chr31).addborders(16,16,16,16,color=$808080).GradFun2DB3(thrshld).crop(16,16,-16,-16) : process.mt_lut("x 128 - "+string(Mfactor)+" / 128 +", U=chr31, V=chr31).addborders(16,16,16,16,color=$808080).GradFun2DB(thrshld).crop(16,16,-16,-16)
 \       :                     process
 smth    = ( useGF == True ) ? mt_makediff(limitI, process, U=chr31, V=chr31)
 \       :                     sisavs26 ? mt_lutxy(limitI, process, "x y range_half - "+string(Mfactor)+" / -", use_expr=1, U=chr31, V=chr31) : mt_lutxy(limitI, process, "x y 128 - "+string(Mfactor)+" / -", U=chr31, V=chr31)
@@ -293,7 +297,7 @@ smth    = ( useGF == True ) ? mt_makediff(limitI, process, U=chr31, V=chr31)
 level2   = sisavs26 ? mt_lutxy(limitI, diff, "x y range_half - "+string(Mfactor)+" / -", use_expr=1, U=chr31, V=chr31) : mt_lutxy(limitI, diff, "x y 128 - "+string(Mfactor)+" / -", U=chr31, V=chr31)
 diff2    = sisavs26 ? mt_lutxy(level2, level, "x y - "+string(Mfactor)+" * range_half +", use_expr=1, U=chr31, V=chr31) : mt_lutxy(level2, level, "x y - "+string(Mfactor)+" * 128 +", U=chr31, V=chr31)
 process2 = diff2.RemoveGrain(RGmode,RGmodeUV)
-process2 = ( useGF == True ) ? sisavs26 ? process2.mt_lut("x range_half - "+string(Mfactor)+" / range_half +", use_expr=2, U=chr31, V=chr31).addborders(16,16,16,16,color=$808080).GradFun2DB(thrshld).crop(16,16,-16,-16) : process2.mt_lut("x 128 - "+string(Mfactor)+" / 128 +", U=chr31, V=chr31).addborders(16,16,16,16,color=$808080).GradFun2DB(thrshld).crop(16,16,-16,-16)
+process2 = ( useGF == True ) ? sisavs26 ? process2.mt_lut("x range_half - "+string(Mfactor)+" / range_half +", use_expr=2, U=chr31, V=chr31).addborders(16,16,16,16,color=$808080).GradFun2DB3(thrshld).crop(16,16,-16,-16) : process2.mt_lut("x 128 - "+string(Mfactor)+" / 128 +", U=chr31, V=chr31).addborders(16,16,16,16,color=$808080).GradFun2DB(thrshld).crop(16,16,-16,-16)
 \        :                     process2
 smth2    = ( useGF == True ) ? mt_makediff(smth, process2, U=chr31, V=chr31)
 \        :                     sisavs26 ? mt_lutxy(smth, process2, "x y range_half - "+string(Mfactor)+" / -", use_expr=1, U=chr31, V=chr31) : mt_lutxy(smth, process2, "x y 128 - "+string(Mfactor)+" / -", U=chr31, V=chr31)
