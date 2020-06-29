@@ -1,5 +1,5 @@
 ###############
-# F3KDB_3 and it sisters v1.3
+# F3KDB_3 and it sisters v1.31
 
 
 function F3KDB_3(clip clip, int "range", int "Y", int "Cb", int "Cr", \
@@ -14,18 +14,19 @@ function F3KDB_3(clip clip, int "range", int "Y", int "Cb", int "Cr", \
 sample_mode = default (sample_mode, 4)
 pass = default (pass, sample_mode==4 ? 2 : 1)
 isgrYd = defined(grainY)
-lpgra  = default (lastpassgrain, !isgrYd && pass > 1)
-lpmsk  = default (lastpassmask, lpgra && pass > 1)
-grainY = isgrYd && !lpgra ? grainY : pass > 1 ? 0 : pass < 2 && lpgra ? undefined : 0
+nlpgra  = default (lastpassgrain, !isgrYd && pass > 1)
+nlpmsk  = default (lastpassmask, nlpgra && pass > 1)
+ngrainY = isgrYd && !nlpgra ? ngrainY : pass > 1 ? 0 : pass < 2 && nlpgra ? undefined : 0
 chromad = defined(chroma)
 chroma      = default (chroma, true)
 cb = default (cb, chroma ? undefined : 0)
 cr = default (cr, chroma ? undefined : 0)
-grainC = default (grainC, chromad && chroma ? 64 : chroma ? grainY : 0)
+grainC = default (grainC, chromad && chroma ? 64 : chroma ? ngrainY : 0)
 sisphbd   = AvsPlusVersionNumber > 2294
-sischbd  = sisphbd ? clip.BitsPerComponent() > 8 : false
-input_depth = defined(input_depth) ? input_depth : defined(input_mode) ? input_mode>0 ? 16 : 8 : 8
-output_depth = defined(output_depth) ? output_depth : sischbd ? undefined : defined(output_mode) ? output_mode>0 ? 16 : 8 : 8
+hbdbits = sisphbd ? clip.BitsPerComponent() : 8
+sischbd  = hbdbits > 8
+input_depth = defined(input_mode) ? input_mode!=0 ? (defined(input_depth) ? input_depth : 16) : hbdbits : hbdbits
+output_depth = defined(output_depth) ? output_depth : sischbd ? hbdbits : defined(output_mode) ? output_mode>0 ? 16 : 8 : 8
 input_mode  = default (input_mode, input_depth==8 || sischbd ? 0 : 1)
 output_mode = default (output_mode, sischbd ? 0 : output_depth==8 ? 0 : 1)
 masking      = default (masking, true)
@@ -38,24 +39,26 @@ Assert(!(output_mode>0 && sischbd), "F3KDB_3: lsb/interleaved hack is not Compat
 Assert(isYUV(clip), "F3KDB_3: YUV only")
 
 pclip.neo_F3KDB(range, Y, Cb, Cr, \
-		grainY, grainC, sample_mode, seed, \
+		ngrainY, grainC, sample_mode, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, \
-		output_depth, \
+		pass > 1 ? 16 : output_depth, \
 		random_algo_ref, random_algo_grain, \
 		random_param_ref, random_param_grain)
 
-masking && (lpmsk ? pass < 2 : true) ? mt_merge(last,pclip,pclip.F3KDB_3_masking(mask_thr, mask_radius), u=chroma ? 3 : 2, v=chroma ? 3 : 2, luma=chroma) : last
+pclip = masking && output_depth != input_depth ? pclip.convertbits(output_depth,dither=output_depth < input_depth ? 1 : undefined) : pclip
+
+masking && (nlpmsk ? pass < 2 : true) ? mt_merge(last,pclip,pclip.F3KDB_3_masking(mask_thr, mask_radius), u=chroma ? 3 : 2, v=chroma ? 3 : 2, luma=chroma) : last
 
 output_mode==1 ? pclip.convertbits(16,false).ConvertToStacked() : output_mode==2 ? pclip.convertbits(16,false).ConvertToDoubleWidth() : last
 
         pass > 1 ? last.F3KDB_3(range, Y, Cb, Cr, \
-		grainY, grainC, sample_mode, seed, \
+		ngrainY, grainC, sample_mode, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, input_mode, \
 		input_depth, output_mode, output_depth, \
 		random_algo_ref, random_algo_grain, \
-		random_param_ref, random_param_grain, chroma, pass - 1, lpgra, masking, mask_thr, mask_radius) : last
+		random_param_ref, random_param_grain, chroma, pass - 1, nlpgra, masking, mask_thr, mask_radius) : last
 
 sisyuy2 ? ConvertToYUY2() : last
 
@@ -169,7 +172,7 @@ sm4i16 ? Bitdepth(from=88, to=16) : last
 		random_algo_ref, random_algo_grain, \
 		random_param_ref, random_param_grain, chroma, pass - 1, lpgra, masking, mask_thr, mask_radius) : last
 
-yuy26 ? ConvertToYUY2() : last
+sisyuy2 ? ConvertToYUY2() : last
 
 }
 
@@ -196,34 +199,43 @@ mrad > 2 ? removegrain (20, -1) : last
 # F3KDB_3_adg F3KDB_3 with adaptive grain
 
 function F3KDB_3_adg(clip clip, int "range", int "Y", int "Cb", int "Cr", int "seed", \
-		bool "blur_first", bool "dynamic_grain", int "opt", bool "mt", \
-		int "dither_algo", bool "keep_tv_range", \
-		int "random_algo_ref", int "random_algo_grain", \
-		float "random_param_ref", float "random_param_grain", bool "chroma", int "pass", bool "masking", float "mask_thr", int "mask_radius", float "gf", float "gmin", float "gmax") {
+        bool "blur_first", bool "dynamic_grain", int "opt", bool "mt", \
+        int "dither_algo", bool "keep_tv_range", int "output_depth", \
+        int "random_algo_ref", int "random_algo_grain", \
+        float "random_param_ref", float "random_param_grain", bool "chroma", int "pass", bool "masking", float "mask_thr", int "mask_radius", float "gf", float "gmin", float "gmax") {
+sisphbd = AvsPlusVersionNumber > 2294
+bits = sisphbd ? BitsPerComponent(clip) : 8
+output_depth = default(output_depth, bits) 
+!sisphbd ? Assert(bits==8, "F3KDB_3_adg: this avs not work with HBD") : nop()
+out_mode = output_depth > 8 ? 3 : 0
 pass = default (pass, 2)
 masking = default (masking, true)
-gf = default (gf, 512)
-gmin = default (gmin, 12)
-gmax = default (gmax, 100)
-Assert(clip.BitsPerComponent() == 16, "F3KDB_3_adg: only work with avs+ HBD 16 bit")
+gscale = pow(2, 16 - bits)
+gf = default (gf, 512.0 / gscale)
+gmin = default (gmin, 12.0 / gscale)
+gmax = default (gmax, 100.0 / gscale)
+
 pass != 1 ? clip.F3KDB_3(range, Y, Cb, Cr, 0, 0, 4, seed, \
-		blur_first, dynamic_grain, opt, mt, \
-		dither_algo, keep_tv_range, 0, \
-		16, 3, 16, \
-		random_algo_ref, random_algo_grain, \
-		random_param_ref, random_param_grain, chroma, pass - 1, false, false, mask_thr, mask_radius) : clip
-        pass > 1 ? last.F3KDB_3_adg(range, Y, Cb, Cr, seed, \
-		blur_first, dynamic_grain, opt, mt, \
-		dither_algo, keep_tv_range, \
-		random_algo_ref, random_algo_grain, \
-		random_param_ref, random_param_grain, chroma, pass - 1, masking, mask_thr, mask_radius, gf, gmin, gmax) : last
+        blur_first, dynamic_grain, opt, mt, \
+        dither_algo, keep_tv_range, 0, \
+        bits, out_mode, sisphbd ? 16 : 8, \
+        random_algo_ref, random_algo_grain, \
+        random_param_ref, random_param_grain, chroma, 1, false, false, mask_thr, mask_radius) : clip
+		
+pass > 1 ? last.F3KDB_3_adg(range, Y, Cb, Cr, seed, \
+        blur_first, dynamic_grain, opt, mt, \
+        dither_algo, keep_tv_range, output_depth, \
+        random_algo_ref, random_algo_grain, \
+        random_param_ref, random_param_grain, chroma, pass - 1, masking, mask_thr, mask_radius, gf, gmin, gmax) : last
+		
+bits != output_depth ? convertbits(output_depth,dither=output_depth < bits ? 1 : undefined) : last
 pass == 1 ? last.gScriptClip("""
 last.F3KDB_3(range, Y, Cb, Cr, \
-		round(max(min((65535-AverageLuma)/gf,gmax),gmin)), 0, 4, seed, \
-		blur_first, dynamic_grain, opt, mt, \
-		dither_algo, keep_tv_range, 0, \
-		16, 3, 16, \
-		random_algo_ref, random_algo_grain, \
-		random_param_ref, random_param_grain, chroma, 1, false, masking, mask_thr, mask_radius)
-""",args="range, Y, Cb, Cr, seed, blur_first, dynamic_grain, opt, mt, dither_algo, keep_tv_range, random_algo_ref, random_algo_grain, random_param_ref, random_param_grain, chroma, masking, mask_thr, mask_radius, gf, gmin, gmax") : last
+        round(max(min(((BitLShift(1, bits) - 1) - AverageLuma)/gf,gmax),gmin)), 0, 4, seed, \
+        blur_first, dynamic_grain, opt, mt, \
+        dither_algo, keep_tv_range, 0, \
+        bits, out_mode, output_depth, \
+        random_algo_ref, random_algo_grain, \
+        random_param_ref, random_param_grain, chroma, 1, false, masking, mask_thr, mask_radius)
+""",args="range, Y, Cb, Cr, seed, blur_first, dynamic_grain, opt, mt, dither_algo, keep_tv_range, output_depth, random_algo_ref, random_algo_grain, random_param_ref, random_param_grain, chroma, masking, mask_thr, mask_radius, gf, gmin, gmax, out_mode, bits") : last
 }
