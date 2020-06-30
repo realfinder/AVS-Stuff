@@ -1,4 +1,4 @@
-# script v2.112
+# script v2.113
 # Motion-compensated dfttest by twc
 # Aka: Really Really Really Slow
 #
@@ -242,12 +242,13 @@ function sMCclips(clip input, clip pp_super, clip super, int "mc",
 
 function spp_super(clip input, clip "pp", bool "lsb", bool "lsb_in",bool "pp_lsb_in",int "super_filter",
 	\ float "rStr",float "Amp", int "pel", bool "Y", bool "U", bool "V",
-		\ bool "slices", bool "luma_rebuild", bool "HD")
+		\ bool "slices", bool "luma_rebuild", bool "HD", int "Subpixel")
 {
 	Y = default(Y, true)
 	U = default(U, true)
 	V = default(V, true)
 	HD = default(HD, false)
+	subpixel = default( subpixel,  2 )
 	lsb_in = default(lsb_in, false)
 	input8 = lsb_in ? input.ditherpost(mode=7,slice=slices,y=y ? 3 : 1,u=u ? 3 : 1,v=v ? 3 : 1) : input
 	super_filter = default(super_filter,4)
@@ -264,15 +265,18 @@ function spp_super(clip input, clip "pp", bool "lsb", bool "lsb_in",bool "pp_lsb
 
 	# Prepare supersampled clips.
 	pp = (pp_enabled) ? luma_rebuild ? pp.dither_luma_rebuild(S0=rStr,c=Amp,slice=slices,lsb_in=pp_lsb_in,lsb=lsb_in,lsb_out=false,uv=((U&&v)?3:1)) : pp : nop()
-	pp_super = pp_enabled ? MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter) : MSuper(input8, pel=pel, chroma=chroma)
+
+	pelclip = pel>1 && subpixel == 3
+	pclip = pelclip ? pel==4 ? pp.nnedi3_rpow2(rfactor=2,nns=4).nnedi3_rpow2(rfactor=2,nns=4) : pp.nnedi3_rpow2(rfactor=2,nns=4) : undefined
+	pp_super = pp_enabled ? MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter, pelclip=pclip) : MSuper(input8, pel=pel, chroma=chroma)
 		
 	return pp_super
 }
 
-# sMCwarper v1.21
+# sMCwarper v1.23
 function sMCwarper(clip input, string "filter", int "mc", val "prefilter", bool "TV_range", clip "exmcclip", clip "super", clip "pp_super", bool "Y", bool "U", bool "V",
 	\ int "thSAD", int "thSCD1", int "thSCD2", bool "truemotion", bool "chroma", int "blksize", int "search", int "searchparam", int "overlap", int "dct",
-		\ bool  "HD",bool "slices",float "rStr",float "Amp", int "pel",int "super_filter", bool "interlaced")
+		\ bool  "HD",bool "slices",float "rStr",float "Amp", int "pel",int "super_filter", bool "interlaced", int "Subpixel")
 {
 		exmc = defined(exmcclip)
 		Assert(defined(filter), "sMCwarper: filter is needed")
@@ -297,10 +301,13 @@ function sMCwarper(clip input, string "filter", int "mc", val "prefilter", bool 
 		prefilterisclip = prefilterdef ? isclip(prefilter) : false
 		prefilter = prefilterisclip && interlaced ? prefilter.SeparateFields() : prefilter
 		sppbool = prefilterbool ? true : TV_range ? true : false
-		pp_super =  defined(pp_super) ? pp_super : sppbool ? spp_super(input ,prefilterisclip ? prefilter :  input ,HD=HD,slices=slices,rStr=rStr,Amp=Amp,pel=pel,super_filter=super_filter,luma_rebuild=TV_range,y=y,u=u,v=v) : input.MSuper(pel=pel,rfilter=super_filter)
-		super = defined(super) ? super : sppbool ? input.MSuper(levels=1,pel=pel,rfilter=0) : pp_super
+		pp_super =  defined(pp_super) ? pp_super : sppbool ? spp_super(input ,prefilterisclip ? prefilter :  input ,HD=HD,slices=slices,rStr=rStr,Amp=Amp,pel=pel,super_filter=super_filter,luma_rebuild=TV_range,y=y,u=u,v=v,subpixel=subpixel) : input.MSuper(pel=pel,rfilter=super_filter)
+		subpixel = default( subpixel,  2 )
+		pelclip = pel>1 && subpixel == 3
+		pclip = pelclip ? pel==4 ? input.nnedi3_rpow2(rfactor=2,nns=4).nnedi3_rpow2(rfactor=2,nns=4) : input.nnedi3_rpow2(rfactor=2,nns=4) : undefined
+		super = defined(super) ? super : sppbool ? input.MSuper(levels=1,pel=pel,rfilter=0, pelclip=pclip) : pp_super
 		            """) : nop()
-		exmc ? exmcclip : interlaced ? interleave(input.selecteven().sMCclips(pp_super.selecteven(), super.selecteven(),mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD), input.selectodd().sMCclips(pp_super.selectodd(), super.selectodd(),mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD)) :
+		exmc ? exmcclip : interlaced ? interleave(input.selecteven().sMCclips(pp_super.selecteven(), super.selecteven(),mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD), input.selectodd().sMCclips(pp_super.selectodd(), super.selectodd(),mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD)).weave() :
 		                             \ input.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD)
 		eval(filter)
 		selectEvery(last, mc * 2 + 1, mc)
