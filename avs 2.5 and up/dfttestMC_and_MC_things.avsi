@@ -1,3 +1,6 @@
+####################################################
+# script v2.114
+####################################################
 # Motion-compensated dfttest by twc
 # Aka: Really Really Really Slow
 #
@@ -6,7 +9,7 @@
 # Added: Recalculate, (proper) 16 bit input handling, dither_luma_rebuild and some masking to prevent 16 bit data loss from 8 bit Mdegrain and Mcompensate
 #
 #
-# v3.93 by A.SONY
+# v3.931 by A.SONY
 # make it work in normal avs again and some fix, and not that slow if you use it without lsb/lsb_in
 # add slice bool to use it to avoid artifacts with avstp
 # clean up
@@ -196,9 +199,9 @@ function sMCclips(clip input, clip pp_super, clip super, int "mc",
 	truemotion = default(truemotion,true)
 	blksize = default(blksize,HD ? 16:8)
 	blksize2 = int(blksize/2) + (int(blksize/2)%2)
-    search = default(search, HD ? 4 : 5)
+	search = default(search, HD ? 4 : 5)
 	overlap = default(overlap,blksize2)
-    thSAD  = default(thSAD ,   400)
+	thSAD  = default(thSAD ,   400)
 	chroma   = default(chroma, true)
 	
 	# Motion vector search.
@@ -215,8 +218,7 @@ function sMCclips(clip input, clip pp_super, clip super, int "mc",
 
 	sbitsn = sisphbd ? input.BitsPerComponent() : 8
 	super = sisphbd ? sbitsn != super.BitsPerComponent() ? super.ConvertBits(sbitsn) : super : super
-	
-	eval("""
+
 	b5clip = mc == 5 ? MCompensate(input, super, b5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
 	b4clip = mc >  3 ? MCompensate(input, super, b4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
 	b3clip = mc >  2 ? MCompensate(input, super, b3vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
@@ -227,7 +229,6 @@ function sMCclips(clip input, clip pp_super, clip super, int "mc",
 	f3clip = mc >  2 ? MCompensate(input, super, f3vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
 	f4clip = mc >  3 ? MCompensate(input, super, f4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
 	f5clip = mc == 5 ? MCompensate(input, super, f5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	""")
 
 	# Create compensated clip.
 	interleaved = mc == 5 ? Interleave(f5clip, f4clip, f3clip, f2clip, f1clip, input, b1clip, b2clip, b3clip, b4clip, b5clip) :
@@ -241,18 +242,19 @@ function sMCclips(clip input, clip pp_super, clip super, int "mc",
 
 function spp_super(clip input, clip "pp", bool "lsb", bool "lsb_in",bool "pp_lsb_in",int "super_filter",
 	\ float "rStr",float "Amp", int "pel", bool "Y", bool "U", bool "V",
-		\ bool "slices", bool "luma_rebuild", bool "HD")
+		\ bool "slices", bool "luma_rebuild", bool "HD", int "Subpixel")
 {
 	Y = default(Y, true)
 	U = default(U, true)
 	V = default(V, true)
 	HD = default(HD, false)
+	subpixel = default( subpixel,  2 )
 	lsb_in = default(lsb_in, false)
 	input8 = lsb_in ? input.ditherpost(mode=7,slice=slices,y=y ? 3 : 1,u=u ? 3 : 1,v=v ? 3 : 1) : input
 	super_filter = default(super_filter,4)
 	pp_enabled = defined(pp)
 	pp_lsb_in = default(pp_lsb_in,(pp_enabled ? lsb_in ? (height(input) == height(pp)) ? true : false : false : false ))
-    pel = default( pel, HD ? 1 : 2 )
+	pel = default( pel, HD ? 1 : 2 )
 	rStr         = default( rStr, 1.0 )
 	Amp          = default( Amp, 0.0625 )
 	slices       = default(slices, true)
@@ -263,39 +265,50 @@ function spp_super(clip input, clip "pp", bool "lsb", bool "lsb_in",bool "pp_lsb
 
 	# Prepare supersampled clips.
 	pp = (pp_enabled) ? luma_rebuild ? pp.dither_luma_rebuild(S0=rStr,c=Amp,slice=slices,lsb_in=pp_lsb_in,lsb=lsb_in,lsb_out=false,uv=((U&&v)?3:1)) : pp : nop()
-	pp_super = pp_enabled ? MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter) : MSuper(input8, pel=pel, chroma=chroma)
+
+	pelclip = pel>1 && subpixel == 3
+	pclip = pelclip ? pel==4 ? pp.nnedi3_rpow2(rfactor=2,nns=4).nnedi3_rpow2(rfactor=2,nns=4) : pp.nnedi3_rpow2(rfactor=2,nns=4) : undefined
+	pp_super = pp_enabled ? MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter, pelclip=pclip) : MSuper(input8, pel=pel, chroma=chroma)
 		
 	return pp_super
 }
 
-# sMCwarper v1.2
+# sMCwarper v1.24
 function sMCwarper(clip input, string "filter", int "mc", val "prefilter", bool "TV_range", clip "exmcclip", clip "super", clip "pp_super", bool "Y", bool "U", bool "V",
 	\ int "thSAD", int "thSCD1", int "thSCD2", bool "truemotion", bool "chroma", int "blksize", int "search", int "searchparam", int "overlap", int "dct",
-		\ bool  "HD",bool "slices",float "rStr",float "Amp", int "pel",int "super_filter")
+		\ bool  "HD",bool "slices",float "rStr",float "Amp", int "pel",int "super_filter", bool "interlaced", int "Subpixel", val "para1", val "para2")
 {
 		exmc = defined(exmcclip)
-		!exmc ? eval("
+		Assert(defined(filter), "sMCwarper: filter is needed")
+		!exmc ? eval("""
 		mc = default(mc, 2).min(5)
 		chroma = default(chroma, true)
 		Y = default(Y, true)
 		U = default(U, chroma)
 		V = default(V, U)
 		TV_range  = default( TV_range, !(Isrgb(input)))
+		interlaced = default( interlaced, false)
 		HDbool = defined(HD)
 		ox = HDbool ? nop() : input.width()
 		oy = HDbool ? nop() : input.height()
 		HD = HDbool ? HD : (ox > 1099 || oy > 599)
 		pel = default( pel, HD ? 1 : 2 )
+		input = interlaced ? input.SeparateFields() : input
 		prefilterdef = defined(prefilter)
 		prefilterisint = prefilterdef ? isint(prefilter) : false
-		prefilterbool = prefilterdef ? isbool(prefilter) ? prefilter : prefilterisint ? prefilter!=0 : true : true
-		prefilter = prefilterisint && prefilterbool ? input.blur(1.53) : prefilter
+		prefilterbool = prefilterdef ? isbool(prefilter) ? prefilter : prefilterisint ? prefilter!=0 : true : false
+		prefilter = prefilterdef ? prefilterisint && prefilterbool ? prefilter == 1 ? input.blur(1.53,interlaced ? 0 : undefined) : input.Ablur(1,blurv=interlaced ? 0 : undefined,chroma=chroma?3:2) : eval("input."+prefilter) : prefilter
 		prefilterisclip = prefilterdef ? isclip(prefilter) : false
-		sppbool = prefilterisclip ? true : TV_range ? true : false
-		pp_super =  defined(pp_super) ? pp_super : sppbool ? spp_super(input ,prefilterisclip ? prefilter :  input ,HD=HD,slices=slices,rStr=rStr,Amp=Amp,pel=pel,super_filter=super_filter,luma_rebuild=TV_range,y=y,u=u,v=v) : MSuper(pel=pel,rfilter=super_filter)
-		super = defined(super) ? super : sppbool ? input.MSuper(levels=1,pel=pel,rfilter=0) : pp_super
-		            ") : nop()
-		exmc ? exmcclip : input.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD)
+		prefilter = prefilterisclip && interlaced && prefilter.IsFrameBased() ? prefilter.SeparateFields() : prefilter
+		sppbool = prefilterbool ? true : TV_range ? true : false
+		pp_super =  defined(pp_super) ? pp_super : sppbool ? spp_super(input ,prefilterisclip ? prefilter :  input ,HD=HD,slices=slices,rStr=rStr,Amp=Amp,pel=pel,super_filter=super_filter,luma_rebuild=TV_range,y=y,u=u,v=v,subpixel=subpixel) : input.MSuper(pel=pel,rfilter=super_filter)
+		subpixel = default( subpixel,  2 )
+		pelclip = pel>1 && subpixel == 3
+		pclip = pelclip ? pel==4 ? input.nnedi3_rpow2(rfactor=2,nns=4).nnedi3_rpow2(rfactor=2,nns=4) : input.nnedi3_rpow2(rfactor=2,nns=4) : undefined
+		super = defined(super) ? super : sppbool ? input.MSuper(levels=1,pel=pel,rfilter=0, pelclip=pclip) : pp_super
+		            """) : nop()
+		exmc ? exmcclip : interlaced ? interleave(input.selecteven().sMCclips(pp_super.selecteven(), super.selecteven(),mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD), input.selectodd().sMCclips(pp_super.selectodd(), super.selectodd(),mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD)).weave() :
+		                             \ input.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD)
 		eval(filter)
 		selectEvery(last, mc * 2 + 1, mc)
 }
