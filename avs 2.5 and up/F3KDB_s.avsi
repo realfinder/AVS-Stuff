@@ -1,5 +1,5 @@
 ###############
-# F3KDB_3 and it sisters v1.31
+# F3KDB_3 and it sisters v1.32
 
 
 function F3KDB_3(clip clip, int "range", int "Y", int "Cb", int "Cr", \
@@ -28,14 +28,14 @@ sischbd  = hbdbits > 8
 input_depth = defined(input_mode) ? input_mode!=0 ? (defined(input_depth) ? input_depth : 16) : hbdbits : hbdbits
 output_depth = defined(output_depth) ? output_depth : sischbd ? hbdbits : defined(output_mode) ? output_mode>0 ? 16 : 8 : 8
 input_mode  = default (input_mode, input_depth==8 || sischbd ? 0 : 1)
-output_mode = default (output_mode, sischbd ? 0 : output_depth==8 ? 0 : 1)
+noutput_mode = default (output_mode, sischbd ? 0 : output_depth==8 ? 0 : 1)
 masking      = default (masking, true)
 sisyuy2 = clip.isyuy2()
 pclip   = sisyuy2 ? clip.ConvertToYV16() : clip
 pclip   = input_mode==1 ? pclip.ConvertFromStacked(input_depth) : input_mode==2 ? pclip.ConvertFromDoubleWidth(input_depth) : pclip
 
 Assert(!(input_mode>0 && sischbd), "F3KDB_3: lsb/interleaved hack is not Compatible with HBD")
-Assert(!(output_mode>0 && sischbd), "F3KDB_3: lsb/interleaved hack is not Compatible with HBD")
+Assert(!(noutput_mode>0 && sischbd), "F3KDB_3: lsb/interleaved hack is not Compatible with HBD")
 Assert(isYUV(clip), "F3KDB_3: YUV only")
 
 pclip.neo_F3KDB(range, Y, Cb, Cr, \
@@ -50,13 +50,13 @@ pclip = masking && output_depth != input_depth ? pclip.convertbits(output_depth,
 
 masking && (nlpmsk ? pass < 2 : true) ? mt_merge(last,pclip,pclip.F3KDB_3_masking(mask_thr, mask_radius), u=chroma ? 3 : 2, v=chroma ? 3 : 2, luma=chroma) : last
 
-output_mode==1 ? pclip.convertbits(16,false).ConvertToStacked() : output_mode==2 ? pclip.convertbits(16,false).ConvertToDoubleWidth() : last
+noutput_mode==1 ? pclip.convertbits(16,false).ConvertToStacked() : noutput_mode==2 ? pclip.convertbits(16,false).ConvertToDoubleWidth() : last
 
         pass > 1 ? last.F3KDB_3(range, Y, Cb, Cr, \
 		ngrainY, grainC, sample_mode, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, input_mode, \
-		input_depth, output_mode, output_depth, \
+		input_depth, noutput_mode, output_depth, \
 		random_algo_ref, random_algo_grain, \
 		random_param_ref, random_param_grain, chroma, pass - 1, nlpgra, masking, mask_thr, mask_radius) : last
 
@@ -207,7 +207,6 @@ sisphbd = AvsPlusVersionNumber > 2294
 bits = sisphbd ? BitsPerComponent(clip) : 8
 output_depth = default(output_depth, bits) 
 !sisphbd ? Assert(bits==8, "F3KDB_3_adg: this avs not work with HBD") : nop()
-out_mode = output_depth > 8 ? 3 : 0
 pass = default (pass, 2)
 masking = default (masking, true)
 gscale = pow(2, 16 - bits)
@@ -218,7 +217,7 @@ gmax = default (gmax, 100.0 / gscale)
 pass != 1 ? clip.F3KDB_3(range, Y, Cb, Cr, 0, 0, 4, seed, \
         blur_first, dynamic_grain, opt, mt, \
         dither_algo, keep_tv_range, 0, \
-        bits, out_mode, sisphbd ? 16 : 8, \
+        undefined, undefined, sisphbd ? 16 : 8, \
         random_algo_ref, random_algo_grain, \
         random_param_ref, random_param_grain, chroma, 1, false, false, mask_thr, mask_radius) : clip
 		
@@ -234,8 +233,8 @@ last.F3KDB_3(range, Y, Cb, Cr, \
         round(max(min(((BitLShift(1, bits) - 1) - AverageLuma)/gf,gmax),gmin)), 0, 4, seed, \
         blur_first, dynamic_grain, opt, mt, \
         dither_algo, keep_tv_range, 0, \
-        bits, out_mode, output_depth, \
+        undefined, undefined, output_depth, \
         random_algo_ref, random_algo_grain, \
         random_param_ref, random_param_grain, chroma, 1, false, masking, mask_thr, mask_radius)
-""",args="range, Y, Cb, Cr, seed, blur_first, dynamic_grain, opt, mt, dither_algo, keep_tv_range, output_depth, random_algo_ref, random_algo_grain, random_param_ref, random_param_grain, chroma, masking, mask_thr, mask_radius, gf, gmin, gmax, out_mode, bits") : last
+""",args="range, Y, Cb, Cr, seed, blur_first, dynamic_grain, opt, mt, dither_algo, keep_tv_range, output_depth, random_algo_ref, random_algo_grain, random_param_ref, random_param_grain, chroma, masking, mask_thr, mask_radius, gf, gmin, gmax, bits") : last
 }
