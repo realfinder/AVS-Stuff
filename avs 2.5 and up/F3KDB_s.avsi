@@ -42,7 +42,7 @@ pclip.neo_F3KDB(range, Y, Cb, Cr, \
 		ngrainY, grainC, sample_mode, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, \
-		pass > 1 ? 16 : output_depth, \
+		pass > 1 && sisphbd ? 16 : output_depth, \
 		random_algo_ref, random_algo_grain, \
 		random_param_ref, random_param_grain)
 
