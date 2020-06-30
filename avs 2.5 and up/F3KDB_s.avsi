@@ -1,5 +1,5 @@
 ###############
-# F3KDB_3 and it sisters v1.331
+# F3KDB_3 and it sisters v1.332
 
 
 function F3KDB_3(clip clip, int "range", int "Y", int "Cb", int "Cr", \
@@ -16,7 +16,7 @@ pass = default (pass, sample_mode==4 ? 2 : 1)
 isgrYd = defined(grainY)
 nlpgra  = default (lastpassgrain, !isgrYd && pass > 1)
 nlpmsk  = default (lastpassmask, nlpgra && pass > 1)
-ngrainY = isgrYd && !nlpgra ? ngrainY : pass > 1 ? 0 : pass < 2 && nlpgra ? undefined : 0
+ngrainY = isgrYd && !nlpgra ? grainY : pass > 1 ? 0 : pass < 2 && nlpgra ? undefined : 0
 chromad = defined(chroma)
 chroma      = default (chroma, true)
 cb = default (cb, chroma ? undefined : 0)
@@ -28,7 +28,7 @@ sischbd  = hbdbits > 8
 input_depth = defined(input_mode) ? input_mode!=0 ? (defined(input_depth) ? input_depth : 16) : hbdbits : hbdbits
 output_depth = defined(output_depth) ? output_depth : sischbd ? hbdbits : defined(output_mode) ? output_mode>0 ? 16 : 8 : 8
 input_mode  = default (input_mode, input_depth==8 || sischbd ? 0 : 1)
-noutput_mode = default (output_mode, sischbd ? 0 : output_depth==8 ? 0 : 1)
+noutput_mode = default (output_mode, input_mode)
 masking      = default (masking, true)
 sisyuy2 = clip.isyuy2()
 pclip   = sisyuy2 ? clip.ConvertToYV16() : clip
@@ -95,9 +95,10 @@ cb = default (cb, chroma ? undefined : 0)
 cr = default (cr, chroma ? undefined : 0)
 grainC = default (grainC, chromad && chroma ? 64 : chroma ? grainY : 0)
 sisphbd   = AvsPlusVersionNumber > 2294
-sischbd  = sisphbd ? clip.BitsPerComponent() > 8 : false
+hbdbits  = sisphbd ? clip.BitsPerComponent() : 8
+sischbd  = sisphbd ? hbdbits > 8 : false
 input_mode  = default (input_mode, 0)
-output_mode = default (output_mode, sischbd ? 3 : input_mode)
+output_mode = default (output_mode, sischbd ? 3 : defined(output_depth) ? output_depth > 8 ? 3 : input_mode : input_mode)
 sm4lsb = output_mode != 0 && output_mode != 3 && sample_mode == 4
 sm4i16 = sm4lsb && output_mode == 2
 output_mode = sm4i16 ? 1 : output_mode
@@ -131,7 +132,7 @@ F3KDB_clip = i16clip.F3KDB(range, Y, Cb, Cr, \
 		random_algo_ref, random_algo_grain, \
 		random_param_ref, random_param_grain)
 
-F3KDB_clip = output_mode == 3 && sischbd ? F3KDB_clip.ConvertFromDoubleWidth(o_depth) : F3KDB_clip
+F3KDB_clip = output_mode == 3 && sischbd || o_depth>8 ? F3KDB_clip.ConvertFromDoubleWidth(o_depth) : F3KDB_clip
 
 sample_mode == 3 ? F3KDB_clip.sTryFTurnRight(chroma,output_mode==2 ? 16 : output_mode==1 ? 88 : 8,mt) : F3KDB_clip
 
@@ -162,6 +163,9 @@ sample_mode == 3 ? F3KDB_clip.sTryFTurnRight(chroma,output_mode==2 ? 16 : output
 		random_algo_ref, random_algo_grain, \
 		random_param_ref, random_param_grain, chroma, 1, pass == 1 ? lpgra : false, false))
 
+input_depth = defined(input_depth) ? input_depth : input_mode!=0 ? 16 : hbdbits
+output_depth = defined(output_depth) ? output_depth : sischbd ? hbdbits : output_mode>0 ? 16 : 8
+pclip = masking && (lpmsk ? pass < 2 : true) && output_mode == 3 && output_depth != input_depth ? pclip.convertbits(output_depth,dither=output_depth < input_depth ? 1 : undefined) : pclip
 masking && (lpmsk ? pass < 2 : true) ? sm4i16 || output_mode == 1 ? Dither_merge16_8(last,input_mode!=1 ? pclip.Bitdepth(from=input_mode==2 ? 16 : 8, to=88) : pclip,input_mode!=0 ? pclip.Bitdepth(from=input_mode==2 ? 16 : 88, to=8).F3KDB_3_masking(mask_thr, mask_radius) : pclip.F3KDB_3_masking(mask_thr, mask_radius), luma=chroma) : mt_merge(last,pclip,pclip.F3KDB_3_masking(mask_thr, mask_radius), u=chroma ? 3 : 2, v=chroma ? 3 : 2, luma=chroma) : last
 output_mode = sm4i16 ? 2 : output_mode
 sm4i16 ? Bitdepth(from=88, to=16) : last
