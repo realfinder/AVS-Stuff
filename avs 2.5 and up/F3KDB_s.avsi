@@ -1,5 +1,5 @@
 ###############
-# F3KDB_3 and it sisters v1.32
+# F3KDB_3 and it sisters v1.331
 
 
 function F3KDB_3(clip clip, int "range", int "Y", int "Cb", int "Cr", \
@@ -38,15 +38,17 @@ Assert(!(input_mode>0 && sischbd), "F3KDB_3: lsb/interleaved hack is not Compati
 Assert(!(noutput_mode>0 && sischbd), "F3KDB_3: lsb/interleaved hack is not Compatible with HBD")
 Assert(isYUV(clip), "F3KDB_3: YUV only")
 
+outd2 = pass > 1 && sisphbd ? 16 : output_depth
+
 pclip.neo_F3KDB(range, Y, Cb, Cr, \
 		ngrainY, grainC, sample_mode, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, \
-		pass > 1 && sisphbd ? 16 : output_depth, \
+		outd2, \
 		random_algo_ref, random_algo_grain, \
 		random_param_ref, random_param_grain)
 
-pclip = masking && output_depth != input_depth ? pclip.convertbits(output_depth,dither=output_depth < input_depth ? 1 : undefined) : pclip
+pclip = masking && (nlpmsk ? pass < 2 : true) && outd2 != input_depth ? pclip.convertbits(outd2,dither=outd2 < input_depth ? 1 : undefined) : pclip
 
 masking && (nlpmsk ? pass < 2 : true) ? mt_merge(last,pclip,pclip.F3KDB_3_masking(mask_thr, mask_radius), u=chroma ? 3 : 2, v=chroma ? 3 : 2, luma=chroma) : last
 
@@ -56,7 +58,7 @@ noutput_mode==1 ? pclip.convertbits(16,false).ConvertToStacked() : noutput_mode=
 		ngrainY, grainC, sample_mode, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, input_mode, \
-		input_depth, noutput_mode, output_depth, \
+		pass > 1 && sisphbd ? 16 : input_depth, noutput_mode, output_depth, \
 		random_algo_ref, random_algo_grain, \
 		random_param_ref, random_param_grain, chroma, pass - 1, nlpgra, masking, mask_thr, mask_radius) : last
 
