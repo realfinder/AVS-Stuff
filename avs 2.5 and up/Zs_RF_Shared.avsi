@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.131
+# V1.132
 
 ### Functions list:-
 # sh_StrReplace
@@ -66,6 +66,7 @@
 # nonyuy2clipin
 # nonyuy2clipout
 # sh_LimitChange
+# sh_Bob
 # sneo_FFT3D
 # sneo_dfttest
 # svsTTempSmooth
@@ -1490,6 +1491,33 @@ sisavs26   = !(VersionNumber() < 2.6)
     Expr_U = RPN_1 + Lim_U + String(sisavs26 ? " yscalef" : "") + RPN_2 + Lim_U + String(sisavs26 ? " yscalef" : "") + RPN_3
     Expr_V = RPN_1 + Lim_V + String(sisavs26 ? " yscalef" : "") + RPN_2 + Lim_V + String(sisavs26 ? " yscalef" : "") + RPN_3
     Return sisavs26 ? mt_lutxy(Denoised,Src,YExpr=Expr_Y,UExpr=Expr_U,VExpr=Expr_V,U=3,V=3, use_expr=1) : mt_lutxy(Denoised,Src,YExpr=Expr_Y,UExpr=Expr_U,VExpr=Expr_V,U=3,V=3)      # MUST SET U=3 and V=3 (Even when UExpr and VEXpr explicitly supplied, ELSE dont work proper).
+}
+
+
+# Same as Bob, but keeps the field order the same.
+function sh_Bob(clip cp, float "b", float "c", int "height" )
+{
+  sisavs26=!(VersionNumber() < 2.6)
+  sisphbd = AvsPlusVersionNumber > 2294
+  h = Default(height, cp.Height)
+  w = cp.Width
+  shift = GetParity(cp) ? 0.25 : -0.25
+
+  c420 = sisphbd  ? Is420(cp) : IsYV12(cp)
+
+  c420 ? cp.SeparateFields() : nop()
+
+  oeven=c420 ? SelectEven() : nop()
+  oodd=c420 ? SelectOdd() : nop()
+
+  even=c420 ? sisphbd  ? oeven.ConvertToY().BicubicResize(w, h, b, c, 0, shift, w, Height()).AssumeFrameBased() : sisavs26 ? oeven.ConvertToY8().BicubicResize(w, h, b, c, 0, shift, w, Height()).AssumeFrameBased() : oeven.BicubicResize(w, h, b, c, 0, shift, w, Height()) : nop()
+  odd=c420 ? sisphbd  ? oodd.ConvertToY().BicubicResize(w, h, b, c, 0, -shift, w, Height()).AssumeFrameBased() : sisavs26 ? oodd.ConvertToY8().BicubicResize(w, h, b, c, 0, -shift, w, Height()).AssumeFrameBased() : oodd.BicubicResize(w, h, b, c, 0, -shift, w, Height()) : nop()
+
+  evenChr=c420 ? sisavs26 ? Interleave(sisphbd  ? oeven.ExtractU() : oeven.UToY8(), sisphbd  ? oeven.ExtractV() : oeven.VToY8()).BicubicResize(w/2, h/2, b, c, 0, shift, w/2, Height()/2).AssumeFrameBased() : oeven.BicubicResize(w, h, b, c, 0, 2*shift, w, Height()) : nop()
+  oddChr=c420 ? sisavs26 ? Interleave(sisphbd  ? oodd.ExtractU() : oodd.UToY8(), sisphbd  ? oodd.ExtractV() :oodd.VToY8()).BicubicResize(w/2, h/2, b, c, 0, -shift, w/2, Height()/2).AssumeFrameBased() : oodd.BicubicResize(w, h, b, c, 0, -2*shift, w, Height()) : nop()
+
+  c420 ? !sisavs26 ? Interleave(even, odd).MergeChroma(Interleave(evenChr, oddChr)).AssumeFrameBased() : YToUV(Interleave(evenChr.SelectEven(), oddChr.SelectEven()),Interleave(evenChr.SelectOdd(), oddChr.SelectOdd()),Interleave(even, odd)) : cp.Bob( b,c, h )
+  GetParity(cp) ? AssumeTFF() : AssumeBFF()
 }
 
 
