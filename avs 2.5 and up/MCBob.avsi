@@ -1,6 +1,6 @@
 # MCBob v0.3u7: (July 1st, 2020)
 # nnedi and nnedibob was made possible by tritical and the fellow Doom9 community who contributed CPU cycles.
-# Another approach to motion compensated bobbing, build by DidÃ©e.
+# Another approach to motion compensated bobbing, build by Didée.
 #
 #   ( Between-all-chairs version with some quick hacks )
 #   ( v0.3c:  as stated above, but worse ;-) )
@@ -13,7 +13,7 @@
 #   ( v0.3u5: Cosmetics - Removed redundant options (helper bobbers), and changed "EDIType" to "EDIMode", and made it into a string to simplify the script.
 #   Now the behavior is the same as for TempGaussMC, e.g. EDIMode="nnedi3" (default is nnedi3). Also added the new "nns" parameter for the new version of nnedi3.
 #   ( v0.3u6: Cosmetics - Wording.
-#   ( v0.3u6: HBD and others.
+#   ( v0.3u7: HBD and others.
 # Features:
 #
 # - No residual combing, due to STT (Shape Transposition Technology)
