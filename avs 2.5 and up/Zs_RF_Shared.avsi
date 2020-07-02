@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.131
+# V1.132
 
 ### Functions list:-
 # sh_StrReplace
@@ -66,6 +66,7 @@
 # nonyuy2clipin
 # nonyuy2clipout
 # sh_LimitChange
+# sh_Bob
 # sneo_FFT3D
 # sneo_dfttest
 # svsTTempSmooth
@@ -111,7 +112,7 @@ STR  = string( strength )
 PWR  = string( 1.0/float(power) )
 ZRP  = string(    ZP    )
 DMP  = string(   lodmp  )
-HDMP = (hidmp==0) ? "1" : sisavs26 ? "1 scaleb x y - abs "+string(hidmp)+" / 4 ^ +" : "1 x y - abs "+string(hidmp)+" / 4 ^ +"
+HDMP = (hidmp==0) ? "1" : sisavs26 ? "1 scalef x y - abs "+string(hidmp)+" / 4 ^ +" : "1 x y - abs "+string(hidmp)+" / 4 ^ +"
 sharpen22 = default(sharpen22, false )
 !sharpen22 ? Assert(power>0,"SeeSaw::sh_sharpen2: Power must be value 1 or more") : nop()
 
@@ -1290,8 +1291,9 @@ return stabilize ? orig.mt_makediff(sDD,U=2,V=2) : merged
 
 
 # Kill Combing Function from mcbob
-function VinverseD(clip clp, float "sstr", int "amnt", int "uv")
+function VinverseD(clip clp, float "sstr", float "amnt", int "uv")
 {
+sisavs26  = !(VersionNumber() < 2.60)
 uv   = default(uv,3)
 sstr = default(sstr,2.7)
 amnt = default(amnt,255)
@@ -1300,11 +1302,11 @@ STR  = string(sstr)
 AMN  = string(amnt)
 vblur  = clp.mt_convolution("1","50 99 50",U=uv,V=uv)
 vblurD = mt_makediff(clp,vblur,U=uv2,V=uv2)
-Vshrp  = mt_lutxy(vblur,vblur.mt_convolution("1","1 4 6 4 1",U=uv2,V=uv2),expr="x x y - "+STR+" * +",U=uv2,V=uv2)
+Vshrp  = sisavs26 ? mt_lutxy(vblur,vblur.mt_convolution("1","1 4 6 4 1",U=uv2,V=uv2),expr="x x y - "+STR+" * +",U=uv2,V=uv2, use_expr=1) : mt_lutxy(vblur,vblur.mt_convolution("1","1 4 6 4 1",U=uv2,V=uv2),expr="x x y - "+STR+" * +",U=uv2,V=uv2)
 VshrpD = mt_makediff(Vshrp,vblur,U=uv2,V=uv2)
-VlimD  = mt_lutxy(VshrpD,VblurD,expr="x 128 - y 128 - * 0 < x 128 - abs y 128 - abs < x y ? 128 - 0.25 * 128 + x 128 - abs y 128 - abs < x y ? ?",U=uv2,V=uv2)
+VlimD  = sisavs26 ? mt_lutxy(VshrpD,VblurD,expr="x range_half - y range_half - * 0 < x range_half - abs y range_half - abs < x y ? range_half - 0.25 * range_half + x range_half - abs y range_half - abs < x y ? ?",U=uv2,V=uv2, use_expr=1) : mt_lutxy(VshrpD,VblurD,expr="x 128 - y 128 - * 0 < x 128 - abs y 128 - abs < x y ? 128 - 0.25 * 128 + x 128 - abs y 128 - abs < x y ? ?",U=uv2,V=uv2)
 mt_adddiff(Vblur,VlimD,U=uv,V=uv)
-(amnt>254) ? last : (amnt==0) ? clp : mt_lutxy(clp,last,expr="x "+AMN+" + y < x "+AMN+" + x "+AMN+" - y > x "+AMN+" - y ? ?",U=uv,V=uv) 
+(amnt>254) ? last : (amnt==0) ? clp : sisavs26 ? mt_lutxy(clp,last,expr="x "+AMN+" scalef + y < x "+AMN+" scalef + x "+AMN+" scalef - y > x "+AMN+" scalef - y ? ?",U=uv,V=uv, use_expr=1) : mt_lutxy(clp,last,expr="x "+AMN+" + y < x "+AMN+" + x "+AMN+" - y > x "+AMN+" - y ? ?",U=uv,V=uv)
 return(last)
 }
 
@@ -1490,6 +1492,33 @@ sisavs26   = !(VersionNumber() < 2.6)
     Expr_U = RPN_1 + Lim_U + String(sisavs26 ? " yscalef" : "") + RPN_2 + Lim_U + String(sisavs26 ? " yscalef" : "") + RPN_3
     Expr_V = RPN_1 + Lim_V + String(sisavs26 ? " yscalef" : "") + RPN_2 + Lim_V + String(sisavs26 ? " yscalef" : "") + RPN_3
     Return sisavs26 ? mt_lutxy(Denoised,Src,YExpr=Expr_Y,UExpr=Expr_U,VExpr=Expr_V,U=3,V=3, use_expr=1) : mt_lutxy(Denoised,Src,YExpr=Expr_Y,UExpr=Expr_U,VExpr=Expr_V,U=3,V=3)      # MUST SET U=3 and V=3 (Even when UExpr and VEXpr explicitly supplied, ELSE dont work proper).
+}
+
+
+# Same as Bob, but keeps the field order the same.
+function sh_Bob(clip cp, float "b", float "c", int "height" )
+{
+  sisavs26=!(VersionNumber() < 2.6)
+  sisphbd = AvsPlusVersionNumber > 2294
+  h = Default(height, cp.Height)
+  w = cp.Width
+  shift = GetParity(cp) ? 0.25 : -0.25
+
+  c420 = sisphbd  ? Is420(cp) : IsYV12(cp)
+
+  c420 ? cp.SeparateFields() : nop()
+
+  oeven=c420 ? SelectEven() : nop()
+  oodd=c420 ? SelectOdd() : nop()
+
+  even=c420 ? sisphbd  ? oeven.ConvertToY().BicubicResize(w, h, b, c, 0, shift, w, Height()).AssumeFrameBased() : sisavs26 ? oeven.ConvertToY8().BicubicResize(w, h, b, c, 0, shift, w, Height()).AssumeFrameBased() : oeven.BicubicResize(w, h, b, c, 0, shift, w, Height()) : nop()
+  odd=c420 ? sisphbd  ? oodd.ConvertToY().BicubicResize(w, h, b, c, 0, -shift, w, Height()).AssumeFrameBased() : sisavs26 ? oodd.ConvertToY8().BicubicResize(w, h, b, c, 0, -shift, w, Height()).AssumeFrameBased() : oodd.BicubicResize(w, h, b, c, 0, -shift, w, Height()) : nop()
+
+  evenChr=c420 ? sisavs26 ? Interleave(sisphbd  ? oeven.ExtractU() : oeven.UToY8(), sisphbd  ? oeven.ExtractV() : oeven.VToY8()).BicubicResize(w/2, h/2, b, c, 0, shift, w/2, Height()/2).AssumeFrameBased() : oeven.BicubicResize(w, h, b, c, 0, 2*shift, w, Height()) : nop()
+  oddChr=c420 ? sisavs26 ? Interleave(sisphbd  ? oodd.ExtractU() : oodd.UToY8(), sisphbd  ? oodd.ExtractV() :oodd.VToY8()).BicubicResize(w/2, h/2, b, c, 0, -shift, w/2, Height()/2).AssumeFrameBased() : oodd.BicubicResize(w, h, b, c, 0, -2*shift, w, Height()) : nop()
+
+  c420 ? !sisavs26 ? Interleave(even, odd).MergeChroma(Interleave(evenChr, oddChr)).AssumeFrameBased() : YToUV(Interleave(evenChr.SelectEven(), oddChr.SelectEven()),Interleave(evenChr.SelectOdd(), oddChr.SelectOdd()),Interleave(even, odd)) : cp.Bob( b,c, h )
+  GetParity(cp) ? AssumeTFF() : AssumeBFF()
 }
 
 
