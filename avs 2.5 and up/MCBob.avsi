@@ -1,4 +1,4 @@
-# MCBob v0.3u7: (July 1st, 2020)
+# MCBob v0.3u8: (July 2nd, 2020)
 # nnedi and nnedibob was made possible by tritical and the fellow Doom9 community who contributed CPU cycles.
 # Another approach to motion compensated bobbing, build by Didée.
 #
@@ -14,6 +14,7 @@
 #   Now the behavior is the same as for TempGaussMC, e.g. EDIMode="nnedi3" (default is nnedi3). Also added the new "nns" parameter for the new version of nnedi3.
 #   ( v0.3u6: Cosmetics - Wording.
 #   ( v0.3u7: HBD and others.
+#   ( v0.3u8: add exEdi.
 # Features:
 #
 # - No residual combing, due to STT (Shape Transposition Technology)
@@ -36,7 +37,7 @@
 # - ReduceFlicker (if temp-NR for ME is used)
 # - MedianBlur
 
-function MCBob(clip clp, float "EdiPre", int "EdiPost", int "blocksize", int "search", int "MEdepth", string "EdiMode", int "nsize", int "nns", int "qual", int "maxd", float "sharpness", int "mtnmode", float "mtnth1", float "mtnth2", float "errth1", float "errth2", float "MEspatNR", float "MEtempNR", int "EdiThreads", int "nnrep", bool "nnedi3pad")
+function MCBob(clip clp, float "EdiPre", int "EdiPost", int "blocksize", int "search", int "MEdepth", string "EdiMode", int "nsize", int "nns", int "qual", int "maxd", float "sharpness", int "mtnmode", float "mtnth1", float "mtnth2", float "errth1", float "errth2", float "MEspatNR", float "MEtempNR", int "EdiThreads", int "nnrep", bool "nnedi3pad", clip "exEdi")
 {
 sisavs26=!(VersionNumber() < 2.6)
 sisphbd = AvsPlusVersionNumber > 2294
@@ -86,18 +87,21 @@ sisphbd = AvsPlusVersionNumber > 2294
     normbob   = clp.sh_Bob(0.0,0.5) 
     ofields   = clp.SeparateFields()
     oweave    = clp.DoubleWeave()
-	oEdiMode  = EdiMode
-	EdiMode   = EdiMode=="EEDI3+NNEDI3" ? "nnedi3" : EdiMode
-    edibobbed = (EdiMode=="nnedi3")        ? nnedi3pad ? clp.sh_Padding(2,4,2,4).nnedi3(field=-2,nsize=nsize,nns=nns,qual=qual,threads=EdiThreads).crop(2,4,-2,-4,true) : clp.nnedi3(field=-2,nsize=nsize,nns=nns,qual=qual,threads=EdiThreads)
+    oEdiMode  = EdiMode
+    EdiMode   = EdiMode=="EEDI3+NNEDI3" ? "nnedi3" : EdiMode
+    isexEdi   = defined(exEdi)
+    edibobbed = isexEdi ? exEdi
+     \        : (EdiMode=="nnedi3")        ? nnedi3pad ? clp.sh_Padding(2,4,2,4).nnedi3(field=-2,nsize=nsize,nns=nns,qual=qual,threads=EdiThreads).crop(2,4,-2,-4,true) : clp.nnedi3(field=-2,nsize=nsize,nns=nns,qual=qual,threads=EdiThreads)
      \        : (EdiMode=="nnedi2")        ? clp.nnedi2(field=-2,nsize=nsize,qual=qual,threads=EdiThreads)
      \        : (EdiMode=="nnedi")         ? clp.nnedi(field=-2)
      \        : (EdiMode=="EEDI3")         ? clp.EEDI3(field=-2,mdis=maxd,threads=EdiThreads)
      \        : (EdiMode=="EEDI2")         ? clp.SeparateFields().EEDI2(field=-2,maxd=maxd,threads=EdiThreads)
-	 \                                     : clp
+     \                                     : clp
 
-    edibobbed = (oEdiMode=="EEDI3+NNEDI3") ? nnrep > 0 ? nnrep > 1 ? clp.EEDI3(field=-2,mdis=maxd,threads=EdiThreads,sclip=edibobbed).slimit_dif(edibobbed,thr=4) : clp.EEDI3(field=-2,mdis=maxd,threads=EdiThreads,sclip=edibobbed).Repair(edibobbed,9)
-	 \                                                 : clp.EEDI3(field=-2, mdis=maxd,threads=EdiThreads, sclip=edibobbed)
-	 \                                     : edibobbed
+    edibobbed = isexEdi ? edibobbed
+     \        : (oEdiMode=="EEDI3+NNEDI3") ? nnrep > 0 ? nnrep > 1 ? clp.EEDI3(field=-2,mdis=maxd,threads=EdiThreads,sclip=edibobbed).slimit_dif(edibobbed,thr=4) : clp.EEDI3(field=-2,mdis=maxd,threads=EdiThreads,sclip=edibobbed).Repair(edibobbed,9)
+     \                                                 : clp.EEDI3(field=-2, mdis=maxd,threads=EdiThreads, sclip=edibobbed)
+     \                                     : edibobbed
 
     bobbed    = (EdiPre == 0.0) ? normbob
      \        : (EdiPre == 1.0) ? edibobbed
