@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.132
+# V1.133
 
 ### Functions list:-
 # sh_StrReplace
@@ -747,7 +747,7 @@ lsb          = Default( lsb     ,lsb_in)
                                               nochr   = sisphbd ?   input.isy() : input.isy8()
                                               chrlsb  = chroma && !fullchr && !nochr
                                               NL_in   = lsb && !lsb_in ? input.Dither_convert_8_to_16() : input
-                                              cnl     = chrlsb ? "Y" : input.isrgb() ? "auto" : chroma ? "YUV" : "Y"
+                                              cnl     = chrlsb ? "Y" : input.isrgb() ? "auto" : !nochr && chroma ? "YUV" : "Y"
 											  drclip  = defined(rclip)
 											  rclip   = drclip ? lsb && !lsb_in ? rclip.Dither_convert_8_to_16() : rclip : nop()
 
