@@ -8,13 +8,15 @@
 ###                                                                                          ###
 ###                            another Modded Version by A.SONY.                             ###
 ###                                                                                          ###
-###                                    v2.187 - 25 May 2020                                  ###
+###                                    v2.188 - 6 July 2020                                  ###
 ###                                                                                          ###
 ################################################################################################
 ###
 ### +-----------+
 ### | CHANGELOG |
 ### +-----------+
+###
+### v2.188 : - fix (at least make it better) HBD when using high strength
 ###
 ### v2.187 : - fix bug in show=true
 ###
@@ -421,7 +423,7 @@ function LSFmod( clip inclip, float "strength", int "Smode", int "Smethod", int 
 sisphbd = AvsPlusVersionNumber > 2294
 
 ### DEFAULTS
-version  = "v2.185"
+version  = "v2.188"
 defaults = default(defaults,"fast")
 num      = defaults=="old" ? 0 : defaults=="slow" ? 1 : defaults=="fast" ? 2 : 3
 
@@ -534,7 +536,7 @@ method = Smethod==1   ? pre.removegrain(kernel,-1)
 \      :                minmaxavg.removegrain(kernel,-1)
 
 method = secure==true ? !sisavs26 ? method.mt_lutxy(pre,"x y < x 1 + x y > x 1 - x ? ?",U=1,V=1) \
-				  : method.mt_lutxy(pre,"x y < x 1 scalef + x y > x 1 scalef - x ? ?",use_expr=2,U=1,V=1)
+				  : method.mt_lutxy(pre,"x y < x 0.51 scaleb + x y > x 0.51 scaleb - x ? ?",use_expr=2,U=1,V=1)
 \      :                method
 
 method = preblur=="OFF" ? method : tmp.mt_makediff(mt_makediff(pre,method,U=1,V=1),U=1,V=1)
