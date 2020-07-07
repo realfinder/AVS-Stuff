@@ -8,13 +8,17 @@
 ###                                                                                          ###
 ###                            another Modded Version by A.SONY.                             ###
 ###                                                                                          ###
-###                                    v2.187 - 25 May 2020                                  ###
+###                                    v2.189 - 6 July 2020                                  ###
 ###                                                                                          ###
 ################################################################################################
 ###
 ### +-----------+
 ### | CHANGELOG |
 ### +-----------+
+###
+### v2.189 : - remove unnecessary float clip clamp
+###
+### v2.188 : - fix (at least make it better) HBD when using high strength
 ###
 ### v2.187 : - fix bug in show=true
 ###
@@ -421,7 +425,7 @@ function LSFmod( clip inclip, float "strength", int "Smode", int "Smethod", int 
 sisphbd = AvsPlusVersionNumber > 2294
 
 ### DEFAULTS
-version  = "v2.185"
+version  = "v2.189"
 defaults = default(defaults,"fast")
 num      = defaults=="old" ? 0 : defaults=="slow" ? 1 : defaults=="fast" ? 2 : 3
 
@@ -534,7 +538,7 @@ method = Smethod==1   ? pre.removegrain(kernel,-1)
 \      :                minmaxavg.removegrain(kernel,-1)
 
 method = secure==true ? !sisavs26 ? method.mt_lutxy(pre,"x y < x 1 + x y > x 1 - x ? ?",U=1,V=1) \
-				  : method.mt_lutxy(pre,"x y < x 1 scalef + x y > x 1 scalef - x ? ?",use_expr=2,U=1,V=1)
+				  : method.mt_lutxy(pre,"x y < x 0.51 scaleb + x y > x 0.51 scaleb - x ? ?",use_expr=2,U=1,V=1)
 \      :                method
 
 method = preblur=="OFF" ? method : tmp.mt_makediff(mt_makediff(pre,method,U=1,V=1),U=1,V=1)
@@ -542,7 +546,7 @@ method = preblur=="OFF" ? method : tmp.mt_makediff(mt_makediff(pre,method,U=1,V=
 normsharp = Smode==1 ? tmp.unsharpmask(strength=int(str*100),radius=round(1.0+((ss_x+ss_y)/2.0)),threshold=0)
 \         : Smode==2 ? tmp.unsharp(strength=str,vary=((ss_x+ss_y)/2.0),varc=1,border=3,U=1,V=1)
 \         : Smode==3 ? !sisavs26 ? mt_lutxy(tmp, method, yexpr="x x y - "+string(str)+" * +",U=1,V=1) \
-					     : mt_lutxy(tmp, method, yexpr="x x y - "+string(str)+" * +",use_expr=2,clamp_float=true,U=1,V=1)
+					     : mt_lutxy(tmp, method, yexpr="x x y - "+string(str)+" * +",use_expr=2,U=1,V=1)
 \         : Smode==4 ? !sisavs26 ? mt_lutxy(tmp, method, yexpr="x y == x x x y - abs "+string(Szrp)+" / 1 "+string(Spwr)+" / ^ "+string(Szrp)+" * "+string(str)+" * x y - 2 ^ x y - 2 ^ "
 \                                                   			    +string(SdmpLo)+" + / * x y - x y - abs / * 1 "+string(SdmpHi)+" 0 == 0 x y - abs "+string(SdmpHi)+" / 4 ^ ? + / + ?",U=1,V=1) \
 				 : mt_lutxy(tmp, method, yexpr="x y == x x x y - abs "+string(Szrp) +" scalef / 1 "+string(Spwr)+" / ^ "+string(Szrp) +" scalef * "+string(str)+" * x y - 2 ^ x y - 2 ^ "
@@ -598,7 +602,7 @@ diff2 = diff.temporalsoften(1,255,0,32,2)
 diff3 = !sisavs26 ? mt_lutxy(diff,diff2,"x 128 - y 128 - * 0 < x 128 - 100 / "+string(keep)+
 \                           			    " * 128 + x 128 - abs y 128 - abs > x "+string(keep)+" * y 100 "+string(keep)+" - * + 100 / x ? ?",U=1,V=1) \
 		  : mt_lutxy(diff,diff2,"x range_half - y range_half - * 0 < x range_half - 100 / "+string(keep)+
-\                           			    " * range_half + x range_half - abs y range_half - abs > x "+string(keep)+" * y 100 "+string(keep)+" - * + 100 / x ? ?",use_expr=2,clamp_float=true,U=1,V=1)
+\                           			    " * range_half + x range_half - abs y range_half - abs > x "+string(keep)+" * y 100 "+string(keep)+" - * + 100 / x ? ?",use_expr=2,U=1,V=1)
 
 PP2 = soothe ? mt_makediff(tmp,diff3,U=1,V=1) : PP1
 
