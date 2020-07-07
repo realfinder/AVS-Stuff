@@ -8,13 +8,15 @@
 ###                                                                                          ###
 ###                            another Modded Version by A.SONY.                             ###
 ###                                                                                          ###
-###                                    v2.189 - 6 July 2020                                  ###
+###                                    v2.190 - 7 July 2020                                  ###
 ###                                                                                          ###
 ################################################################################################
 ###
 ### +-----------+
 ### | CHANGELOG |
 ### +-----------+
+###
+### v2.190 : - fix and add new float parameters
 ###
 ### v2.189 : - remove unnecessary float clip clamp
 ###
@@ -413,8 +415,8 @@
 
 function LSFmod( clip inclip, float "strength", int "Smode", int "Smethod", int "kernel",
 \                string "preblur", bool "secure", clip "source",
-\                int "Szrp", int "Spwr", float "SdmpLo", float "SdmpHi",
-\                int "Lmode", int "overshoot", int "undershoot", int "overshoot2", int "undershoot2",
+\                int "Szrp", float "Spwr", float "SdmpLo", float "SdmpHi",
+\                int "Lmode", float "overshoot", float "undershoot", float "overshoot2", float "undershoot2",
 \                int "soft", bool "soothe", int "keep",
 \                int "edgemode", bool "edgemaskHQ",
 \                float "ss_x", float "ss_y", int "dest_x", int "dest_y",
@@ -560,9 +562,9 @@ normsharp = Smode==1 ? tmp.unsharpmask(strength=int(str*100),radius=round(1.0+((
 
 
 ### LIMIT
-normal = mt_clamp(normsharp, bright_limit, dark_limit, overshoot,  undershoot,  U=1, V=1)
-second = mt_clamp(normsharp, bright_limit, dark_limit, overshoot2, undershoot2, U=1, V=1)
-zero   = mt_clamp(normsharp, bright_limit, dark_limit, 0,          0,           U=1, V=1)
+normal = mt_clamp(normsharp, bright_limit, dark_limit, sisavs26 ?  overshoot :  round(overshoot), sisavs26 ?  undershoot :  round(undershoot), U=1, V=1)
+second = mt_clamp(normsharp, bright_limit, dark_limit, sisavs26 ? overshoot2 : round(overshoot2), sisavs26 ? undershoot2 : round(undershoot2), U=1, V=1)
+zero   = mt_clamp(normsharp, bright_limit, dark_limit,                                         0,                                           0, U=1, V=1)
 
 edge  = edgemaskHQ ? mt_logic( tmp.mt_edge(thY1=0,thY2=255,"8 16 8 0 0 0 -8 -16 -8 4",U=1,V=1)
 \                             ,tmp.mt_edge(thY1=0,thY2=255,"8 0 -8 16 0 -16 8 0 -8 4",U=1,V=1)
@@ -632,8 +634,8 @@ output = edgemode!=-1    ? output
    function LSFM_Show(clip input, clip output, string "version", string "defaults",
    \                  float "strength", int "Smode", int "Smethod", int "kernel",
    \                  string "preblur", bool "secure", string "source",
-   \                  int "Szrp", int "Spwr", float "SdmpLo", float "SdmpHi",
-   \                  int "Lmode", int "overshoot", int "undershoot", int "overshoot2", int "undershoot2",
+   \                  float "Szrp", float "Spwr", float "SdmpLo", float "SdmpHi",
+   \                  int "Lmode", float "overshoot", float "undershoot", float "overshoot2", int "undershoot2",
    \                  int "soft", bool "soothe", int "keep",
    \                  int "edgemode", bool "edgemaskHQ",
    \                  float "ss_x", float "ss_y", int "dest_x", int "dest_y",
