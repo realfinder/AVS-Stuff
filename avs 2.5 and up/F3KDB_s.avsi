@@ -1,5 +1,5 @@
 ###############
-# F3KDB_3 and it sisters v1.333
+# F3KDB_3 and it sisters v1.334
 
 
 function F3KDB_3(clip clip, int "range", int "Y", int "Cb", int "Cr", \
@@ -21,7 +21,7 @@ chromad = defined(chroma)
 chroma      = default (chroma, true)
 cb = default (cb, chroma ? undefined : 0)
 cr = default (cr, chroma ? undefined : 0)
-grainC = default (grainC, chromad && chroma ? 64 : chroma ? ngrainY : 0)
+ngrainC = default (grainC, chromad && chroma ? 64 : chroma ? ngrainY : 0)
 sisphbd   = AvsPlusVersionNumber > 2294
 hbdbits = sisphbd ? clip.BitsPerComponent() : 8
 sischbd  = hbdbits > 8
@@ -41,7 +41,7 @@ Assert(isYUV(clip), "F3KDB_3: YUV only")
 outd2 = pass > 1 && sisphbd ? 16 : output_depth
 
 pclip.neo_F3KDB(range, Y, Cb, Cr, \
-		ngrainY, grainC, sample_mode, seed, \
+		ngrainY, ngrainC, sample_mode, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, \
 		outd2, \
@@ -55,7 +55,7 @@ masking && (nlpmsk ? pass < 2 : true) ? mt_merge(last,pclip,pclip.F3KDB_3_maskin
 noutput_mode==1 ? pclip.convertbits(16,false).ConvertToStacked() : noutput_mode==2 ? pclip.convertbits(16,false).ConvertToDoubleWidth() : last
 
         pass > 1 ? last.F3KDB_3(range, Y, Cb, Cr, \
-		ngrainY, grainC, sample_mode, seed, \
+		ngrainY, ngrainC, sample_mode, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, input_mode, \
 		pass > 1 && sisphbd ? 16 : input_depth, noutput_mode, output_depth, \
