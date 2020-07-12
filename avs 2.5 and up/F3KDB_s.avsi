@@ -1,5 +1,5 @@
 ###############
-# F3KDB_3 and it sisters v1.335
+# F3KDB_3 and it sisters v1.336
 
 
 function F3KDB_3(clip clip, int "range", int "Y", int "Cb", int "Cr", \
@@ -225,7 +225,7 @@ sF_3 = uL_F_3 ? "L_F3KDB_3" : "F3KDB_3"
 pass != 1 ? eval("clip." + sF_3 + "(range, Y, Cb, Cr, 0, 0, 4, seed, \
         blur_first, dynamic_grain, opt, mt, \
         dither_algo, keep_tv_range, 0, \
-        undefined, undefined, sisphbd ? 16 : 8, \
+        undefined, undefined, sisphbd && pass > 2 ? 16 : output_depth, \
         random_algo_ref, random_algo_grain, \
         random_param_ref, random_param_grain, chroma, 1, false, false, mask_thr, mask_radius)") : clip
 		
