@@ -1,5 +1,5 @@
 ###############
-# F3KDB_3 and it sisters v1.334
+# F3KDB_3 and it sisters v1.335
 
 
 function F3KDB_3(clip clip, int "range", int "Y", int "Cb", int "Cr", \
@@ -235,8 +235,8 @@ pass > 1 ? last.F3KDB_3_adg(range, Y, Cb, Cr, seed, \
         random_algo_ref, random_algo_grain, \
         random_param_ref, random_param_grain, chroma, pass - 1, masking, mask_thr, mask_radius, gf, gmin, gmax, uL_F_3) : last
 		
-bits != output_depth ? convertbits(output_depth,dither=output_depth < bits ? 1 : undefined) : last
-symax = pass == 1 ? BitLShift(1, bits) - 1 : nop()
+pass == 1 && bits != output_depth ? convertbits(output_depth,dither=output_depth < bits ? 1 : undefined) : last
+symax = pass == 1 ? BitLShift(1, output_depth) - 1 : nop()
 F3KDB_rt = pass == 1 ? "last." + sF_3 + "(range, Y, Cb, Cr, \
         round(max(min((symax - AverageLuma())/gf,gmax),gmin)), 0, 4, seed, \
         blur_first, dynamic_grain, opt, mt, \
