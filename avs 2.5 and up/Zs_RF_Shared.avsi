@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.133
+# V1.134
 
 ### Functions list:-
 # sh_StrReplace
@@ -278,11 +278,11 @@ Overlay(last, Blur(1,honly ? 0 : 1).Blur(1,honly ? 0 : 1), mode="difference")
 grsc=sislumaonly ? nop() : GreyCenteredToMask_dhh().greyscale()
 sislumaonly ? GreyCenteredToMask_dhh() : sisphbd ? grsc.converttoy() : grsc.converttoy8()
 !sisavs26 ? greyscale() : last
-!sisavs26 ? Levels(0, 1, 115, 0, 255, false) : mt_lut("x 0 - 155 scalef 0 - / range_max 0 - * 0 +", use_expr=2)
+!sisavs26 ? Levels(0, 1, 115, 0, 255, false) : mt_lut("x 0 - 155 scaleb 0 - / range_max 0 - * 0 +", use_expr=2)
 Blur(1,honly ? 0 : 1)
-!sisavs26 ? Levels(0, 0.4, 64, 0, 255, false) : mt_lut("x 0 - 64 scalef 0 - / 1 0.4 / ^ range_max 0 - * 0 +", use_expr=2)
+!sisavs26 ? Levels(0, 0.4, 64, 0, 255, false) : mt_lut("x 0 - 64 scaleb 0 - / 1 0.4 / ^ range_max 0 - * 0 +", use_expr=2)
 Blur(1,honly ? 0 : 1).Blur(1,honly ? 0 : 1)
-!sisavs26 ? Levels(0, 1, 30, 0, 255, false).Blur(1,honly ? 0 : 1) : mt_lut("x 0 - 30 scalef 0 - / range_max 0 - * 0 +", use_expr=2,u=3,v=3).Blur(1,honly ? 0 : 1)
+!sisavs26 ? Levels(0, 1, 30, 0, 255, false).Blur(1,honly ? 0 : 1) : mt_lut("x 0 - 30 scaleb 0 - / range_max 0 - * 0 +", use_expr=2,u=3,v=3).Blur(1,honly ? 0 : 1)
 sislumaonly ? last : sisphbd ? CombinePlanes(last,lumaonly ? input : grsc,planes="YUV",sample_clip=lumaonly ? input : grsc) : YToUV(lumaonly ? input.UToY8() : grsc.UToY8(),lumaonly ? input.VToY8() : grsc.VToY8(),last)
 }
 
@@ -352,7 +352,7 @@ lsb_in          ? Assert(lsb,                          "lsb_in  requires: lsb=tr
 lsb_out         ? Assert(lsb,                          "lsb_out requires: lsb=true")                                : nop()
 
 dp_lut = lsb_in ? original.Dither_lut16("x 4096 < 65535 x 19200 > 0 65535 x 4096 - 4.338916843220339 * - ? ?",u=1,v=1) : !sisavs26 ? original.mt_lut("x 16 < 255 x 75 > 0 255 x 16 - 4.322033898305085 * - ? ?",u=1,v=1)
-         														 \	   : original.mt_lut("x 16 scalef < range_max x 75 scalef > 0 range_max x 16 scalef - range_max 75 scalef 16 scalef - / * - ? ?",use_expr=2,u=1,v=1)
+         														 \	   : original.mt_lut("x 16 scaleb < range_max x 75 scaleb > 0 range_max x 16 scaleb - range_max 75 scaleb 16 scaleb - / * - ? ?",use_expr=2,u=1,v=1)
 
 dp_lut = lsb_in && merge16_8 ? dp_lut.Ditherpost(mode=6, slice=false, u=1, v=1) : dp_lut
 
@@ -381,7 +381,7 @@ lsb_in          ? Assert(lsb,                          "lsb_in  requires: lsb=tr
 lsb_out         ? Assert(lsb,                          "lsb_out requires: lsb=true")                                : nop()
 
 dp_lut = lsb_in ? original.Dither_lut16("x 60160 > 65535 x 45056 < 0 65535 60160 x - 4.338916843220339 * - ? ?",u=1,v=1) : !sisavs26 ? original.mt_lut("x 235 > 255 x 176 < 0 255 235 x - 4.322033898305085 * - ? ?",u=1,v=1)
-         														   \		         : original.mt_lut("x 235 scalef > range_max x 176 scalef < 0 range_max x 235 scalef - range_max 176 scalef 235 scalef - / * - ? ?",use_expr=2,u=1,v=1)
+         														   \		         : original.mt_lut("x 235 scaleb > range_max x 176 scaleb < 0 range_max x 235 scaleb - range_max 176 scaleb 235 scaleb - / * - ? ?",use_expr=2,u=1,v=1)
 
 dp_lut = lsb_in && merge16_8 ? dp_lut.Ditherpost(mode=6, slice=false, u=1, v=1) : dp_lut
 
@@ -714,7 +714,7 @@ src     = yuy2 ? lsb_in ? src.Planar2Interleaved(uv==1).Dither_YUY2toPlanar16() 
 
     k = (s0 - 1) * c
     t = lsb_in ? "x 4096 - 56064 / 0 1 clip"
-     \ : avs26 ? "x 16 scalef - 219 scalef / 0 1 clip"
+     \ : avs26 ? "x 16 scaleb - 219 scaleb / 0 1 clip"
              \ : "x 16 - 219 / 0 1 clip"
     e = String(k)+" "+String(1+c)+" "+String((1+c)*c)+" "+t+" "+String(c)
 \       +" + / - * "+t+" 1 "+String(k)+" - * + "+String(lsb?65536:avs26?"range_size":255)+" *"
