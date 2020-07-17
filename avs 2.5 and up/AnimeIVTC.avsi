@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.24 2020-07-15 mod
+# v2.25 2020-07-15 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -37,6 +37,7 @@
 # added mode 5 same as 3 but use nnrep method to ediandnn, mode 6 too, but it's like 4, and now you can use negative value for use nnedi3 with Padding to avoids edges distortion on top and bottom
 # added mode 7 same as 5 but use better but slower nnrep method to ediandnn, mode 8 too, but it's like 6, and now you can use negative value for use nnedi3 with Padding to avoids edges distortion on top and bottom
 # add d2v and tfmtrimIn
+# simiauto using tfmtrimIn (autoload TrimInFile.txt)
 
 # Read the documentation for all the required info to know how to use this function, With note that there are some things have changed in this MOD
 
@@ -244,6 +245,8 @@ tfmcli2=(precision==0 && ((usefm && !blend) || usehfm)) ? undefined :
 \	(precision==9 && ((usefm && !blend) || usehfm)) ? blendbob.SelectEven : 
 \	nop()
 tfmcli2=(usefm && !blend) || usehfm ? precision==5 && reptdei ? isyuy2(i) ? tfmcli2.Interleaved2Planar.Repair(i.tdeint(0,emask=iforbob.tmm2_ortmm1(0), sharp=tdeintsharp, type=tdeinttype).Interleaved2Planar,Planar=true).Planar2Interleaved : tfmcli2.Repair(i.tdeint(0,emask=iforbob.tmm2_ortmm1(0), sharp=tdeintsharp, type=tdeinttype)) : tfmcli2 : nop()
+
+tfmtrimIn = Exist("TrimInFile.txt") ? "TrimInFile.txt" : undefined
 
 #field match for hard telecine or blend telecine restoration for mode==1
 
@@ -633,5 +636,80 @@ daa3mclip = usedaa3mod ? QTGMCclip.daa3mod(dslow) : QTGMCclip
 
 !usesmam ? daa3mclip : \
            yadifclip.smam(filter=daa3mclip,repblend=repblend)
+}
+
+#############
+# helper functions for trims
+
+# Abridgement trims
+function abtrim(string "trimline") {
+Assert(defined(trimline), "'intrim' trimline is needed")
+function abtrimloop(string "trimline", int "remainder") {
+remainder = default(remainder, -1)
+otrimline = trimline
+sisending = !(remainder < StrLen(trimline))
+trimline = remainder > 0 ? !sisending ? RightStr(trimline, StrLen(trimline) - remainder) : trimline : trimline
+ofindtrim = sisending ? nop() : FindStr(trimline, "trim")
+sishtrim = sisending ? false : ofindtrim != 0
+trimstart = !sishtrim ? nop() : ofindtrim + FindStr(MidStr(trimline, ofindtrim + 1), "(")
+findtrimstart = !sishtrim ? nop() : trimstart + 1
+trimend = !sishtrim ? nop() : ofindtrim + FindStr(MidStr(trimline, ofindtrim + 1), ")")
+findtrimend = !sishtrim ? nop() : trimend - 1
+taketrim = !sishtrim ? nop() : MidStr(trimline, findtrimstart, findtrimend - findtrimstart + 1)
+trims = !sishtrim ? nop() : FindStr(taketrim, ",")
+strim = !sishtrim ? nop() : MidStr(taketrim,1,trims-1).Value.Int
+etrim = !sishtrim ? nop() : MidStr(taketrim,trims+1).Value.Int
+ntrimr = !sishtrim ? nop() : RightStr(trimline,StrLen(trimline)-trimend)
+ofindntrim = !sishtrim ? nop() : FindStr(ntrimr, "trim")
+sishntrim = !sishtrim ? nop() : ofindntrim != 0
+ntrimstart = !sishtrim ? nop() : sishntrim ? FindStr(ntrimr, "(") : nop()
+findntrimstart = !sishtrim ? nop() : !sishntrim ? nop() : ntrimstart + 1
+ntrims = !sishtrim ? nop() : !sishntrim ? nop() : FindStr(ntrimr, ",")
+sntrim = !sishtrim ? nop() : !sishntrim ? nop() : MidStr(ntrimr,findntrimstart,ntrims-1).Value.Int
+domerge = !sishtrim ? nop() : sishntrim ? ((etrim+1)==sntrim) : false
+ntrimline=!sishtrim ? nop() : !domerge ? otrimline : LeftStr(otrimline,(remainder > 0 ? remainder : 0) + findtrimstart + trims - 1) + MidStr(ntrimr,ntrims+1)
+remainder = !sishtrim ? nop() : domerge ? remainder : max(0,remainder) + trimend
+!sishtrim ? otrimline : sishntrim ? abtrimloop(ntrimline, remainder) : ntrimline
+}
+abtrimloop(LCase(trimline))
+}
+
+
+# make trimIn from avs trims
+function intrim(clip i, string "trimline", string "output") {
+Assert(defined(trimline), "'intrim' trimline is needed")
+i
+lastframe = framecount() - 1
+TrimFile=defined(output) ? output : "TrimInFile.TXT"
+Exist(TrimFile) ? RT_FileDelete(TrimFile) : nop()
+function intrimloop(clip i, string "trimline", string "output", int "lastframe", bool "firstcall") {
+firstcall = default(firstcall, false)
+ofindtrim = FindStr(trimline, "trim")
+sishtrim = ofindtrim != 0
+trimstart = !sishtrim ? nop() : FindStr(trimline, "(")
+findtrimstart = !sishtrim ? nop() : trimstart + 1
+trimend = !sishtrim ? nop() : FindStr(trimline, ")")
+findtrimend = !sishtrim ? nop() : trimend - 1
+taketrim = !sishtrim ? nop() : MidStr(trimline, findtrimstart, findtrimend-findtrimstart+1)
+trims = !sishtrim ? nop() : FindStr(taketrim, ",")
+strim = !sishtrim ? nop() : MidStr(taketrim,1,trims-1).Value.Int
+etrim = !sishtrim ? nop() : MidStr(taketrim,trims+1).Value.Int
+etrim = !sishtrim ? nop() : etrim == 0 ? lastframe : etrim
+ntrimr = !sishtrim ? nop() : rightStr(trimline,StrLen(trimline)-trimend)
+ofindntrim = !sishtrim ? nop() : FindStr(ntrimr, "trim")
+sishntrim = !sishtrim ? nop() : ofindntrim != 0
+ntrimstart = !sishtrim ? nop() : sishntrim ? FindStr(ntrimr, "(") : nop()
+findntrimstart = !sishtrim ? nop() : !sishntrim ? nop() : ntrimstart + 1
+ntrims = !sishtrim ? nop() : !sishntrim ? nop() : FindStr(ntrimr, ",")
+sntrim = !sishtrim ? nop() : !sishntrim ? nop() : MidStr(ntrimr,findntrimstart,ntrims-1).Value.Int
+istrim = !sishtrim ? nop() : !sishtrim ? nop() : strim !=0 && firstcall ? 0 : etrim + 1
+ietrim = !sishtrim ? nop() : !sishtrim ? nop() : firstcall && istrim == 0 ? strim-1 : sishntrim ? sntrim - 1 : lastframe
+writeline = sishtrim ? sishntrim ? strim != 0 : etrim < lastframe : false
+writeline ? RT_WriteFile(output, \
+                 "%d,%d\n", istrim, ietrim, append=true) : nop()
+sishtrim ? intrimloop(i, firstcall && istrim == 0 ? trimline : rightStr(trimline,StrLen(trimline)-trimend), output, lastframe) : i
+}
+intrimloop(abtrim(trimline), TrimFile, lastframe, true)
+eval(trimline)
 }
 
