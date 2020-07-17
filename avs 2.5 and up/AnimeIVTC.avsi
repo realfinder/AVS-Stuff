@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.26 2020-07-17 mod
+# v2.27 2020-07-17 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -246,7 +246,7 @@ tfmcli2=(precision==0 && ((usefm && !blend) || usehfm)) ? undefined :
 \	nop()
 tfmcli2=(usefm && !blend) || usehfm ? precision==5 && reptdei ? isyuy2(i) ? tfmcli2.Interleaved2Planar.Repair(i.tdeint(0,emask=iforbob.tmm2_ortmm1(0), sharp=tdeintsharp, type=tdeinttype).Interleaved2Planar,Planar=true).Planar2Interleaved : tfmcli2.Repair(i.tdeint(0,emask=iforbob.tmm2_ortmm1(0), sharp=tdeintsharp, type=tdeinttype)) : tfmcli2 : nop()
 
-tfmtrimIn = defined(tfmtrimIn) ? tfmtrimIn : Exist("TrimInFile.txt") ? "TrimInFile.txt" : undefined
+tfmtrimIn = defined(tfmtrimIn) ? tfmtrimIn : defined(d2v) && Exist("TrimInFile.txt") ? "TrimInFile.txt" : undefined
 
 #field match for hard telecine or blend telecine restoration for mode==1
 
@@ -675,7 +675,7 @@ abtrimloop(LCase(trimline))
 }
 
 
-# make trimIn from avs trims
+# make trimIn from avs trims v1.1
 function intrim(clip i, string "trimline", string "output") {
 Assert(defined(trimline), "'intrim' trimline is needed")
 i
@@ -704,7 +704,7 @@ ntrims = !sishtrim ? nop() : !sishntrim ? nop() : FindStr(ntrimr, ",")
 sntrim = !sishtrim ? nop() : !sishntrim ? nop() : MidStr(ntrimr,findntrimstart,ntrims-1).Value.Int
 istrim = !sishtrim ? nop() : !sishtrim ? nop() : strim !=0 && firstcall ? 0 : etrim + 1
 ietrim = !sishtrim ? nop() : !sishtrim ? nop() : firstcall && istrim == 0 ? strim-1 : sishntrim ? sntrim - 1 : lastframe
-writeline = sishtrim ? sishntrim ? strim != 0 : etrim < lastframe : false
+writeline = sishtrim ? etrim < lastframe : false
 writeline ? RT_WriteFile(output, \
                  "%d,%d\n", istrim, ietrim, append=true) : nop()
 sishtrim ? intrimloop(i, firstcall && istrim == 0 ? trimline : rightStr(trimline,StrLen(trimline)-trimend), output, lastframe) : i
