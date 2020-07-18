@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.134
+# V1.135
 
 ### Functions list:-
 # sh_StrReplace
@@ -72,6 +72,7 @@
 # svsTTempSmooth
 # svsTTempSmoothf
 # svsMSharpen
+# svsTBilateral
 # IsAvsNeo
 # IsAvsPlus
 # AvsPlusVersionNumber
@@ -1571,6 +1572,15 @@ strength=Default(strength,100)
 } catch(error_msg) { 
 input.MSharpen (threshold=round(threshold), strength=round(strength), mask=mask)   }
 }
+
+
+Function svsTBilateral(clip input, int "diameterL", int "diameterC", float "sDevL", float "sDevC", float "iDevL", float "iDevC", float "csL", float "csC", bool "d2", bool "chroma", clip "ppClip", int "kernS", int "kernI", int "resType")
+{
+	   try { input.vsTBilateral(diameterY=diameterL, diameterU=diameterC, diameterV=diameterC, sDevY=sDevL, sDevU=sDevC, sDevV=sDevC, iDevY=iDevL, iDevU=iDevC, iDevV=iDevC, csY=csL, csU=csC, csV=csC, d2=d2, u=defined(chroma)?chroma?3:2:undefined, v=defined(chroma)?chroma?3:2:undefined, ppClip=ppClip, kernS=kernS, kernI=kernI, resType=resType)
+} catch(error_msg) { 
+input.TBilateral(diameterL=diameterL, diameterC=diameterC, sDevL=sDevL, sDevC=sDevC, iDevL=iDevL, iDevC=iDevC, csL=csL, csC=csC, d2=d2, chroma=chroma, ppClip=ppClip, kernS=kernS, kernI=kernI, resType=resType)   }
+}
+
 
 VersionNumber() < 2.60 ? eval("""
 # Undefined
