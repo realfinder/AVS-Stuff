@@ -1,5 +1,5 @@
 ####################################################
-# script v2.114
+# script v2.115
 ####################################################
 # Motion-compensated dfttest by twc
 # Aka: Really Really Really Slow
@@ -313,7 +313,7 @@ function sMCwarper(clip input, string "filter", int "mc", val "prefilter", bool 
 		selectEvery(last, mc * 2 + 1, mc)
 }
 
-# mcKNLMeansCL v1.46
+# mcKNLMeansCL v1.47
 function mcKNLMeansCL(clip input, String "device_type", int "device_id", bool "chroma", bool "lsb", bool "lsb_in", float "h", int "d", int "a", String "knlm_params", bool "Y", bool "U", bool "V",
 	\ val "prefilter", bool "TV_range", clip "exmcclip", clip "super", clip "pp_super", int "thSAD", int "thSCD1", int "thSCD2", bool "truemotion", bool "chroma", int "blksize", int "search", int "searchparam", int "overlap", int "dct",
 		\ bool "HD", bool "slices", float "rStr",float "Amp", int "pel", int "super_filter", bool "rprefilter", bool "knlchroma")
@@ -327,6 +327,13 @@ function mcKNLMeansCL(clip input, String "device_type", int "device_id", bool "c
 		rprefilter   = Default( rprefilter  ,false)
 		knlchroma    = Default( knlchroma  ,false)
                 Assert(!(lsb_in || lsb_in), "mcKNLMeansCL: lsb things not supported yet")
+		prefilterdef = defined(prefilter)
+		prefilterisint = prefilterdef ? isint(prefilter) : false
+		prefilterbool = prefilterdef ? isbool(prefilter) ? prefilter : prefilterisint ? prefilter!=0 : true : true
+		prefilter = prefilterisint && prefilterbool ? input.blur(1.53) : prefilter
+		rclip = rprefilter && prefilterdef ? d==0 ? prefilter : prefilter.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD,b1vec,f1vec,b2vec,f2vec,b3vec,f3vec,b4vec,f4vec,b5vec,f5vec) : undefined
+		sbitsn = rprefilter && prefilterdef && sisphbd ? input.BitsPerComponent() : 8
+		rclip = rprefilter && prefilterdef ? sisphbd ? rclip.BitsPerComponent() != sbitsn ? rclip.ConvertBits(sbitsn) : rclip : rclip : rclip
 d==0 ? SH_KNLMeansCL(input, device_type, device_id, knlchroma, lsb, lsb_in, h, d, a, knlm_params, rclip) : \
         eval("""
      exmc = defined(exmcclip)
@@ -342,10 +349,6 @@ d==0 ? SH_KNLMeansCL(input, device_type, device_id, knlchroma, lsb, lsb_in, h, d
 		oy = HDbool ? nop() : input.height()
 		HD = HDbool ? HD : (ox > 1099 || oy > 599)
 		pel = default( pel, HD ? 1 : 2 )
-		prefilterdef = defined(prefilter)
-		prefilterisint = prefilterdef ? isint(prefilter) : false
-		prefilterbool = prefilterdef ? isbool(prefilter) ? prefilter : prefilterisint ? prefilter!=0 : true : true
-		prefilter = prefilterisint && prefilterbool ? input.blur(1.53) : prefilter
 		prefilterisclip = prefilterdef ? isclip(prefilter) : false
 		sppbool = prefilterisclip ? true : TV_range ? true : false
 		pp_super =  defined(pp_super) ? pp_super : sppbool ? spp_super(input ,prefilterisclip ? prefilter :  input ,HD=HD,slices=slices,rStr=rStr,Amp=Amp,pel=pel,super_filter=super_filter,luma_rebuild=TV_range,y=y,u=u,v=v) : MSuper(pel=pel,rfilter=super_filter)
@@ -364,9 +367,6 @@ d==0 ? SH_KNLMeansCL(input, device_type, device_id, knlchroma, lsb, lsb_in, h, d
 		f5vec = mc == 5 ? MAnalyse(pp_super, delta=5, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : undefined
 
 		exmc ? exmcclip : input.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD,b1vec,f1vec,b2vec,f2vec,b3vec,f3vec,b4vec,f4vec,b5vec,f5vec)
-		rclip = rprefilter && prefilterdef ? prefilter.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD,b1vec,f1vec,b2vec,f2vec,b3vec,f3vec,b4vec,f4vec,b5vec,f5vec) : undefined
-		sbitsn = rprefilter && prefilterdef && sisphbd ? input.BitsPerComponent() : 8
-		rclip = rprefilter && prefilterdef ? sisphbd ? rclip.BitsPerComponent() != sbitsn ? rclip.ConvertBits(sbitsn) : rclip : rclip : rclip
 		SH_KNLMeansCL(last, device_type, device_id, knlchroma, lsb, lsb_in, h, d, a, knlm_params, rclip)
 		selectEvery(last, mc * 2 + 1, mc)
 		""")

@@ -1,5 +1,5 @@
 # base on ChromaReconstructor and fulltonative by feisty2
-# 1.06
+# 1.07
 
 function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mode", int "device_type", int "device_id", int "fast", float "sDev", float "iDev", float "cs", bool "d2", int "kernS", int "kernI", int "resType", bool "onecall")
 {
@@ -31,9 +31,9 @@ function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mo
 	chroma		= onecall ? Interleave(u,v) : nop()
 	luma            = onecall ? Interleave(luma,luma) : luma
 	u               = onecall ? chroma : u
-	unew            = abs(fast) > 1 ? U.ConvertToYv12().TBilateral(diameterL=Round(pow(2 * a + 1,2)), sDevL=sDev, iDevL=iDev, csL=cs, d2=d2, chroma=false, ppclip=luma.ConvertToYV12(), kernS=kernS, kernI=kernI, resType=resType).ConvertToY8() : KNLMeansCL (u, d=0, a=a, s=0, h=h, wref=1.0, rclip=luma, device_type=device_type, device_id=device_id)
+	unew            = abs(fast) > 1 ? U.svsTBilateral(diameterL=Round(pow(2 * a + 1,2)), sDevL=sDev, iDevL=iDev, csL=cs, d2=d2, chroma=false, ppclip=luma, kernS=kernS, kernI=kernI, resType=resType) : KNLMeansCL (u, d=0, a=a, s=0, h=h, wref=1.0, rclip=luma, device_type=device_type, device_id=device_id)
 	unew            = abs(fast) < 3 && abs(fast) != 1 ? sresizexnr (unew, pad.width, pad.height, src_left=-1.5, src_top=-1.5, kernel="spline64") : unew
-	vnew            = !onecall ? abs(fast) > 1 ? V.ConvertToYv12().TBilateral(diameterL=Round(pow(2 * a + 1,2)), sDevL=sDev, iDevL=iDev, csL=cs, d2=d2, chroma=false, ppclip=luma.ConvertToYV12(), kernS=kernS, kernI=kernI, resType=resType).ConvertToY8() : KNLMeansCL (v, d=0, a=a, s=0, h=h, wref=1.0, rclip=luma, device_type=device_type, device_id=device_id) : nop()
+	vnew            = !onecall ? abs(fast) > 1 ? V.svsTBilateral(diameterL=Round(pow(2 * a + 1,2)), sDevL=sDev, iDevL=iDev, csL=cs, d2=d2, chroma=false, ppclip=luma, kernS=kernS, kernI=kernI, resType=resType) : KNLMeansCL (v, d=0, a=a, s=0, h=h, wref=1.0, rclip=luma, device_type=device_type, device_id=device_id) : nop()
 	vnew            = !onecall ? abs(fast) < 3 && abs(fast) != 1 ? sresizexnr (vnew, pad.width, pad.height, src_left=-1.5, src_top=-1.5, kernel="spline64") : vnew : nop()
 	uhi             = mode == 1 ? mt_MakeDiff (unew, fgauss_h (unew, p=lowpass)) : mt_MakeDiff (unew, fgauss (unew, p=lowpass))
 	vhi             = !onecall ? mode == 1 ? mt_MakeDiff (vnew, fgauss_h (vnew, p=lowpass)) : mt_MakeDiff (vnew, fgauss (vnew, p=lowpass)) : nop()

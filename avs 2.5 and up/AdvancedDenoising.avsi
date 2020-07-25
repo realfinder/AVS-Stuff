@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.892
+# Advanced Denoising and anime bob v1.893
 # Collections of Functions
 
 ### Functions list:-
@@ -277,9 +277,9 @@ y=avs25 ? input : sisphbd ? input.converttoy() : input.converttoy8()
 u=avs25 ? input.utoy() : input.utoy8()
 v=avs25 ? input.vtoy() : input.vtoy8()
 cshift = (cplace == "MPEG1" && IsYV12(input)) || IsYV24(input) ? 0 : -0.5
-ych = sisfullchr ? y : bic ? input.BicubicResize(u.width(), v.height(), 1, 0, src_left=cshift) : input.BilinearResize(u.width(), v.height(), src_left=cshift)
-u=u.ConvertToYV12().TBilateral(diameterL=diameter, sDevL=sDev, iDevL=iDev, csL=cs, d2=d2, chroma=chroma, ppclip=ych.ConvertToYV12(), kernS=kernS, kernI=kernI, resType=resType)
-v=v.ConvertToYV12().TBilateral(diameterL=diameter, sDevL=sDev, iDevL=iDev, csL=cs, d2=d2, chroma=chroma, ppclip=ych.ConvertToYV12(), kernS=kernS, kernI=kernI, resType=resType)
+ych = sisfullchr ? y : bic ? y.BicubicResize(u.width(), v.height(), 1, 0, src_left=cshift) : y.BilinearResize(u.width(), v.height(), src_left=cshift)
+u=u.svsTBilateral(diameterL=diameter, sDevL=sDev, iDevL=iDev, csL=cs, d2=d2, chroma=chroma, ppclip=ych, kernS=kernS, kernI=kernI, resType=resType)
+v=v.svsTBilateral(diameterL=diameter, sDevL=sDev, iDevL=iDev, csL=cs, d2=d2, chroma=chroma, ppclip=ych, kernS=kernS, kernI=kernI, resType=resType)
 YToUV(u,v,y)
 sisyuy2 ? converttoyuy2() : last
 }
@@ -381,7 +381,7 @@ minflate  = Default (minflate, true)
 mmuv      = Default (mmuv, mmLuma ? 3 : 2)
 mmy       = Default (mmy,         3)
 bordertyp = Default (bordertype,  1)
-filter    = Default (filter, defined(linesm) ? "yahr3.TBilateral(5,5,0.9,0.9,5,5,0.7,chroma=false)" : \
+filter    = Default (filter, defined(linesm) ? "yahr3.svsTBilateral(5,5,0.9,0.9,5,5,0.7,chroma=false)" : \
                                              """FineDehaloanalog(exdehalo="VHSHaloremover(2,2,200,100,0.5).yahr2(32)")""")
 minf = defined(linesm) ? minflate ? linesm.mt_inflate(155,155,u=mmLuma || mmuv!=3 ? 1 : 3 ,v=mmLuma || mmuv!=3 ? 1 : 3) : linesm : nop()
  

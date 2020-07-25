@@ -1,4 +1,4 @@
-# DeHaloHmod v.2.45
+# DeHaloHmod v.2.46
 
 Function DeHaloHmod(clip input, int "Radius", int "Str", bool "Maska", bool "strong", int "mode", float "thr", val "exdehalo", bool "analog", bool "dirty", bool "smooth", bool "anime", bool "pel2", bool "usedeen", bool "maskpel2", float "thr2", val "extmask", val "extlmask", bool "RadInflate")
 {
@@ -24,7 +24,7 @@ Function DeHaloHmod(clip input, int "Radius", int "Str", bool "Maska", bool "str
  thr2       = Default(thr2, smooth ? 170 : threshold/1.5)
 
  oclip = pel2 ? input.nnedi3_rpow2(rfactor=2) : input
- hfl = defined(exdehalo) ? exdhcb ? exdehalo : eval("oclip." + exdehalo) : smooth ? oclip.DeHalo_alpha_mt(rx=pel2 ? 3 : 2,ry=pel2 ? 3 : 2,darkstr=0.2,brightstr=0.8).yahr2(dirty ? pel2 ? 12 : 8 : pel2 ? 24 : 16).TBilateral(DR_Str,5,pel2 ? 1.4 : 0.9,0.9,pel2 ? 7 : 5,5,0.7,chroma=false) : usedeen ? oclip.sminideen(2, DR_Str  , 0, 3, 1, 1) : oclip.TBilateral(DR_Str,5,pel2 ? 1.4 : 0.9,0.9,pel2 ? 7 : 5,5,0.7,chroma=false)
+ hfl = defined(exdehalo) ? exdhcb ? exdehalo : eval("oclip." + exdehalo) : smooth ? oclip.DeHalo_alpha_mt(rx=pel2 ? 3 : 2,ry=pel2 ? 3 : 2,darkstr=0.2,brightstr=0.8).yahr2(dirty ? pel2 ? 12 : 8 : pel2 ? 24 : 16).svsTBilateral(DR_Str,5,pel2 ? 1.4 : 0.9,0.9,pel2 ? 7 : 5,5,0.7,chroma=false) : usedeen ? oclip.sminideen(2, DR_Str  , 0, 3, 1, 1) : oclip.svsTBilateral(DR_Str,5,pel2 ? 1.4 : 0.9,0.9,pel2 ? 7 : 5,5,0.7,chroma=false)
  hfl = pel2 && !(maskpel2 && dirty) ? hfl.PointResize(input.Width(),input.Height()) : hfl
 
  cm  = dirty ? hfl : input
