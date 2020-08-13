@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.135
+# V1.136
 
 ### Functions list:-
 # sh_StrReplace
@@ -1459,9 +1459,12 @@ nonyuy2clipout(doyuy2)
 function tmm2_ortmm1(clip clip, int "mode", int "order", int "field", int "length", int "mtype", int "ttype", int "mtqL", int "mthL", int "mtqC", int "mthC", int "nt", int "minthresh", int "maxthresh", int "cstr", int "opt")
 {
 sisavs26=!(VersionNumber() < 2.6)
+sisphbd=AvsPlusVersionNumber > 2294
+sischbd=sisphbd ? clip.BitsPerComponent() : 8
 nonyuy2=sisavs26 && clip.isyuy2()
-sisavs26 ? clip.nonyuy2clipin(nonyuy2).tmm2(mode, order, field, length, mtype, ttype, mtqL, mthL, mtqC, mthC, nt, minthresh, maxthresh, cstr, opt).nonyuy2clipout(nonyuy2) : \
-        clip.TMM(mode, order, field, length, mtype, ttype, mtqL, mthL, mtqC, mthC, nt, minthresh, maxthresh, cstr)
+sischbd > 8 ? clip.nonyuy2clipin(nonyuy2).vsTMM(mode, order, field, length, mtype, ttype, mtqL, mthL, mtqC, mthC, nt, minthresh, maxthresh, cstr, opt=opt).nonyuy2clipout(nonyuy2) \
+            : sisavs26 ? clip.nonyuy2clipin(nonyuy2).tmm2(mode, order, field, length, mtype, ttype, mtqL, mthL, mtqC, mthC, nt, minthresh, maxthresh, cstr, opt).nonyuy2clipout(nonyuy2) : \
+                         clip.TMM(mode, order, field, length, mtype, ttype, mtqL, mthL, mtqC, mthC, nt, minthresh, maxthresh, cstr)
 }
 
 
