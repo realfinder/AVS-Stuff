@@ -8,13 +8,15 @@
 ###                                                                                          ###
 ###                            another Modded Version by A.SONY.                             ###
 ###                                                                                          ###
-###                                    v2.190 - 7 July 2020                                  ###
+###                                 v2.191 - 17 August 2020                                  ###
 ###                                                                                          ###
 ################################################################################################
 ###
 ### +-----------+
 ### | CHANGELOG |
 ### +-----------+
+###
+### v2.191 : - optimise lut/expr with some ideas of VS port
 ###
 ### v2.190 : - fix and add new float parameters
 ###
@@ -548,16 +550,16 @@ method = preblur=="OFF" ? method : tmp.mt_makediff(mt_makediff(pre,method,U=1,V=
 normsharp = Smode==1 ? tmp.unsharpmask(strength=int(str*100),radius=round(1.0+((ss_x+ss_y)/2.0)),threshold=0)
 \         : Smode==2 ? tmp.unsharp(strength=str,vary=((ss_x+ss_y)/2.0),varc=1,border=3,U=1,V=1)
 \         : Smode==3 ? !sisavs26 ? mt_lutxy(tmp, method, yexpr="x x y - "+string(str)+" * +",U=1,V=1) \
-					     : mt_lutxy(tmp, method, yexpr="x x y - "+string(str)+" * +",use_expr=2,U=1,V=1)
+				 : mt_lutxy(tmp, method, yexpr="x x y - "+string(str)+" * +",use_expr=2,U=1,V=1)
 \         : Smode==4 ? !sisavs26 ? mt_lutxy(tmp, method, yexpr="x y == x x x y - abs "+string(Szrp)+" / 1 "+string(Spwr)+" / ^ "+string(Szrp)+" * "+string(str)+" * x y - 2 ^ x y - 2 ^ "
 \                                                   			    +string(SdmpLo)+" + / * x y - x y - abs / * 1 "+string(SdmpHi)+" 0 == 0 x y - abs "+string(SdmpHi)+" / 4 ^ ? + / + ?",U=1,V=1) \
-				 : mt_lutxy(tmp, method, yexpr="x y == x x x y - abs "+string(Szrp) +" scalef / 1 "+string(Spwr)+" / ^ "+string(Szrp) +" scalef * "+string(str)+" * x y - 2 ^ x y - 2 ^ "
-\                                                   			    +string(SdmpLo)+" scalef scalef + / * x y - x y - abs / * 1 "+string(SdmpHi)+" scalef 0 == 0 x y - abs "+string(SdmpHi)+" scalef / 4 ^ ? + / + ?",use_expr=2,U=1,V=1)
+				 : mt_lutxy(tmp, method, yexpr="x y == x x x y - abs "+string(Szrp)+" scalef / 1 "+string(Spwr)+" / ^ "+string(Szrp) +" scalef * "+string(str)+" * x y - dup * dup "
+\                                                   			    +string(SdmpLo)+" scalef scalef + / * x y - dup abs / * 1 "+string(SdmpHi)+" scalef 0 == 0 x y - abs "+string(SdmpHi)+" scalef / 4 ^ ? + / + ?",use_expr=2,U=1,V=1)
 \         :            !sisavs26 ? mt_lutxy(tmp, method, yexpr="x y == x x x y - abs "+string(Szrp)+" / 1 "+string(Spwr)+" / ^ "+string(Szrp)+" * "+string(str)+" * x y - x y - abs / * x y - 2 ^ "
 \                                                   			    +string(Szrp)+" 2 ^ "+string(SdmpLo)+" + * x y - 2 ^ "+string(SdmpLo)+" + "+string(Szrp)+" 2 ^ * / * 1 "
 \                                                   			    +string(SdmpHi)+" 0 == 0 "+string(Szrp)+" "+string(SdmpHi)+" / 4 ^ ? + 1 "+string(SdmpHi)+" 0 == 0 x y - abs "+string(SdmpHi)+" / 4 ^ ? + / * + ?",U=1,V=1) \
-				 : mt_lutxy(tmp, method, yexpr="x y == x x x y - abs "+string(Szrp)+" / 1 "+string(Spwr)+" / ^ "+string(Szrp)+" * "+string(str)+" * x y - x y - abs / * x y - 2 ^ "
-\                                                   			    +string(Szrp)+" 2 ^ "+string(SdmpLo)+" + * x y - 2 ^ "+string(SdmpLo)+" + "+string(Szrp)+" 2 ^ * / * 1 "
+				 : mt_lutxy(tmp, method, yexpr="x y == x x x y - abs "+string(Szrp)+" / 1 "+string(Spwr)+" / ^ "+string(Szrp)+" * "+string(str)+" * x y - dup abs / * x y - dup * "
+\                                                   			    +string(Szrp)+" dup * "+string(SdmpLo)+" + * x y - dup * "+string(SdmpLo)+" + "+string(Szrp)+" dup * * / * 1 "
 \                                                   			    +string(SdmpHi)+" 0 == 0 "+string(Szrp)+" "+string(SdmpHi)+" / 4 ^ ? + 1 "+string(SdmpHi)+" 0 == 0 x y - abs "+string(SdmpHi)+" / 4 ^ ? + / * + ?",U=1,V=1,use_expr=2,scale_inputs="allf")
 
 
