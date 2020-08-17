@@ -1,5 +1,5 @@
 ###############
-# F3KDB_3 and it sisters v1.336
+# F3KDB_3 and it sisters v1.337
 
 
 function F3KDB_3(clip clip, int "range", int "Y", int "Cb", int "Cr", \
@@ -55,7 +55,7 @@ masking && (nlpmsk ? pass < 2 : true) ? mt_merge(last,pclip,pclip.F3KDB_3_maskin
 noutput_mode==1 ? pclip.convertbits(16,false).ConvertToStacked() : noutput_mode==2 ? pclip.convertbits(16,false).ConvertToDoubleWidth() : last
 
         pass > 1 ? last.F3KDB_3(range, Y, Cb, Cr, \
-		ngrainY, ngrainC, sample_mode, seed, \
+		ngrainY, grainC, sample_mode, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, input_mode, \
 		pass > 1 && sisphbd ? 16 : input_depth, noutput_mode, output_depth, \
@@ -64,14 +64,13 @@ noutput_mode==1 ? pclip.convertbits(16,false).ConvertToStacked() : noutput_mode=
 
 sisyuy2 ? ConvertToYUY2() : last
 
-} catch(error_msg) { clip.L_F3KDB_3(range, Y, Cb, Cr, \
+} catch(error_msg) {clip.L_F3KDB_3(range, Y, Cb, Cr, \
 		grainY, grainC, sample_mode, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, input_mode, \
 		input_depth, output_mode, output_depth, \
 		random_algo_ref, random_algo_grain, \
-		random_param_ref, random_param_grain, chroma, pass, lastpassgrain, masking, mask_thr, mask_radius, lastpassmask)  }
-		
+		random_param_ref, random_param_grain, chroma, pass, lastpassgrain, masking, mask_thr, mask_radius, lastpassmask)}
 }
 
 
@@ -93,7 +92,7 @@ chromad = defined(chroma)
 chroma      = default (chroma, true)
 cb = default (cb, chroma ? undefined : 0)
 cr = default (cr, chroma ? undefined : 0)
-grainC = default (grainC, chromad && chroma ? 64 : chroma ? grainY : 0)
+pgrainC = default (grainC, chromad && chroma ? 64 : chroma ? grainY : 0)
 sisphbd   = AvsPlusVersionNumber > 2294
 hbdbits  = sisphbd ? clip.BitsPerComponent() : 8
 sischbd  = sisphbd ? hbdbits > 8 : false
@@ -115,26 +114,65 @@ i_depth   = sischbd ? clip.BitsPerComponent() : defined(input_depth) ? input_dep
 Assert(!(sischbd && (input_mode>0)), "L_F3KDB_3: lsb/interleaved hack is not Compatible with HBD")
 Assert(isYUV(clip), "L_F3KDB_3: YUV only")
 noSquarechr = sisphbd ? (is422(clip) || isyv411(clip)) : sisavs26 ? (isyv16(clip) || isyv411(clip)) : false
-Assert(!(sample_mode==3 && chroma && (sisyuy2 || noSquarechr)), "L_F3KDB_3: Square chroma only for sample_mode > 2")
+sisavs26 ? nop() : Assert(!(sample_mode==3 && chroma && (sisyuy2 || noSquarechr)), "L_F3KDB_3: Square chroma only for sample_mode > 2")
 
 o_depth     = defined(output_depth) ? output_depth : i_depth
 smode       = sample_mode > 2 ? 1 : sample_mode
 
-pclip2   = sample_mode == 3 ? pclip.sTryFTurnLeft(chroma,input_mode==2 ? 16 : input_mode==1 ? 88 : 8,mt) : pclip
-
-i16clip = sischbd ? i_depth != 8 ? pclip2.convertbits(16,false).ConvertToDoubleWidth() : pclip2.ConvertToDoubleWidth() : pclip2
-
-F3KDB_clip = i16clip.F3KDB(range, Y, Cb, Cr, \
-		grainY, grainC, smode, seed, \
+Yd = defined(y)
+Cbd = defined(Cb)
+Crd = defined(Cr)
+grainCd = defined(grainC)
+doUp = (grainCd ? grainC !=0 : true) || (Cbd ? Cb != 0 : true)
+doVp = (grainCd ? grainC !=0 : true) || (Crd ? Cr != 0 : true)
+dosep = chroma && (sisyuy2 || noSquarechr) && (doUp || doVp)
+ktvr = defined(keep_tv_range)
+Ypclip   = dosep ? sisphbd ? converttoY(pclip) : converttoY8(pclip) : pclip
+Ypclip   = sample_mode == 3 ? Ypclip.sTryFTurnLeft(chroma,input_mode==2 ? 16 : input_mode==1 ? 88 : 8,mt) : Ypclip
+Ypclip   = sischbd ? i_depth != 8 ? Ypclip.convertbits(16,false).ConvertToDoubleWidth() : Ypclip.ConvertToDoubleWidth() : Ypclip
+Upclip   = dosep ? sisphbd ? ExtractU(pclip) : UToY8(pclip) : nop()
+Upclip   = dosep ? sample_mode == 3 ? Upclip.sTryFTurnLeft(chroma,input_mode==2 ? 16 : input_mode==1 ? 88 : 8,mt) : Upclip : nop()
+Upclip   = dosep ? sischbd ? i_depth != 8 ? Upclip.convertbits(16,false).ConvertToDoubleWidth() : Upclip.ConvertToDoubleWidth() : Upclip : nop()
+Vpclip   = dosep ? sisphbd ? ExtractV(pclip) : VToY8(pclip) : nop()
+Vpclip   = dosep ? sample_mode == 3 ? Vpclip.sTryFTurnLeft(chroma,input_mode==2 ? 16 : input_mode==1 ? 88 : 8,mt) : Vpclip : nop()
+Vpclip   = dosep ? sischbd ? i_depth != 8 ? Vpclip.convertbits(16,false).ConvertToDoubleWidth() : Vpclip.ConvertToDoubleWidth() : Vpclip : nop()
+Ypclip  = ((isgrYd ? grainY !=0 : true) || (Yd ? Y != 0 : true)) && dosep ? Ypclip.F3KDB(range, Y, 0, 0, \
+		grainY, 0, smode, seed, \
+		blur_first, dynamic_grain, opt, mt, \
+		dither_algo, false, i_mode, \
+		i_depth, o_mode, o_depth, \
+		random_algo_ref, random_algo_grain, \
+		random_param_ref, random_param_grain) : dosep ? Ypclip : Ypclip.F3KDB(range, Y, Cb, Cr, \
+		grainY, pgrainC, smode, seed, \
 		blur_first, dynamic_grain, opt, mt, \
 		dither_algo, keep_tv_range, i_mode, \
 		i_depth, o_mode, o_depth, \
 		random_algo_ref, random_algo_grain, \
 		random_param_ref, random_param_grain)
+Cbclip  = doUp && dosep ? Upclip.F3KDB(range, Cb, 0, 0, \
+		pgrainC, 0, smode, seed, \
+		blur_first, dynamic_grain, opt, mt, \
+		dither_algo, false, i_mode, \
+		i_depth, o_mode, o_depth, \
+		random_algo_ref, random_algo_grain, \
+		random_param_ref, random_param_grain) : Upclip
+Crclip  = doVp && dosep ? Vpclip.F3KDB(range, Cr, 0, 0, \
+		pgrainC, 0, smode, seed, \
+		blur_first, dynamic_grain, opt, mt, \
+		dither_algo, false, i_mode, \
+		i_depth, o_mode, o_depth, \
+		random_algo_ref, random_algo_grain, \
+		random_param_ref, random_param_grain) : Vpclip
+		
+Ypclip  = output_mode == 3 && sischbd || o_depth>8 ? Ypclip.ConvertFromDoubleWidth(o_depth) : Ypclip
+Ypclip  = sample_mode == 3 ? Ypclip.sTryFTurnRight(chroma,output_mode==2 ? 16 : output_mode==1 ? 88 : 8,mt) : Ypclip
+Cbclip  = !dosep ? nop() : output_mode == 3 && sischbd || o_depth>8 ? Cbclip.ConvertFromDoubleWidth(o_depth) : Cbclip
+Cbclip  = !dosep ? nop() : sample_mode == 3 ? Cbclip.sTryFTurnRight(chroma,output_mode==2 ? 16 : output_mode==1 ? 88 : 8,mt) : Cbclip
+Crclip  = !dosep ? nop() : output_mode == 3 && sischbd || o_depth>8 ? Crclip.ConvertFromDoubleWidth(o_depth) : Crclip
+Crclip  = !dosep ? nop() : sample_mode == 3 ? Crclip.sTryFTurnRight(chroma,output_mode==2 ? 16 : output_mode==1 ? 88 : 8,mt) : Crclip
 
-F3KDB_clip = output_mode == 3 && sischbd || o_depth>8 ? F3KDB_clip.ConvertFromDoubleWidth(o_depth) : F3KDB_clip
-
-sample_mode == 3 ? F3KDB_clip.sTryFTurnRight(chroma,output_mode==2 ? 16 : output_mode==1 ? 88 : 8,mt) : F3KDB_clip
+dosep ? sisphbd ? CombinePlanes(Cbclip, Crclip , Ypclip, planes="UVY",sample_clip=clip) : YToUV(Cbclip, Crclip , Ypclip) : Ypclip
+dosep && ktvr ? keep_tv_range ? sisphbd ? Limiter(16, 235, 16, 240, autoscale=true) : Limiter(16, 235, 16, 240) : last : last
 
 """) : sm4lsb ? Dither_merge16(pclip.L_F3KDB_3(range, Y, Cb, Cr, \
 		grainY, grainC, 1, seed, \
