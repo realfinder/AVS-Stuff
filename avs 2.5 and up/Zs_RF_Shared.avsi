@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.136
+# V1.137
 
 ### Functions list:-
 # sh_StrReplace
@@ -73,6 +73,9 @@
 # svsTTempSmoothf
 # svsMSharpen
 # svsTBilateral
+# sh_GetUserGlobalIMT
+# sh_GetUserGlobalIMTint
+# sh_GetUserGlobalIMTbool
 # IsAvsNeo
 # IsAvsPlus
 # AvsPlusVersionNumber
@@ -1526,21 +1529,21 @@ function sh_Bob(clip cp, float "b", float "c", int "height" )
 }
 
 
-Function sneo_FFT3D(clip input, float "sigma", float "beta", int "bw", int "bh", int "bt", int "ow", int "oh", float "kratio", float "sharpen", float "scutoff", float "svr", float "smin", float "smax", bool "measure", bool "interlaced", int "wintype", int "pframe", int "px", int "py", bool "pshow", float "pcutoff", float "pfactor", float "sigma2", float "sigma3", float "sigma4", float "degrid", float "dehalo", float "hr", float "ht", int "y", int "u", int "v", int "l", int "t", int "r", int "b", int "opt")
+Function sneo_FFT3D(clip input, float "sigma", float "beta", int "bw", int "bh", int "bt", int "ow", int "oh", float "kratio", float "sharpen", float "scutoff", float "svr", float "smin", float "smax", bool "measure", bool "interlaced", int "wintype", int "pframe", int "px", int "py", bool "pshow", float "pcutoff", float "pfactor", float "sigma2", float "sigma3", float "sigma4", float "degrid", float "dehalo", float "hr", float "ht", int "y", int "u", int "v", int "l", int "t", int "r", int "b", int "opt", int "ncpu")
 {
 y=Default(y,3)
 u=Default(u,3)
 v=Default(v,3)
-	   try { input.neo_fft3d(sigma=sigma, beta=beta, bw=bw, bh=bh, bt=bt, ow=ow, oh=oh, kratio=kratio, sharpen=sharpen, scutoff=scutoff, svr=svr, smin=smin, smax=smax, measure=measure, interlaced=interlaced, wintype=wintype, pframe=pframe, px=px, py=py, pshow=pshow, pcutoff=pcutoff, pfactor=pfactor, sigma2=sigma2, sigma3=sigma3, sigma4=sigma4, degrid=degrid, dehalo=dehalo, hr=hr, ht=ht, y=y, u=u, v=v, l=l, t=t, r=r, b=b, opt=opt)
+	   try { input.neo_fft3d(sigma=sigma, beta=beta, bw=bw, bh=bh, bt=bt, ow=ow, oh=oh, kratio=kratio, sharpen=sharpen, scutoff=scutoff, svr=svr, smin=smin, smax=smax, measure=measure, interlaced=interlaced, wintype=wintype, pframe=pframe, px=px, py=py, pshow=pshow, pcutoff=pcutoff, pfactor=pfactor, sigma2=sigma2, sigma3=sigma3, sigma4=sigma4, degrid=degrid, dehalo=dehalo, hr=hr, ht=ht, y=y, u=u, v=v, l=l, t=t, r=r, b=b, opt=opt, ncpu=ncpu)
 } catch(error_msg) { 
 plane = y==3 && u!=3 && v!=3 ? 0 : y!=3 && u==3 && v!=3 ? 1 : y!=3 && u!=3 && v==3 ? 2 : y!=3 && u==3 && v==3 ? 3 : 4
-input.FFT3DFilter(sigma=sigma, beta=beta, bw=bw, bh=bh, bt=bt, ow=ow, oh=oh, kratio=kratio, sharpen=sharpen, scutoff=scutoff, svr=svr, smin=smin, smax=smax, measure=measure, interlaced=interlaced, wintype=wintype, pframe=pframe, px=px, py=py, pshow=pshow, pcutoff=pcutoff, pfactor=pfactor, sigma2=sigma2, sigma3=sigma3, sigma4=sigma4, degrid=degrid, dehalo=dehalo, hr=hr, ht=ht  , plane=plane) }
+input.FFT3DFilter(sigma=sigma, beta=beta, bw=bw, bh=bh, bt=bt, ow=ow, oh=oh, kratio=kratio, sharpen=sharpen, scutoff=scutoff, svr=svr, smin=smin, smax=smax, measure=measure, interlaced=interlaced, wintype=wintype, pframe=pframe, px=px, py=py, pshow=pshow, pcutoff=pcutoff, pfactor=pfactor, sigma2=sigma2, sigma3=sigma3, sigma4=sigma4, degrid=degrid, dehalo=dehalo, hr=hr, ht=ht  , plane=plane, ncpu=ncpu) }
 }
 
 
-Function sneo_dfttest(clip input, int "ftype", float "sigma", float "sigma2", float "pmin", float "pmax", int "sbsize", int "smode", int "sosize", int "tbsize", int "tmode", int "tosize", int "swin", int "twin", float "sbeta", float "tbeta", bool "zmean", float "f0beta", string "nlocation", float "alpha", string "slocation", string "ssx", string "ssy", string "sst", int "ssystem", int "dither", int "y", int "u", int "v", int "opt", int "threads")
+Function sneo_dfttest(clip input, int "ftype", float "sigma", float "sigma2", float "pmin", float "pmax", int "sbsize", int "smode", int "sosize", int "tbsize", int "tmode", int "tosize", int "swin", int "twin", float "sbeta", float "tbeta", bool "zmean", float "f0beta", string "nlocation", float "alpha", string "slocation", string "ssx", string "ssy", string "sst", int "ssystem", int "dither", int "y", int "u", int "v", int "opt", int "threads", int "fft_threads")
 {
-	   try { input.neo_dfttest(ftype=ftype, sigma=sigma, sigma2=sigma2, pmin=pmin, pmax=pmax, sbsize=sbsize, smode=smode, sosize=sosize, tbsize=tbsize, tmode=tmode, tosize=tosize, swin=swin, twin=twin, sbeta=sbeta, tbeta=tbeta, zmean=zmean, f0beta=f0beta, nlocation=nlocation, alpha=alpha, slocation=slocation, ssx=ssx, ssy=ssy, sst=sst, ssystem=ssystem, dither=dither, y=y, u=u, v=v, opt=opt, threads=threads)
+	   try { input.neo_dfttest(ftype=ftype, sigma=sigma, sigma2=sigma2, pmin=pmin, pmax=pmax, sbsize=sbsize, smode=smode, sosize=sosize, tbsize=tbsize, tmode=tmode, tosize=tosize, swin=swin, twin=twin, sbeta=sbeta, tbeta=tbeta, zmean=zmean, f0beta=f0beta, nlocation=nlocation, alpha=alpha, slocation=slocation, ssx=ssx, ssy=ssy, sst=sst, ssystem=ssystem, dither=dither, y=y, u=u, v=v, opt=opt, threads=threads, fft_threads=fft_threads)
 } catch(error_msg) { 
 nstring = defined(nlocation) && defined(alpha) ? "a:" + string(alpha) + " " + nlocation : nlocation
 sstring = defined(slocation) && defined(ssystem) ? ssystem == 1 ? "$" + " " + slocation : slocation : slocation
@@ -1582,6 +1585,32 @@ Function svsTBilateral(clip input, int "diameterL", int "diameterC", float "sDev
 	   try { input.vsTBilateral(diameterY=diameterL, diameterU=diameterC, diameterV=diameterC, sDevY=sDevL, sDevU=sDevC, sDevV=sDevC, iDevY=iDevL, iDevU=iDevC, iDevV=iDevC, csY=csL, csU=csC, csV=csC, d2=d2, u=defined(chroma)?chroma?3:2:undefined, v=defined(chroma)?chroma?3:2:undefined, ppClip=ppClip, kernS=kernS, kernI=kernI, resType=resType)
 } catch(error_msg) { 
 input.TBilateral(diameterL=diameterL, diameterC=diameterC, sDevL=sDevL, sDevC=sDevC, iDevL=iDevL, iDevC=iDevC, csL=csL, csC=csC, d2=d2, chroma=chroma, ppClip=ppClip, kernS=kernS, kernI=kernI, resType=resType)   }
+}
+
+
+function sh_GetUserGlobalIMT(bool "setzero")
+{
+	setzero = default( setzero, false )
+	try       { ret = Eval( string(set_plugins_threads) ) }
+	catch (e) { ret = setzero ? 0 : Undefined }
+	return ret
+}
+
+
+function sh_GetUserGlobalIMTint(bool "setzero")
+{
+	setzero = default( setzero, false )
+	try       { ret = Eval( string(set_plugins_threads_int) ) }
+	catch (e) { ret = sh_GetUserGlobalIMT(setzero) }
+	return ret
+}
+
+
+function sh_GetUserGlobalIMTbool()
+{
+	try       { ret = Eval( string(set_plugins_threads_bool) ) }
+	catch (e) { ret = defined(sh_GetUserGlobalIMT) ? sh_GetUserGlobalIMT!=1 : Undefined }
+	return ret
 }
 
 
