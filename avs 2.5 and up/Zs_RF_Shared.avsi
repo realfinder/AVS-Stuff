@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.137
+# V1.138
 
 ### Functions list:-
 # sh_StrReplace
@@ -399,7 +399,7 @@ lsb ? lsb_out ? dp_merge : dp_merge.Ditherpost(mode=7, slice=false) : dp_merge
 # Padding by Didée
 function sh_Padding(clip c, int left, int top, int right, int bottom, int "threads")
 {
-threads = Default(threads, 0)
+threads = Default(threads, sh_GetUserGlobalIMTint(true))
 w = c.width()
 h = c.height()
 threads!=1 ? Eval("try { pointresizemt(w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom+0.0001, threads=threads) } catch(error_msg) { c.pointresize( w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom+0.0001 ) }") : c.pointresize( w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom+0.0001 )
@@ -408,6 +408,7 @@ threads!=1 ? Eval("try { pointresizemt(w+left+right, h+top+bottom, -left, -top, 
 
 function sTryFTurnRight(clip c, bool "chroma", int "bitdepth", bool "mt") {
 bitdepth=Default(bitdepth, 8)
+mt = sh_GetUserGlobalIMTbool
 bitdepth==8 ? eval("""
 try {
     IsAvsPlus ? dontdoft : nop()
@@ -422,6 +423,7 @@ catch(err_msg) {
 
 function sTryFTurnLeft(clip c, bool "chroma", int "bitdepth", bool "mt") {
 bitdepth=Default(bitdepth, 8)
+mt = sh_GetUserGlobalIMTbool
 bitdepth==8 ? eval("""
 try {
     IsAvsPlus ? dontdoft : nop()
@@ -436,6 +438,7 @@ catch(err_msg) {
 
 function sTryFTurn180(clip c, bool "chroma", int "bitdepth", bool "mt") {
 bitdepth=Default(bitdepth, 8)
+mt = sh_GetUserGlobalIMTbool
 bitdepth==8 ? eval("""
 try {
     IsAvsPlus ? dontdoft : nop()

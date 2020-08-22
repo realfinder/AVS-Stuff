@@ -1,7 +1,7 @@
 #Motion-Compensated Anti-aliasing with contra-sharpening by A.SONY
 #some ideas was taken from Didée scripts daa and this http://forum.doom9.org/showthread.php?t=153219
 #created because when applied daa3 to fixed scenes, it could damage some details and other issues.
-# v3.61
+# v3.62
 
 function mcdaa3(clip input) {
 sup    = input.HQdn3d().sneo_FFT3D().MSuper(pel=2,sharp=1)
@@ -28,8 +28,8 @@ isslob = isbool(slow)
 issloi = Isint(slow)
 Assert(isslob || issloi, "'slow' only accepts bool or int")
 slowb  = isslob ? slow : isslod
-threads = default (threads   ,    0)
-FDCS = default (FDCS   ,    issloi ? slow > 4 || slow < -4 : false)
+threads = default (threads, sh_GetUserGlobalIMTint(true))
+FDCS = default (FDCS, issloi ? slow > 4 || slow < -4 : false)
 sisphbd = AvsPlusVersionNumber > 2294
 chr420  = sisphbd ? c1.is420() : input.isyv12()
 
