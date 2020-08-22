@@ -17,7 +17,7 @@ mt_merge(input,csaa,momask,u=3,v=3)
 
 #############################
 
-#Anti-aliasing with contra-sharpening by Didée with some modifications, v3.59
+#Anti-aliasing with contra-sharpening by Didée with some modifications, v3.61
 
     FUNCTION daa3mod(clip c1, val "slow", int "threads", bool "FDCS") {
 avs25 = VersionNumber() < 2.60
