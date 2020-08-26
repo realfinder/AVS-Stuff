@@ -1,5 +1,5 @@
 ####################################################
-# script v2.115
+# script v2.116
 ####################################################
 # Motion-compensated dfttest by twc
 # Aka: Really Really Really Slow
@@ -9,7 +9,7 @@
 # Added: Recalculate, (proper) 16 bit input handling, dither_luma_rebuild and some masking to prevent 16 bit data loss from 8 bit Mdegrain and Mcompensate
 #
 #
-# v3.931 by A.SONY
+# v3.932 by A.SONY
 # make it work in normal avs again and some fix, and not that slow if you use it without lsb/lsb_in
 # add slice bool to use it to avoid artifacts with avstp
 # clean up
@@ -40,11 +40,14 @@
 
 function dfttestMC(clip input, clip "pp", int "mc", bool "mdg", bool "Y", bool "U", bool "V", float "sigma", int "sbsize", int "sosize", int "tbsize", int "dither", bool "lsb",bool "lsb_in",bool "pp_lsb_in",int "super_filter",
 	\ string "dfttest_params",float "rStr",float "Amp", int "mdgSAD", int "thSAD", int "thSCD1", int "thSCD2", bool "recalculate", bool "truemotion", int "pel", int "blksize", int "search", int "searchparam", int "overlap",
-		\ int "dct", bool "slices", bool "luma_rebuild", string "nstring", string "sstring", string "ssx", string "ssy", string "sst", bool "mdg_domask", string "mdg_mask", clip "ppsuper", clip "super", clip "exmcclip", bool "hd", clip "input8")
+		\ int "dct", bool "slices", bool "luma_rebuild", string "nstring", string "sstring", string "ssx", string "ssy", string "sst", bool "mdg_domask", string "mdg_mask", clip "ppsuper", clip "super", clip "exmcclip", bool "hd", clip "input8", int "threads")
 {
 	# Set default options. Most external parameters are passed valueless.
 	
 	exmc = defined(exmcclip)
+	threads = default(threads, sh_GetUserGlobalIMTint())
+	bomt    = sh_GetUserGlobalIMTbool()
+	dbomt   = defined(bomt)
 	mc = default(mc, 2).min(5)
 	Y = default(Y, true)
 	U = default(U, true)
@@ -85,75 +88,76 @@ function dfttestMC(clip input, clip "pp", int "mc", bool "mdg", bool "Y", bool "
 	chroma = U || V
 	plane  = U && !Y && !V ? 1 : V && !Y && !U ? 2 : chroma && !Y ? 3 : Y && chroma ? 4 : 0
 
+	bomts = dbomt ? ", mt=bomt" : ""
 	# Prepare supersampled clips.
 	!exmc || mdg ? eval("""
 	pp = (pp_enabled) && !defined(ppsuper) ? luma_rebuild ? pp.dither_luma_rebuild(S0=rStr,c=Amp,slice=slices,lsb_in=pp_lsb_in,lsb_out=false,uv=((U&&v)?3:1)) : pp : nop()
-	pp_super = defined(ppsuper) ? ppsuper : exmc ? nop() : pp_enabled ? MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter) : MSuper(input8, pel=pel, chroma=chroma)
-	super = defined(super) ? super : pp_enabled ? input8.MSuper(pel=pel, levels=1, chroma=chroma) : pp_super
-	recalc_sup = recalculate && pp_enabled ? MSuper(pp,pel=pel, levels=1, chroma=chroma) : pp_super
+	pp_super = defined(ppsuper) ? ppsuper : exmc ? nop() : pp_enabled ? MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter""" + bomts + """) : MSuper(input8, pel=pel, chroma=chroma""" + bomts + """)
+	super = defined(super) ? super : pp_enabled ? input8.MSuper(pel=pel, levels=1, chroma=chroma""" + bomts + """) : pp_super
+	recalc_sup = recalculate && pp_enabled ? MSuper(pp,pel=pel, levels=1, chroma=chroma""" + bomts + """) : pp_super
 	
 	# Motion vector search.
-	b5vec = mc == 5 ? MAnalyse(pp_super, delta=5, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	b4vec = mc >  3 ? MAnalyse(pp_super, delta=4, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	b3vec = mc >  2 ? MAnalyse(pp_super, delta=3, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	b2vec = mc >  1 ? MAnalyse(pp_super, delta=2, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	b1vec = MAnalyse(pp_super, delta=1, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion)
-	f1vec = MAnalyse(pp_super, delta=1, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion)
-	f2vec = mc >  1 ? MAnalyse(pp_super, delta=2, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	f3vec = mc >  2 ? MAnalyse(pp_super, delta=3, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	f4vec = mc >  3 ? MAnalyse(pp_super, delta=4, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	f5vec = mc == 5 ? MAnalyse(pp_super, delta=5, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
+	b5vec = mc == 5 ? MAnalyse(pp_super, delta=5, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : nop()
+	b4vec = mc >  3 ? MAnalyse(pp_super, delta=4, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : nop()
+	b3vec = mc >  2 ? MAnalyse(pp_super, delta=3, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : nop()
+	b2vec = mc >  1 ? MAnalyse(pp_super, delta=2, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : nop()
+	b1vec = MAnalyse(pp_super, delta=1, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """)
+	f1vec = MAnalyse(pp_super, delta=1, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """)
+	f2vec = mc >  1 ? MAnalyse(pp_super, delta=2, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : nop()
+	f3vec = mc >  2 ? MAnalyse(pp_super, delta=3, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : nop()
+	f4vec = mc >  3 ? MAnalyse(pp_super, delta=4, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : nop()
+	f5vec = mc == 5 ? MAnalyse(pp_super, delta=5, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : nop()
 	""") : nop()
 
 	
 	recalculate ? Eval("""
-	b5vec = mc == 5 ? MRecalculate(recalc_sup,b5vec , chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion) : nop()
-	b4vec = mc >  3 ? MRecalculate(recalc_sup,b4vec , chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion) : nop()
-	b3vec = mc >  2 ? MRecalculate(recalc_sup,b3vec , chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion) : nop()
-	b2vec = mc >  1 ? MRecalculate(recalc_sup,b2vec , chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion) : nop()
-	b1vec = MRecalculate(recalc_sup,b1vec , chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion)
-	f1vec = MRecalculate(recalc_sup,f1vec, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion)
-	f2vec = mc >  1 ? MRecalculate(recalc_sup,f2vec, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion) : nop()
-	f3vec = mc >  2 ? MRecalculate(recalc_sup,f3vec, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion) : nop()
-	f4vec = mc >  3 ? MRecalculate(recalc_sup,f4vec, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion) : nop()
-	f5vec = mc == 5 ? MRecalculate(recalc_sup,f5vec, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion) : nop()
+	b5vec = mc == 5 ? MRecalculate(recalc_sup,b5vec , chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion""" + bomts + """) : nop()
+	b4vec = mc >  3 ? MRecalculate(recalc_sup,b4vec , chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion""" + bomts + """) : nop()
+	b3vec = mc >  2 ? MRecalculate(recalc_sup,b3vec , chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion""" + bomts + """) : nop()
+	b2vec = mc >  1 ? MRecalculate(recalc_sup,b2vec , chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion""" + bomts + """) : nop()
+	b1vec = MRecalculate(recalc_sup,b1vec , chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion""" + bomts + """)
+	f1vec = MRecalculate(recalc_sup,f1vec, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion""" + bomts + """)
+	f2vec = mc >  1 ? MRecalculate(recalc_sup,f2vec, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion""" + bomts + """) : nop()
+	f3vec = mc >  2 ? MRecalculate(recalc_sup,f3vec, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion""" + bomts + """) : nop()
+	f4vec = mc >  3 ? MRecalculate(recalc_sup,f4vec, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion""" + bomts + """) : nop()
+	f5vec = mc == 5 ? MRecalculate(recalc_sup,f5vec, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap2, blksize=blksize2, dct=dct,thSAD=mdgSAD2,truemotion=truemotion""" + bomts + """) : nop()
 	""") : nop()
 
 	# Optional MDegrain.
 	Eval("""
 	try {
-		degrained = lsb || lsb_in ? mc == 5 && mdg ? MDeGrain5(input8, super, b1vec, f1vec, b2vec, f2vec, b3vec, f3vec, b4vec, f4vec, b5vec, f5vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2, lsb=true) :
-			\ mc == 4 && mdg ? MDeGrain4(input8, super, b1vec, f1vec, b2vec, f2vec, b3vec, f3vec, b4vec, f4vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2, lsb=true) :
-			\ mc == 3 && mdg ? MDeGrain3(input8, super, b1vec, f1vec, b2vec, f2vec, b3vec, f3vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2, lsb=true) :
-			\ mc == 2 && mdg ? MDeGrain2(input8, super, b1vec, f1vec, b2vec, f2vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2, lsb=true) :
-			\ mdg ? MDeGrain1(input8, super, b1vec, f1vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2, lsb=true) : lsb_in ? input : errmsggonext :
+		degrained = lsb || lsb_in ? mc == 5 && mdg ? MDeGrain5(input8, super, b1vec, f1vec, b2vec, f2vec, b3vec, f3vec, b4vec, f4vec, b5vec, f5vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2, lsb=true""" + bomts + """) :
+			\ mc == 4 && mdg ? MDeGrain4(input8, super, b1vec, f1vec, b2vec, f2vec, b3vec, f3vec, b4vec, f4vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2, lsb=true""" + bomts + """) :
+			\ mc == 3 && mdg ? MDeGrain3(input8, super, b1vec, f1vec, b2vec, f2vec, b3vec, f3vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2, lsb=true""" + bomts + """) :
+			\ mc == 2 && mdg ? MDeGrain2(input8, super, b1vec, f1vec, b2vec, f2vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2, lsb=true""" + bomts + """) :
+			\ mdg ? MDeGrain1(input8, super, b1vec, f1vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2, lsb=true""" + bomts + """) : lsb_in ? input : errmsggonext :
 			\ errmsggonext
 			degrained  = mdg_domask && mdg ? defined(mdg_mask) ? eval(mdg_mask) : DarkPreserve_function(degrained,input,lsb_in=lsb_in) : degrained
 			degrained8 = lsb ? degrained.dither_get_msb() : degrained.ditherpost(mode=7,slice=slices,y=y ? 3 : 1,u=u ? 3 : 1,v=v ? 3 : 1)
 			lsb_enable = true
 		} catch(err_msg)
 		{
-		degrained8 = sisavs26 && mc == 5 && mdg ? MDeGrain5(input8, super, b1vec, f1vec, b2vec, f2vec, b3vec, f3vec, b4vec, f4vec, b5vec, f5vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2) : 
-			\ sisavs26 && mc == 4 && mdg ? MDeGrain4(input8, super, b1vec, f1vec, b2vec, f2vec, b3vec, f3vec, b4vec, f4vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2) : 
-			\ mc >= 3 && mdg ? MDeGrain3(input8, super, b1vec, f1vec, b2vec, f2vec, b3vec, f3vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2) :
-			\ mc == 2 && mdg ? MDeGrain2(input8, super, b1vec, f1vec, b2vec, f2vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2) :
-			\ mdg ? MDeGrain1(input8, super, b1vec, f1vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2) : input8
+		degrained8 = sisavs26 && mc == 5 && mdg ? MDeGrain5(input8, super, b1vec, f1vec, b2vec, f2vec, b3vec, f3vec, b4vec, f4vec, b5vec, f5vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) : 
+			\ sisavs26 && mc == 4 && mdg ? MDeGrain4(input8, super, b1vec, f1vec, b2vec, f2vec, b3vec, f3vec, b4vec, f4vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) : 
+			\ mc >= 3 && mdg ? MDeGrain3(input8, super, b1vec, f1vec, b2vec, f2vec, b3vec, f3vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) :
+			\ mc == 2 && mdg ? MDeGrain2(input8, super, b1vec, f1vec, b2vec, f2vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) :
+			\ mdg ? MDeGrain1(input8, super, b1vec, f1vec, thSAD=mdgSAD, plane=plane, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) : input8
 			degrained8 = mdg_domask && mdg ? defined(mdg_mask) ? eval(mdg_mask) : DarkPreserve_function(degrained8,input,lsb_in=lsb_in) : degrained8
 		lsb_enable = false
 		}
 	""")
 	!exmc ? eval("""
-	degrained_super = mdg ? MSuper(degrained8, pel=pel, levels=1, chroma=chroma) : super
-	b5clip = mc == 5 ? MCompensate(degrained8, degrained_super, b5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	b4clip = mc >  3 ? MCompensate(degrained8, degrained_super, b4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	b3clip = mc >  2 ? MCompensate(degrained8, degrained_super, b3vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	b2clip = mc >  1 ? MCompensate(degrained8, degrained_super, b2vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	b1clip = MCompensate(degrained8, degrained_super, b1vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2)
-	f1clip = MCompensate(degrained8, degrained_super, f1vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2)
-	f2clip = mc >  1 ? MCompensate(degrained8, degrained_super, f2vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	f3clip = mc >  2 ? MCompensate(degrained8, degrained_super, f3vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	f4clip = mc >  3 ? MCompensate(degrained8, degrained_super, f4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	f5clip = mc == 5 ? MCompensate(degrained8, degrained_super, f5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
+	degrained_super = mdg ? MSuper(degrained8, pel=pel, levels=1, chroma=chroma""" + bomts + """) : super
+	b5clip = mc == 5 ? MCompensate(degrained8, degrained_super, b5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) : nop()
+	b4clip = mc >  3 ? MCompensate(degrained8, degrained_super, b4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) : nop()
+	b3clip = mc >  2 ? MCompensate(degrained8, degrained_super, b3vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) : nop()
+	b2clip = mc >  1 ? MCompensate(degrained8, degrained_super, b2vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) : nop()
+	b1clip = MCompensate(degrained8, degrained_super, b1vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """)
+	f1clip = MCompensate(degrained8, degrained_super, f1vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """)
+	f2clip = mc >  1 ? MCompensate(degrained8, degrained_super, f2vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) : nop()
+	f3clip = mc >  2 ? MCompensate(degrained8, degrained_super, f3vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) : nop()
+	f4clip = mc >  3 ? MCompensate(degrained8, degrained_super, f4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) : nop()
+	f5clip = mc == 5 ? MCompensate(degrained8, degrained_super, f5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) : nop()
 	""") : nop()
 
 	# Create compensated clip.
@@ -176,10 +180,10 @@ function dfttestMC(clip input, clip "pp", int "mc", bool "mdg", bool "Y", bool "
 	# Perform dfttest. Exception handling required for official dfttest.
 	Eval("""
 	try {
-		filtered = Eval("dfttest(interleaved16, Y=Y, U=U, V=V, sigma=sigma, sbsize=sbsize, sosize=sosize, tbsize=tbsize, dither=dither, lsb=lsb,lsb_in=lsb_enable || lsb_in, nstring=nstring, sstring=sstring, ssx=ssx, ssy=ssy, sst=sst" + dfttest_params + ")")
+		filtered = Eval("dfttest(interleaved16, Y=Y, U=U, V=V, sigma=sigma, sbsize=sbsize, sosize=sosize, tbsize=tbsize, dither=dither, lsb=lsb,lsb_in=lsb_enable || lsb_in, nstring=nstring, sstring=sstring, ssx=ssx, ssy=ssy, sst=sst, threads=threads" + dfttest_params + ")")
 		} catch(err_msg)
 		{
-		filtered = Eval("dfttest(mc16 ? lsbNotWorthIt : interleaved, Y=Y, U=U, V=V, sigma=sigma, sbsize=sbsize, sosize=sosize, tbsize=tbsize, dither=dither, nstring=nstring, sstring=sstring, ssx=ssx, ssy=ssy, sst=sst" + dfttest_params + ")")
+		filtered = Eval("dfttest(mc16 ? lsbNotWorthIt : interleaved, Y=Y, U=U, V=V, sigma=sigma, sbsize=sbsize, sosize=sosize, tbsize=tbsize, dither=dither, nstring=nstring, sstring=sstring, ssx=ssx, ssy=ssy, sst=sst, threads=threads" + dfttest_params + ")")
 		}
 	""")
 		
@@ -194,6 +198,8 @@ function sMCclips(clip input, clip pp_super, clip super, int "mc",
 		\ int "dct", bool "HD", clip "b1vec", clip "f1vec", clip "b2vec", clip "f2vec", clip "b3vec", clip "f3vec", clip "b4vec", clip "f4vec", clip "b5vec", clip "f5vec")
 {
 	sisphbd = AvsPlusVersionNumber > 2294
+	bomt    = sh_GetUserGlobalIMTbool()
+	dbomt   = defined(bomt)
 	mc = default(mc, 2).min(5)
 	HD = default(HD, false)
 	truemotion = default(truemotion,true)
@@ -205,30 +211,30 @@ function sMCclips(clip input, clip pp_super, clip super, int "mc",
 	chroma   = default(chroma, true)
 	
 	# Motion vector search.
-	b5vec = mc == 5 ? defined(b5vec) ? b5vec : MAnalyse(pp_super, delta=5, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	b4vec = mc >  3 ? defined(b4vec) ? b4vec : MAnalyse(pp_super, delta=4, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	b3vec = mc >  2 ? defined(b3vec) ? b3vec : MAnalyse(pp_super, delta=3, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	b2vec = mc >  1 ? defined(b2vec) ? b2vec : MAnalyse(pp_super, delta=2, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	b1vec = defined(b1vec) ? b1vec : MAnalyse(pp_super, delta=1, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion)
-	f1vec = defined(f1vec) ? f1vec : MAnalyse(pp_super, delta=1, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion)
-	f2vec = mc >  1 ? defined(f2vec) ? f2vec : MAnalyse(pp_super, delta=2, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	f3vec = mc >  2 ? defined(f3vec) ? f3vec : MAnalyse(pp_super, delta=3, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	f4vec = mc >  3 ? defined(f4vec) ? f4vec : MAnalyse(pp_super, delta=4, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
-	f5vec = mc == 5 ? defined(f5vec) ? f5vec : MAnalyse(pp_super, delta=5, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
+	b5vec = mc == 5 ? defined(b5vec) ? b5vec : dbomt ? MAnalyse(pp_super, delta=5, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion, mt=bomt) : MAnalyse(pp_super, delta=5, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
+	b4vec = mc >  3 ? defined(b4vec) ? b4vec : dbomt ? MAnalyse(pp_super, delta=4, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion, mt=bomt) : MAnalyse(pp_super, delta=4, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
+	b3vec = mc >  2 ? defined(b3vec) ? b3vec : dbomt ? MAnalyse(pp_super, delta=3, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion, mt=bomt) : MAnalyse(pp_super, delta=3, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
+	b2vec = mc >  1 ? defined(b2vec) ? b2vec : dbomt ? MAnalyse(pp_super, delta=2, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion, mt=bomt) : MAnalyse(pp_super, delta=2, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
+	b1vec = defined(b1vec) ? b1vec : dbomt ? MAnalyse(pp_super, delta=1, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion, mt=bomt) : MAnalyse(pp_super, delta=1, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion)
+	f1vec = defined(f1vec) ? f1vec : dbomt ? MAnalyse(pp_super, delta=1, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion, mt=bomt)           : MAnalyse(pp_super, delta=1, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion)
+	f2vec = mc >  1 ? defined(f2vec) ? f2vec : dbomt ? MAnalyse(pp_super, delta=2, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion, mt=bomt) : MAnalyse(pp_super, delta=2, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
+	f3vec = mc >  2 ? defined(f3vec) ? f3vec : dbomt ? MAnalyse(pp_super, delta=3, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion, mt=bomt) : MAnalyse(pp_super, delta=3, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
+	f4vec = mc >  3 ? defined(f4vec) ? f4vec : dbomt ? MAnalyse(pp_super, delta=4, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion, mt=bomt) : MAnalyse(pp_super, delta=4, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
+	f5vec = mc == 5 ? defined(f5vec) ? f5vec : dbomt ? MAnalyse(pp_super, delta=5, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion, mt=bomt) : MAnalyse(pp_super, delta=5, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
 
 	sbitsn = sisphbd ? input.BitsPerComponent() : 8
 	super = sisphbd ? sbitsn != super.BitsPerComponent() ? super.ConvertBits(sbitsn) : super : super
 
-	b5clip = mc == 5 ? MCompensate(input, super, b5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	b4clip = mc >  3 ? MCompensate(input, super, b4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	b3clip = mc >  2 ? MCompensate(input, super, b3vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	b2clip = mc >  1 ? MCompensate(input, super, b2vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	b1clip = MCompensate(input, super, b1vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2)
-	f1clip = MCompensate(input, super, f1vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2)
-	f2clip = mc >  1 ? MCompensate(input, super, f2vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	f3clip = mc >  2 ? MCompensate(input, super, f3vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	f4clip = mc >  3 ? MCompensate(input, super, f4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
-	f5clip = mc == 5 ? MCompensate(input, super, f5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
+	b5clip = mc == 5 ? dbomt ? MCompensate(input, super, b5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, mt=bomt) : MCompensate(input, super, b5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
+	b4clip = mc >  3 ? dbomt ? MCompensate(input, super, b4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, mt=bomt) : MCompensate(input, super, b4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
+	b3clip = mc >  2 ? dbomt ? MCompensate(input, super, b3vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, mt=bomt) : MCompensate(input, super, b3vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
+	b2clip = mc >  1 ? dbomt ? MCompensate(input, super, b2vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, mt=bomt) : MCompensate(input, super, b2vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
+	b1clip = dbomt ? MCompensate(input, super, b1vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, mt=bomt) : MCompensate(input, super, b1vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2)
+	f1clip = dbomt ? MCompensate(input, super, f1vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, mt=bomt) : MCompensate(input, super, f1vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2)
+	f2clip = mc >  1 ? dbomt ? MCompensate(input, super, f2vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, mt=bomt) : MCompensate(input, super, f2vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
+	f3clip = mc >  2 ? dbomt ? MCompensate(input, super, f3vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, mt=bomt) : MCompensate(input, super, f3vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
+	f4clip = mc >  3 ? dbomt ? MCompensate(input, super, f4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, mt=bomt) : MCompensate(input, super, f4vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
+	f5clip = mc == 5 ? dbomt ? MCompensate(input, super, f5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, mt=bomt) : MCompensate(input, super, f5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nop()
 
 	# Create compensated clip.
 	interleaved = mc == 5 ? Interleave(f5clip, f4clip, f3clip, f2clip, f1clip, input, b1clip, b2clip, b3clip, b4clip, b5clip) :
@@ -244,6 +250,9 @@ function spp_super(clip input, clip "pp", bool "lsb", bool "lsb_in",bool "pp_lsb
 	\ float "rStr",float "Amp", int "pel", bool "Y", bool "U", bool "V",
 		\ bool "slices", bool "luma_rebuild", bool "HD", int "Subpixel")
 {
+	threads = sh_GetUserGlobalIMTint()
+	bomt    = sh_GetUserGlobalIMTbool()
+	dbomt   = defined(bomt)
 	Y = default(Y, true)
 	U = default(U, true)
 	V = default(V, true)
@@ -267,18 +276,21 @@ function spp_super(clip input, clip "pp", bool "lsb", bool "lsb_in",bool "pp_lsb
 	pp = (pp_enabled) ? luma_rebuild ? pp.dither_luma_rebuild(S0=rStr,c=Amp,slice=slices,lsb_in=pp_lsb_in,lsb=lsb_in,lsb_out=false,uv=((U&&v)?3:1)) : pp : nop()
 
 	pelclip = pel>1 && subpixel == 3
-	pclip = pelclip ? pel==4 ? pp.nnedi3_rpow2(rfactor=2,nns=4).nnedi3_rpow2(rfactor=2,nns=4) : pp.nnedi3_rpow2(rfactor=2,nns=4) : undefined
-	pp_super = pp_enabled ? MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter, pelclip=pclip) : MSuper(input8, pel=pel, chroma=chroma)
+	pclip = pelclip ? pel==4 ? pp.nnedi3_rpow2(rfactor=2,nns=4, threads).nnedi3_rpow2(rfactor=2,nns=4, threads) : pp.nnedi3_rpow2(rfactor=2,nns=4, threads) : undefined
+	pp_super = pp_enabled ? dbomt ? MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter, pelclip=pclip, mt=bomt) : MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter, pelclip=pclip) : dbomt ? MSuper(input8, pel=pel, chroma=chroma) : MSuper(input8, pel=pel, chroma=chroma, mt=bomt)
 		
 	return pp_super
 }
 
-# sMCwarper v1.24
+# sMCwarper v1.25
 function sMCwarper(clip input, string "filter", int "mc", val "prefilter", bool "TV_range", clip "exmcclip", clip "super", clip "pp_super", bool "Y", bool "U", bool "V",
 	\ int "thSAD", int "thSCD1", int "thSCD2", bool "truemotion", bool "chroma", int "blksize", int "search", int "searchparam", int "overlap", int "dct",
 		\ bool  "HD",bool "slices",float "rStr",float "Amp", int "pel",int "super_filter", bool "interlaced", int "Subpixel", val "para1", val "para2")
 {
 		exmc = defined(exmcclip)
+		threads = sh_GetUserGlobalIMTint()
+		bomt    = sh_GetUserGlobalIMTbool()
+		dbomt   = defined(bomt)
 		Assert(defined(filter), "sMCwarper: filter is needed")
 		!exmc ? eval("""
 		mc = default(mc, 2).min(5)
@@ -297,15 +309,15 @@ function sMCwarper(clip input, string "filter", int "mc", val "prefilter", bool 
 		prefilterdef = defined(prefilter)
 		prefilterisint = prefilterdef ? isint(prefilter) : false
 		prefilterbool = prefilterdef ? isbool(prefilter) ? prefilter : prefilterisint ? prefilter!=0 : true : false
-		prefilter = prefilterdef ? prefilterisint && prefilterbool ? prefilter == 1 ? input.blur(1.53,interlaced ? 0 : undefined) : input.Ablur(1,blurv=interlaced ? 0 : undefined,chroma=chroma?3:2) : eval("input."+prefilter) : prefilter
+		prefilter = prefilterdef ? prefilterisint && prefilterbool ? prefilter == 1 ? input.blur(1.53,interlaced ? 0 : undefined) : input.Ablur(1,blurv=interlaced ? 0 : undefined,chroma=chroma?3:2, threads) : eval("input."+prefilter) : prefilter
 		prefilterisclip = prefilterdef ? isclip(prefilter) : false
 		prefilter = prefilterisclip && interlaced && prefilter.IsFrameBased() ? prefilter.SeparateFields() : prefilter
 		sppbool = prefilterbool ? true : TV_range ? true : false
-		pp_super =  defined(pp_super) ? pp_super : sppbool ? spp_super(input ,prefilterisclip ? prefilter :  input ,HD=HD,slices=slices,rStr=rStr,Amp=Amp,pel=pel,super_filter=super_filter,luma_rebuild=TV_range,y=y,u=u,v=v,subpixel=subpixel) : input.MSuper(pel=pel,rfilter=super_filter)
+		pp_super =  defined(pp_super) ? pp_super : sppbool ? spp_super(input ,prefilterisclip ? prefilter :  input ,HD=HD,slices=slices,rStr=rStr,Amp=Amp,pel=pel,super_filter=super_filter,luma_rebuild=TV_range,y=y,u=u,v=v,subpixel=subpixel) : dbomt ? input.MSuper(pel=pel,rfilter=super_filter, mt=bomt) : input.MSuper(pel=pel,rfilter=super_filter)
 		subpixel = default( subpixel,  2 )
 		pelclip = pel>1 && subpixel == 3
-		pclip = pelclip ? pel==4 ? input.nnedi3_rpow2(rfactor=2,nns=4).nnedi3_rpow2(rfactor=2,nns=4) : input.nnedi3_rpow2(rfactor=2,nns=4) : undefined
-		super = defined(super) ? super : sppbool ? input.MSuper(levels=1,pel=pel,rfilter=0, pelclip=pclip) : pp_super
+		pclip = pelclip ? pel==4 ? input.nnedi3_rpow2(rfactor=2,nns=4, threads).nnedi3_rpow2(rfactor=2,nns=4, threads) : input.nnedi3_rpow2(rfactor=2,nns=4, threads) : undefined
+		super = defined(super) ? super : sppbool ? dbomt ? input.MSuper(levels=1,pel=pel,rfilter=0, pelclip=pclip, mt=bomt) : input.MSuper(levels=1,pel=pel,rfilter=0, pelclip=pclip) : pp_super
 		            """) : nop()
 		exmc ? exmcclip : interlaced ? interleave(input.selecteven().sMCclips(pp_super.selecteven(), super.selecteven(),mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD), input.selectodd().sMCclips(pp_super.selectodd(), super.selectodd(),mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD)).weave() :
 		                             \ input.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD)
@@ -313,12 +325,14 @@ function sMCwarper(clip input, string "filter", int "mc", val "prefilter", bool 
 		selectEvery(last, mc * 2 + 1, mc)
 }
 
-# mcKNLMeansCL v1.47
+# mcKNLMeansCL v1.48
 function mcKNLMeansCL(clip input, String "device_type", int "device_id", bool "chroma", bool "lsb", bool "lsb_in", float "h", int "d", int "a", String "knlm_params", bool "Y", bool "U", bool "V",
 	\ val "prefilter", bool "TV_range", clip "exmcclip", clip "super", clip "pp_super", int "thSAD", int "thSCD1", int "thSCD2", bool "truemotion", bool "chroma", int "blksize", int "search", int "searchparam", int "overlap", int "dct",
 		\ bool "HD", bool "slices", float "rStr",float "Amp", int "pel", int "super_filter", bool "rprefilter", bool "knlchroma")
 {
 		sisphbd = AvsPlusVersionNumber > 2294
+		bomt    = sh_GetUserGlobalIMTbool()
+		dbomt   = defined(bomt)
 		d            = Default( d ,1).min(5)
 		a            = Default( a ,2)
 		h            = Default( h ,1.2)
@@ -334,6 +348,7 @@ function mcKNLMeansCL(clip input, String "device_type", int "device_id", bool "c
 		rclip = rprefilter && prefilterdef ? d==0 ? prefilter : prefilter.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD,b1vec,f1vec,b2vec,f2vec,b3vec,f3vec,b4vec,f4vec,b5vec,f5vec) : undefined
 		sbitsn = rprefilter && prefilterdef && sisphbd ? input.BitsPerComponent() : 8
 		rclip = rprefilter && prefilterdef ? sisphbd ? rclip.BitsPerComponent() != sbitsn ? rclip.ConvertBits(sbitsn) : rclip : rclip : rclip
+		bomts = dbomt ? ", mt=bomt" : ""
 d==0 ? SH_KNLMeansCL(input, device_type, device_id, knlchroma, lsb, lsb_in, h, d, a, knlm_params, rclip) : \
         eval("""
      exmc = defined(exmcclip)
@@ -352,19 +367,19 @@ d==0 ? SH_KNLMeansCL(input, device_type, device_id, knlchroma, lsb, lsb_in, h, d
 		prefilterisclip = prefilterdef ? isclip(prefilter) : false
 		sppbool = prefilterisclip ? true : TV_range ? true : false
 		pp_super =  defined(pp_super) ? pp_super : sppbool ? spp_super(input ,prefilterisclip ? prefilter :  input ,HD=HD,slices=slices,rStr=rStr,Amp=Amp,pel=pel,super_filter=super_filter,luma_rebuild=TV_range,y=y,u=u,v=v) : MSuper(pel=pel,rfilter=super_filter)
-		super = defined(super) ? super : sppbool ? input.MSuper(levels=1,pel=pel,rfilter=0) : pp_super
+		super = defined(super) ? super : sppbool ? input.MSuper(levels=1,pel=pel,rfilter=0" + bomts + ") : pp_super
 		            ") : nop()
 
-		b5vec = mc == 5 ? MAnalyse(pp_super, delta=5, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : undefined
-		b4vec = mc >  3 ? MAnalyse(pp_super, delta=4, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : undefined
-		b3vec = mc >  2 ? MAnalyse(pp_super, delta=3, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : undefined
-		b2vec = mc >  1 ? MAnalyse(pp_super, delta=2, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : undefined
-		b1vec = MAnalyse(pp_super, delta=1, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion)
-		f1vec = MAnalyse(pp_super, delta=1, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion)
-		f2vec = mc >  1 ? MAnalyse(pp_super, delta=2, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : undefined
-		f3vec = mc >  2 ? MAnalyse(pp_super, delta=3, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : undefined
-		f4vec = mc >  3 ? MAnalyse(pp_super, delta=4, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : undefined
-		f5vec = mc == 5 ? MAnalyse(pp_super, delta=5, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : undefined
+		b5vec = mc == 5 ? MAnalyse(pp_super, delta=5, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
+		b4vec = mc >  3 ? MAnalyse(pp_super, delta=4, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
+		b3vec = mc >  2 ? MAnalyse(pp_super, delta=3, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
+		b2vec = mc >  1 ? MAnalyse(pp_super, delta=2, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
+		b1vec = MAnalyse(pp_super, delta=1, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """)
+		f1vec = MAnalyse(pp_super, delta=1, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """)
+		f2vec = mc >  1 ? MAnalyse(pp_super, delta=2, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
+		f3vec = mc >  2 ? MAnalyse(pp_super, delta=3, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
+		f4vec = mc >  3 ? MAnalyse(pp_super, delta=4, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
+		f5vec = mc == 5 ? MAnalyse(pp_super, delta=5, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
 
 		exmc ? exmcclip : input.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD,b1vec,f1vec,b2vec,f2vec,b3vec,f3vec,b4vec,f4vec,b5vec,f5vec)
 		SH_KNLMeansCL(last, device_type, device_id, knlchroma, lsb, lsb_in, h, d, a, knlm_params, rclip)
