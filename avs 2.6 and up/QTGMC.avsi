@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------#
 #                                                                   #
-#           QTGMC 3.372, by Vit, 2012, 2020 mod by A.SONY           #
+#           QTGMC 3.373, by Vit, 2012, 2020 mod by A.SONY           #
 #                                                                   #
 #   A high quality deinterlacer using motion-compensated temporal   #
 #  smoothing, with a range of features for quality and convenience  #
@@ -12,7 +12,7 @@
 #
 # --- LATEST CHANGES ---
 #
-# v3.372s
+# v3.373s
 # - new EdiMode modes "BWDIF+NNEDI3" and "BWDIF+EEDI3" (need moded Vinverse_avsi)
 # - fix RepYadif EdiMode for non YUY2 clip (it was same as Yadif)
 #
@@ -342,7 +342,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	EdiThreads = default( EdiThreads, sh_GetUserGlobalIMTint(true)    )
 	ChromaEdi  = default( ChromaEdi,  ""   )
 	NNeurons   = (EdiMode == "NNEDI2" && NNeurons > 2) ? 2 : NNeurons # Smaller range for NNeurons in NNEDI2 (which calls it nsize)
-	EdiQual    = (EdiMode == "EEDI3+NNEDI3" || EdiMode == "NNEDI3") && EdiQual > 2 ? 2 : EdiQual  # Smaller range for EdiQual in NNEDI3
+	EdiQual    = (EdiMode == "EEDI3+NNEDI3" || EdiMode == "NNEDI3" || EdiMode == "BWDIF+NNEDI3" || EdiMode == "BWDIF+EEDI3") && EdiQual > 2 ? 2 : EdiQual  # Smaller range for EdiQual in NNEDI3
 
 	# Source-match / lossless defaults
 	MatchTR1     = TR1
@@ -1090,8 +1090,8 @@ function QTGMC_ApplySourceMatch( clip Deinterlace, int InputType, val Source, va
 	match1Clip     = (SourceMatch < 1 || InputType == 1) ? Deinterlace : Deinterlace.SeparateFields().SelectEvery( 4, 0,3 ).Weave()
 	match1Update   = (SourceMatch < 1 || MatchTR1 == 0) \
 						? Source : mt_lutxy( Source, match1Clip, "x " + string(errorAdjust1 + 1) + " * y " + string(errorAdjust1) + " * -", clamp_float=true, use_expr=2, U=3,V=3 )
-	noyv16ma1Edi   = MatchEdi =="NNEDI2" || MatchEdi =="NNEDI" || MatchEdi =="EEDI3+NNEDI3" || MatchEdi =="EEDI3" || MatchEdi =="EEDI2" || MatchEdi =="TDeint" || MatchEdi =="cYadif" || MatchEdi =="RepcYadif"
-	noyv16ma2Edi   = MatchEdi2=="NNEDI2" || MatchEdi2=="NNEDI" || MatchEdi2=="EEDI3+NNEDI3" || MatchEdi2=="EEDI3" || MatchEdi2=="EEDI2" || MatchEdi2=="TDeint" || MatchEdi2=="cYadif" || MatchEdi2=="RepcYadif"
+	noyv16ma1Edi   = MatchEdi =="NNEDI2" || MatchEdi =="NNEDI" || MatchEdi =="EEDI3+NNEDI3" || MatchEdi =="EEDI3" || MatchEdi =="TDeint" || MatchEdi =="cYadif" || MatchEdi =="RepcYadif"
+	noyv16ma2Edi   = MatchEdi2=="NNEDI2" || MatchEdi2=="NNEDI" || MatchEdi2=="EEDI3+NNEDI3" || MatchEdi2=="EEDI3" || MatchEdi2=="TDeint" || MatchEdi2=="cYadif" || MatchEdi2=="RepcYadif"
 	match1Edi      = (SourceMatch == 0) ? NOP() : \
 	!noyv16ma1Edi || !yuy2 ? match1Update.QTGMC_Interpolate( InputType, MatchEdi, MatchNNSize, MatchNNeurons, MatchEdiQual, MatchEdiMaxD, EdiThreads ) : \
 	                         match1Update.nonyuy2clipout(true) \
