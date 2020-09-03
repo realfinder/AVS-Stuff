@@ -1,4 +1,4 @@
-# STPresso by Didée, MC by SilaSurfer, r.f mod in 2020.05.07 for HBD
+# STPresso by Didée, MC by SilaSurfer, r.f mod in 2020.08.17 for HBD
 function STPresso(clip clp, float "limit", float "bias", int "RGmode", int "tthr", float "tlimit", float "tbias", float "back", bool "mc", bool "HD", int "radius")
 {
 sisavs26 = !(VersionNumber() < 2.60)
@@ -23,7 +23,7 @@ TLIM1  = (tlimit>0) ? string( round(tlimit*100.0/tbias-1.0) ) : string( round(10
 TLIM2  = (tlimit<0) ? "1" : string(tlimit)
 TBIA   = string(tbias)
 
-expr  = (limit<0) ?   sisavs26 ? "x y - abs "+LIM1+" scalef < x x 1 x y - x y - abs / * - ?" : "x y - abs "+LIM1+" < x x 1 x y - x y - abs / * - ?"
+expr  = (limit<0) ?   sisavs26 ? "x y - abs "+LIM1+" scalef < x x 1 x y - x y - abs / * - ?" : "x y - abs "+LIM1+" < x x 1 x y - dup abs / * - ?"
  \                :   sisavs26 ? "x y - abs 1 scalef < x x "+LIM1+" scalef + y < x "+LIM2+" scalef + x "+LIM1+" scalef - y > x "+LIM2+" scalef - " \ 
                     + "x 100 scalef "+BIA+" scalef - * y "+BIA+" scalef * + 100 scalef / ? ? ?" \
 					           : "x y - abs 1 < x x "+LIM1+" + y < x "+LIM2+" + x "+LIM1+" - y > x "+LIM2+" - " \ 

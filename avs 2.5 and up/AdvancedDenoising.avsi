@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.893
+# Advanced Denoising and anime bob v1.894
 # Collections of Functions
 
 ### Functions list:-
@@ -59,8 +59,9 @@ cond1 = abs(mtcav-mtpav) > MotionThreshthresh ? MotionThreshwhite : MotionThresh
 cond2 = abs(mtcav-mtnav) > MotionThreshthresh ? MotionThreshwhite : MotionThreshblack
 Overlay(cond1, cond2, mode="darken")
 """) : nop()
+resmt = sh_GetUserGlobalIMTint(true)
 fast ? last : Overlay(cond1, cond2, mode="darken")
-tile ? last : Eval("try { PointResizemt(motinc.width, motinc.height) } catch(error_msg) { PointResize(motinc.width, motinc.height) }")
+tile ? last : resmt!=1 ? Eval("try { PointResizemt(motinc.width, motinc.height,threads=resmt) } catch(error_msg) { PointResize(motinc.width, motinc.height) }") : PointResize(motinc.width, motinc.height)
 fast ? cache<0 ? last : last.RequestLinear(8, cache, 5, false, false) : last
 }
 
@@ -141,7 +142,8 @@ fast ? cache<0 ? last : last.RequestLinear(8, cache, 5, false, false) : last
 TemporalSoften(radius,255,0,255,2)
 fast ? last : Levels(floor, 1, ceil, min, max)
 fast ? last : ColorYUV(levels="TV->PC")
-tile ? last : Eval("try { PointResizemt(morinc.width, morinc.height) } catch(error_msg) { PointResize(morinc.width, morinc.height) }")
+resmt = sh_GetUserGlobalIMTint(true)
+tile ? last : resmt!=1 ? Eval("try { PointResizemt(morinc.width, morinc.height,threads=resmt) } catch(error_msg) { PointResize(morinc.width, morinc.height) }") : PointResize(morinc.width, morinc.height)
 }
 
 

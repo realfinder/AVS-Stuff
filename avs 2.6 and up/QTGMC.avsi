@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------#
 #                                                                   #
-#           QTGMC 3.368, by Vit, 2012, 2020 mod by A.SONY           #
+#           QTGMC 3.374, by Vit, 2012, 2020 mod by A.SONY           #
 #                                                                   #
 #   A high quality deinterlacer using motion-compensated temporal   #
 #  smoothing, with a range of features for quality and convenience  #
@@ -11,6 +11,15 @@
 # Full documentation is in the 'QTGMC' html file that may comes with this script, or even better see avisynth wiki
 #
 # --- LATEST CHANGES ---
+#
+# v3.374s
+# - new EdiMode modes "BWDIF+NNEDI3" and "BWDIF+EEDI3" (need moded Vinverse_avsi)
+# - fix RepYadif EdiMode for non YUY2 clip (it was same as Yadif)
+#
+# v3.371s
+# - use sh_Bob
+# - support sh_GetUserGlobalIMT (set_plugins_threads) and sh_GetUserGlobalIMTint (set_plugins_threads_int) and sh_GetUserGlobalIMTbool (set_plugins_threads_bool)
+# - fix threads parameters bugs
 #
 # v3.368s
 # - bug fix (thanks to missuse)
@@ -127,7 +136,7 @@
 # Core scripts:
 #	Zs_RF_Shared.avsi
 #
-# Additional plugins:
+# Additional plugins and scripts:
 #	NNEDI2, NNEDI, EEDI3, EEDI2, TDeInt - if selected directly or via a source-match preset
 #	yadifmod2 - for Preset="Ultra Fast" or if selected directly
 #	FFT3DFilter - if selected for noise processing
@@ -137,6 +146,7 @@
 #	KNLMeansCL - if selected for noise processing
 #	AddGrainC - if NoiseDeint="Generate" selected for noise bypass
 #	chikuzen PlanarTools - if you work with YUY2 source (not necessarily required but may improve speed)
+#	BWDIF and Vinverse_avsi - for EdiMode modes "BWDIF+NNEDI3" and "BWDIF+EEDI3"
 
 
 # --- GETTING STARTED ---
@@ -329,10 +339,10 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	# Core and Interpolation defaults
 	TR2        = (SourceMatch > 0) ? default(TR2, ((TR2X == 0) ? 1 : TR2X)) : TR2X  # ***TR2 defaults always at least 1 when using source-match***
 	RepChroma  = default( RepChroma,  true )
-	EdiThreads = default( EdiThreads, 0    )
+	EdiThreads = default( EdiThreads, sh_GetUserGlobalIMTint(true)    )
 	ChromaEdi  = default( ChromaEdi,  ""   )
 	NNeurons   = (EdiMode == "NNEDI2" && NNeurons > 2) ? 2 : NNeurons # Smaller range for NNeurons in NNEDI2 (which calls it nsize)
-	EdiQual    = (EdiMode == "EEDI3+NNEDI3" || EdiMode == "NNEDI3") && EdiQual > 2 ? 2 : EdiQual  # Smaller range for EdiQual in NNEDI3
+	EdiQual    = (EdiMode == "EEDI3+NNEDI3" || EdiMode == "NNEDI3" || EdiMode == "BWDIF+NNEDI3" || EdiMode == "BWDIF+EEDI3") && EdiQual > 2 ? 2 : EdiQual  # Smaller range for EdiQual in NNEDI3
 
 	# Source-match / lossless defaults
 	MatchTR1     = TR1
@@ -372,6 +382,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	               (defined(EZDenoise)   && EZDenoise   > 0.0) ? EZDenoise : \
 	               (defined(EZKeepGrain) && EZKeepGrain > 0.0) ? 4.0 * EZKeepGrain : 2.0
 	FftThreads   = default( FftThreads, EdiThreads )
+	bomt         = sh_GetUserGlobalIMTbool()
 	ChromaNoise  = default( ChromaNoise, false )
 	ShowNoise    = default( ShowNoise, 0.0 )
 	ShowNoise    = IsBool( ShowNoise ) ? (ShowNoise ? 10.0 : 0.0) : ShowNoise
@@ -455,7 +466,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	planarClip = yuy2 ? clip.nonyuy2clipin(true) : clip
 
 	# Bob the input as a starting point for motion search clip
-	bobbed = (InputType == 0) ? useEdiExt ? isyuy2(EdiExt) ? EdiExt.nonyuy2clipin(true) : EdiExt : planarClip.QTGMC_Bob( 0,0.5 ) : \
+	bobbed = (InputType == 0) ? useEdiExt ? isyuy2(EdiExt) ? EdiExt.nonyuy2clipin(true) : EdiExt : planarClip.sh_Bob( 0,0.5 ) : \
 	         (InputType == 1) ? planarClip : \
 	                            planarClip.Blur( 0,1 )
 
@@ -512,53 +523,89 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	srchClip    = tv_range && !srchcheck ? srchClip.Dither_Luma_Rebuild(S0=Str,c=Amp,slice=false,lsb=lsb,uv=CMmt) : srchClip
 	# Calculate forward and backward motion vectors from motion search clip
 	srchSuper = IsClip(srchSuper) ? srchSuper : \
-	            (maxTR > 0)       ? srchClip.MSuper( pel=SubPel, sharp=SubPelInterp, hpad=hpad, vpad=vpad, chroma=ChromaMotion ) : NOP()
+	            (maxTR > 0)       ? defined(bomt) ? srchClip.MSuper( pel=SubPel, sharp=SubPelInterp, hpad=hpad, vpad=vpad, chroma=ChromaMotion, mt=bomt ) : srchClip.MSuper( pel=SubPel, sharp=SubPelInterp, hpad=hpad, vpad=vpad, chroma=ChromaMotion ) : NOP()
 	bVec6 = IsClip(bVec6) ? bVec6 : \
-	        (maxTR > 5)   ? srchSuper.MAnalyse( isb=true,  delta=6, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	        (maxTR > 5)   ? defined(bomt) ? srchSuper.MAnalyse( isb=true,  delta=6, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, mt=bomt ) \
+										  : srchSuper.MAnalyse( isb=true,  delta=6, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
 	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
 	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion ) : NOP()
 	bVec5 = IsClip(bVec5) ? bVec5 : \
-	        (maxTR > 4)   ? srchSuper.MAnalyse( isb=true,  delta=5, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	        (maxTR > 4)   ? defined(bomt) ? srchSuper.MAnalyse( isb=true,  delta=5, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, mt=bomt ) \
+										  : srchSuper.MAnalyse( isb=true,  delta=5, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
 	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
 	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion ) : NOP()
 	bVec4 = IsClip(bVec4) ? bVec4 : \
-	        (maxTR > 3)   ? srchSuper.MAnalyse( isb=true,  delta=4, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	        (maxTR > 3)   ? defined(bomt) ? srchSuper.MAnalyse( isb=true,  delta=4, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, mt=bomt ) \
+										  : srchSuper.MAnalyse( isb=true,  delta=4, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
 	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
 	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion ) : NOP()
 	bVec3 = IsClip(bVec3) ? bVec3 : \
-	        (maxTR > 2)   ? srchSuper.MAnalyse( isb=true,  delta=3, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	        (maxTR > 2)   ? defined(bomt) ? srchSuper.MAnalyse( isb=true,  delta=3, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, mt=bomt ) \
+										  : srchSuper.MAnalyse( isb=true,  delta=3, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
 	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
 	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion ) : NOP()
 	bVec2 = IsClip(bVec2) ? bVec2 : \
-	        (maxTR > 1)   ? srchSuper.MAnalyse( isb=true,  delta=2, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	        (maxTR > 1)   ? defined(bomt) ? srchSuper.MAnalyse( isb=true,  delta=2, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, mt=bomt ) \
+										  : srchSuper.MAnalyse( isb=true,  delta=2, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
 	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
 	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion ) : NOP()
 	bVec1 = IsClip(bVec1) ? bVec1 : \
-	        (maxTR > 0)   ? srchSuper.MAnalyse( isb=true,  delta=1, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	        (maxTR > 0)   ? defined(bomt) ? srchSuper.MAnalyse( isb=true,  delta=1, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, mt=bomt ) \
+										  : srchSuper.MAnalyse( isb=true,  delta=1, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
 	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
 	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion ) : NOP()
 	fVec1 = IsClip(fVec1) ? fVec1 : \
-	        (maxTR > 0)   ? srchSuper.MAnalyse( isb=false, delta=1, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	        (maxTR > 0)   ? defined(bomt) ? srchSuper.MAnalyse( isb=false, delta=1, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, mt=bomt ) \
+										  : srchSuper.MAnalyse( isb=false, delta=1, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
 	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
 	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion ) : NOP()
 	fVec2 = IsClip(fVec2) ? fVec2 : \
-	        (maxTR > 1)   ? srchSuper.MAnalyse( isb=false, delta=2, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	        (maxTR > 1)   ? defined(bomt) ? srchSuper.MAnalyse( isb=false, delta=2, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, mt=bomt ) \
+										  : srchSuper.MAnalyse( isb=false, delta=2, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
 	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
 	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion ) : NOP()
 	fVec3 = IsClip(fVec3) ? fVec3 : \
-	        (maxTR > 2)   ? srchSuper.MAnalyse( isb=false, delta=3, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	        (maxTR > 2)   ? defined(bomt) ? srchSuper.MAnalyse( isb=false, delta=3, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, mt=bomt ) \
+										  : srchSuper.MAnalyse( isb=false, delta=3, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
 	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
 	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion ) : NOP()
 	fVec4 = IsClip(fVec4) ? fVec4 : \
-	        (maxTR > 3)   ? srchSuper.MAnalyse( isb=false, delta=4, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	        (maxTR > 3)   ? defined(bomt) ? srchSuper.MAnalyse( isb=false, delta=4, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, mt=bomt ) \
+										  : srchSuper.MAnalyse( isb=false, delta=4, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
 	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
 	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion ) : NOP()
 	fVec5 = IsClip(fVec5) ? fVec5 : \
-	        (maxTR > 4)   ? srchSuper.MAnalyse( isb=false, delta=5, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	        (maxTR > 4)   ? defined(bomt) ? srchSuper.MAnalyse( isb=false, delta=5, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, mt=bomt ) \
+										  : srchSuper.MAnalyse( isb=false, delta=5, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
 	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
 	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion ) : NOP()
 	fVec6 = IsClip(fVec6) ? fVec6 : \
-	        (maxTR > 5)   ? srchSuper.MAnalyse( isb=false, delta=6, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	        (maxTR > 5)   ? defined(bomt) ? srchSuper.MAnalyse( isb=false, delta=6, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, mt=bomt ) \
+										  : srchSuper.MAnalyse( isb=false, delta=6, blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, \
 	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
 	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion ) : NOP()
 
@@ -587,27 +634,27 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	# Expand fields to full frame size before extracting noise (allows use of motion vectors which are frame-sized)
 	fullClip  = (NoiseProcess == 0) ? NOP() : \
 	            (InputType > 0)     ? clip : \
-	                                  clip.QTGMC_Bob( 0,1.0 )
+	                                  clip.sh_Bob( 0,1.0 )
 	fullClip  = (yuy2 && NoiseTR > 0) ? fullClip.nonyuy2clipin(true) : fullClip
-	fullSuper = (NoiseTR > 0)         ? fullClip.MSuper( pel=SubPel, levels=1, hpad=hpad, vpad=vpad, chroma=ChromaNoise ) : NOP() #TEST chroma OK?
+	fullSuper = (NoiseTR > 0)         ? defined(bomt) ? fullClip.MSuper( pel=SubPel, levels=1, hpad=hpad, vpad=vpad, chroma=ChromaNoise, mt=bomt ) : fullClip.MSuper( pel=SubPel, levels=1, hpad=hpad, vpad=vpad, chroma=ChromaNoise ) : NOP() #TEST chroma OK?
 
 	# Create a motion compensated temporal window around current frame and use to guide denoisers
 	noiseWindow = (NoiseProcess == 0) ? NOP() : \
 	              (!DenoiseMC)        ? fullClip : \
 	              (NoiseTR == 0)      ? fullClip : \
-	              (NoiseTR == 1)      ? Interleave( fullClip.MCompensate( fullSuper, fVec1, thSCD1=ThSCD1,thSCD2=ThSCD2 ), \
+	              (NoiseTR == 1)      ? Interleave( defined(bomt) ? fullClip.MCompensate( fullSuper, fVec1, thSCD1=ThSCD1,thSCD2=ThSCD2, mt=bomt ) : fullClip.MCompensate( fullSuper, fVec1, thSCD1=ThSCD1,thSCD2=ThSCD2 ), \
 	                                                fullClip, \
-	                                                fullClip.MCompensate( fullSuper, bVec1, thSCD1=ThSCD1,thSCD2=ThSCD2 ) ) : \
-	                                    Interleave( fullClip.MCompensate( fullSuper, fVec2, thSCD1=ThSCD1,thSCD2=ThSCD2 ), \
-	                                                fullClip.MCompensate( fullSuper, fVec1, thSCD1=ThSCD1,thSCD2=ThSCD2 ), \
+	                                                defined(bomt) ? fullClip.MCompensate( fullSuper, bVec1, thSCD1=ThSCD1,thSCD2=ThSCD2, mt=bomt ) : fullClip.MCompensate( fullSuper, bVec1, thSCD1=ThSCD1,thSCD2=ThSCD2 ) ) : \
+	                                    Interleave( defined(bomt) ? fullClip.MCompensate( fullSuper, fVec2, thSCD1=ThSCD1,thSCD2=ThSCD2, mt=bomt ) : fullClip.MCompensate( fullSuper, fVec2, thSCD1=ThSCD1,thSCD2=ThSCD2 ), \
+	                                                defined(bomt) ? fullClip.MCompensate( fullSuper, fVec1, thSCD1=ThSCD1,thSCD2=ThSCD2, mt=bomt ) : fullClip.MCompensate( fullSuper, fVec1, thSCD1=ThSCD1,thSCD2=ThSCD2 ), \
 	                                                fullClip, \
-	                                                fullClip.MCompensate( fullSuper, bVec1, thSCD1=ThSCD1,thSCD2=ThSCD2 ), \
-	                                                fullClip.MCompensate( fullSuper, bVec2, thSCD1=ThSCD1,thSCD2=ThSCD2 ) )
+	                                                defined(bomt) ? fullClip.MCompensate( fullSuper, bVec1, thSCD1=ThSCD1,thSCD2=ThSCD2, mt=bomt ) : fullClip.MCompensate( fullSuper, bVec1, thSCD1=ThSCD1,thSCD2=ThSCD2 ), \
+	                                                defined(bomt) ? fullClip.MCompensate( fullSuper, bVec2, thSCD1=ThSCD1,thSCD2=ThSCD2, mt=bomt ) : fullClip.MCompensate( fullSuper, bVec2, thSCD1=ThSCD1,thSCD2=ThSCD2 ) )
 	noiseWindow = yuy2 && (Denoiser == "fft3df") && NoiseTR > 0 ? noiseWindow.nonyuy2clipout(true) : noiseWindow
 	dnWindow = (NoiseProcess == 0)      ? NOP() : \
-	           (Denoiser == "dfttest")  ? !lsbd ? noiseWindow.sneo_dfttest(U=ChromaNoise?3:2, V=ChromaNoise?3:2, sigma=Sigma*4, tbsize=noiseTD, threads=FftThreads, Dither=DftDither ) : noiseWindow.dfttest( Y=true, U=ChromaNoise, V=ChromaNoise, sigma=Sigma*4, tbsize=noiseTD, threads=FftThreads, Dither=DftDither, lsb=true ) : \
+	           (Denoiser == "dfttest")  ? !lsbd ? noiseWindow.sneo_dfttest(U=ChromaNoise?3:2, V=ChromaNoise?3:2, sigma=Sigma*4, tbsize=noiseTD, threads=FftThreads, fft_threads=FftThreads, Dither=DftDither ) : noiseWindow.dfttest( Y=true, U=ChromaNoise, V=ChromaNoise, sigma=Sigma*4, tbsize=noiseTD, threads=FftThreads, Dither=DftDither, lsb=true ) : \
 	        (Denoiser == "KNLMeansCL")  ? noiseWindow.SH_KNLMeansCL(Chroma=ChromaNoise, lsb=lsbd, a=2, d=NoiseTR, h=Sigma, device_type=device_type, device_id=device_id ) : \
-	                                      noiseWindow.sneo_FFT3D( u=ChromaNoise ? 3 : 2,v=ChromaNoise ? 3 : 2, sigma=Sigma, bt=noiseTD )
+	                                      noiseWindow.sneo_FFT3D( u=ChromaNoise ? 3 : 2,v=ChromaNoise ? 3 : 2, sigma=Sigma, bt=noiseTD, ncpu=FftThreads )
 	dnwindow = (Denoiser == "KNLMeansCL" || Denoiser == "dfttest") && (NoiseProcess != 0) && lsbd ? dnWindow.ditherpost(mode=6, U=ChromaNoise?3:2, V=ChromaNoise?3:2, slice=false) : dnWindow
 	dnwindow = (Denoiser == "KNLMeansCL" || Denoiser == "dfttest") && (NoiseProcess != 0) && yuy2 ? dnWindow.nonyuy2clipout(true) : dnWindow
 
@@ -629,12 +676,12 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	noise = (totalRestore > 0.0)  ? mt_makediff( planarClip, planarDenoised, U=CNmt1,V=CNmt1 ) : NOP()
 	deintNoise = (NoiseProcess == 0 || totalRestore == 0.0) ? NOP() : \
 	             (InputType != 0)                           ? noise : \
-	             (NoiseDeint == "Bob")                      ? noise.QTGMC_Bob( 0,0.5 ) : \
+	             (NoiseDeint == "Bob")                      ? noise.sh_Bob( 0,0.5 ) : \
 	             (NoiseDeint == "Generate")                 ? noise.QTGMC_Generate2ndFieldNoise( denoised, ChromaNoise ) : \
 	                                                          noise.DoubleWeave()
 	# Motion-compensated stabilization of generated noise
-	noiseSuper = (StabilizeNoise) ? deintNoise.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad, chroma=ChromaNoise ) : NOP()
-	mcNoise    = (StabilizeNoise) ? deintNoise.MCompensate( noiseSuper, bVec1, thSCD1=ThSCD1,thSCD2=ThSCD2 ) : NOP()
+	noiseSuper = (StabilizeNoise) ? defined(bomt) ? deintNoise.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad, chroma=ChromaNoise, mt=bomt ) : deintNoise.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad, chroma=ChromaNoise ) : NOP()
+	mcNoise    = (StabilizeNoise) ? defined(bomt) ? deintNoise.MCompensate( noiseSuper, bVec1, thSCD1=ThSCD1,thSCD2=ThSCD2, mt=bomt ) : deintNoise.MCompensate( noiseSuper, bVec1, thSCD1=ThSCD1,thSCD2=ThSCD2 ) : NOP()
 	finalNoise = (StabilizeNoise) ? mt_lutxy( deintNoise, mcNoise, "x range_half - abs y range_half - abs > x y ? 0.6 * x y + 0.2 * +", use_expr=2, U=CNmt1,V=CNmt1 ) : deintNoise
 
 	# If NoiseProcess=1 denoise input clip. If NoiseProcess=2 leave noise in the clip and let the temporal blurs "denoise" it for a stronger effect
@@ -663,16 +710,17 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 											            mt_merge( innerClip.nonyuy2clipin(true), edi1.nonyuy2clipin(true), inputTypeBlend, U=2,V=2 ))
 
 	# Get the max/min value for each pixel over neighboring motion-compensated frames - used for temporal sharpness limiting
-	ediSuper = (TR1 > 0 || temporalSL)   ? edi.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
-	bComp1   = (temporalSL)              ? edi.MCompensate( ediSuper, bVec1, thSCD1=ThSCD1,thSCD2=ThSCD2              ) : NOP()
-	fComp1   = (temporalSL)              ? edi.MCompensate( ediSuper, fVec1, thSCD1=ThSCD1,thSCD2=ThSCD2              ) : NOP()
+	ediSuper = (TR1 > 0 || temporalSL)   ? defined(bomt) ? edi.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad, mt=bomt ) : edi.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
+	bComp1   = (temporalSL)              ? defined(bomt) ? edi.MCompensate( ediSuper, bVec1, thSCD1=ThSCD1,thSCD2=ThSCD2, mt=bomt              ) : edi.MCompensate( ediSuper, bVec1, thSCD1=ThSCD1,thSCD2=ThSCD2              ) : NOP()
+	fComp1   = (temporalSL)              ? defined(bomt) ? edi.MCompensate( ediSuper, fVec1, thSCD1=ThSCD1,thSCD2=ThSCD2, mt=bomt              ) : edi.MCompensate( ediSuper, fVec1, thSCD1=ThSCD1,thSCD2=ThSCD2              ) : NOP()
 	tMax     = (temporalSL)              ? edi.mt_logic( fComp1, "max", U=3,V=3 ).mt_logic( bComp1, "max", U=3,V=3 )    : NOP()
 	tMin     = (temporalSL)              ? edi.mt_logic( fComp1, "min", U=3,V=3 ).mt_logic( bComp1, "min", U=3,V=3 )    : NOP()
-	bComp3   = (SLRad > 1 && temporalSL) ? edi.MCompensate( ediSuper, bVec3, thSCD1=ThSCD1,thSCD2=ThSCD2              ) : NOP()
-	fComp3   = (SLRad > 1 && temporalSL) ? edi.MCompensate( ediSuper, fVec3, thSCD1=ThSCD1,thSCD2=ThSCD2              ) : NOP()
+	bComp3   = (SLRad > 1 && temporalSL) ? defined(bomt) ? edi.MCompensate( ediSuper, bVec3, thSCD1=ThSCD1,thSCD2=ThSCD2, mt=bomt              ) : edi.MCompensate( ediSuper, bVec3, thSCD1=ThSCD1,thSCD2=ThSCD2              ) : NOP()
+	fComp3   = (SLRad > 1 && temporalSL) ? defined(bomt) ? edi.MCompensate( ediSuper, fVec3, thSCD1=ThSCD1,thSCD2=ThSCD2, mt=bomt              ) : edi.MCompensate( ediSuper, fVec3, thSCD1=ThSCD1,thSCD2=ThSCD2              ) : NOP()
 	tMax     = (SLRad > 1 && temporalSL) ? tMax.mt_logic( fComp3, "max", U=3,V=3 ).mt_logic( bComp3, "max", U=3,V=3 )   : tMax
 	tMin     = (SLRad > 1 && temporalSL) ? tMin.mt_logic( fComp3, "min", U=3,V=3 ).mt_logic( bComp3, "min", U=3,V=3 )   : tMin
 	sMDegnl  = n16 ? ", out16=n16" : lsb ? ", lsb=lsb" : ""
+	sMDegnl  = defined(bomt) ? sMDegnl + ", mt=bomt" : sMDegnl
 
 
 	#---------------------------------------
@@ -700,7 +748,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	                             repair1.QTGMC_ApplySourceMatch( InputType, ediInput, bVec1,fVec1, bVec2,fVec2, SubPel, SubPelInterp, hpad, vpad, \
 	                                                             ThSAD1, ThSCD1, ThSCD2, SourceMatch, MatchTR1, MatchEdi, MatchNNSize, MatchNNeurons, \
 	                                                             MatchEdiQual, MatchEdiMaxD, MatchTR2, MatchEdi2, MatchNNSize2, MatchNNeurons2, MatchEdiQual2, \
-	                                                             MatchEdiMaxD2, MatchEnhance, EdiThreads, lsb, n16 )
+	                                                             MatchEdiMaxD2, MatchEnhance, EdiThreads, lsb, n16, bomt )
 
 	# Lossless=2 - after preparing an interpolated, de-shimmered clip, restore the original source fields into it and clean up any artefacts.
 	# This mode will not give a true lossless result because the resharpening and final temporal smooth are still to come, but it will add further detail.
@@ -747,7 +795,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 		                                backBlend2.mt_adddiff( finalNoise.mt_lut( "x " + noiseCentre + " scalef - " + string(GrainRestore) + " * range_half +", use_expr=2, U=CNmt1,V=CNmt1 ), U=CNmt2,V=CNmt2 )
 
 	# Final light linear temporal smooth for denoising
-	stableSuper = (TR2 > 0) ? addNoise1.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
+	stableSuper = (TR2 > 0) ? defined(bomt) ? addNoise1.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad, mt=bomt ) : addNoise1.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
 	stable  = (TR2 == 0) ? addNoise1 : \
 	          (TR2 == 1) ? eval("addNoise1.MDegrain1( stableSuper, bVec1,fVec1,                                                                  thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : \
 	          (TR2 == 2) ? eval("addNoise1.MDegrain2( stableSuper, bVec1,fVec1, bVec2,fVec2,                                                     thSAD=ThSAD2, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : \
@@ -798,7 +846,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	                                                      truemotion=TrueMotion, lambda=Lambda, pnew=PNew, DCT=DCT, chroma=ChromaMotion ) : fVec1
 
 	# Shutter motion blur - use MFlowBlur to blur along motion vectors
-	sblurSuper = (ShutterBlur > 0) ? addNoise2.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
+	sblurSuper = (ShutterBlur > 0) ? defined(bomt) ? addNoise2.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad, mt=bomt ) : addNoise2.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
 	sblur =      (ShutterBlur > 0) ? addNoise2.MFlowBlur( sblurSuper, sbBVec1, sbFVec1, blur=blurLevel, thSCD1=ThSCD1,thSCD2=ThSCD2 ) : NOP()
 
 	# Shutter motion blur - use motion mask to reduce blurring in areas of low motion - also helps reduce blur "bleeding" into static areas, then select blur type
@@ -845,32 +893,6 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 #---------------------------------------
 # Helpers
 
-# Same as Bob, but keeps the field order the same.
-function QTGMC_Bob(clip cp, float "b", float "c", int "height" )
-{
-  sisphbd = AvsPlusVersionNumber > 2294
-  h = Default(height, cp.Height)
-  w = cp.Width
-  shift = GetParity(cp) ? 0.25 : -0.25
-
-  c420 = sisphbd  ? Is420(cp) : IsYV12(cp)
-
-  c420 ? cp.SeparateFields() : nop()
-
-  oeven=c420 ? SelectEven() : nop()
-  oodd=c420 ? SelectOdd() : nop()
-
-  even=c420 ? sisphbd  ? oeven.ConvertToY().BicubicResize(w, h, b, c, 0, shift, w, Height()).AssumeFrameBased() : oeven.ConvertToY8().BicubicResize(w, h, b, c, 0, shift, w, Height()).AssumeFrameBased() : nop()
-  odd=c420 ? sisphbd  ? oodd.ConvertToY().BicubicResize(w, h, b, c, 0, -shift, w, Height()).AssumeFrameBased() : oodd.ConvertToY8().BicubicResize(w, h, b, c, 0, -shift, w, Height()).AssumeFrameBased() : nop()
-
-  evenChr=c420 ? Interleave(sisphbd  ? oeven.ExtractU() : oeven.UToY8(), sisphbd  ? oeven.ExtractV() : oeven.VToY8()).BicubicResize(w/2, h/2, b, c, 0, shift, w/2, Height()/2).AssumeFrameBased() : nop()
-  oddChr=c420 ? Interleave(sisphbd  ? oodd.ExtractU() : oodd.UToY8(), sisphbd  ? oodd.ExtractV() :oodd.VToY8()).BicubicResize(w/2, h/2, b, c, 0, -shift, w/2, Height()/2).AssumeFrameBased() : nop()
-
-  c420 ? YToUV(Interleave(evenChr.SelectEven(), oddChr.SelectEven()),Interleave(evenChr.SelectOdd(), oddChr.SelectOdd()),Interleave(even, odd)) : cp.Bob( b,c, h )
-  GetParity(cp) ? AssumeTFF() : AssumeBFF()
-}
-
-
 # Interpolate input clip using method given in EdiMode. Use Fallback or Bob as result if mode not in list. If ChromaEdi string if set then interpolate chroma
 # separately with that method (only really useful for EEDIx). The function is used as main algorithm starting point and for first two source-match stages
 function QTGMC_Interpolate( clip Input, int InputType, string EdiMode, int NNSize, int NNeurons, int EdiQual, int EdiMaxD, int EdiThreads, clip "Fallback", \
@@ -880,29 +902,34 @@ function QTGMC_Interpolate( clip Input, int InputType, string EdiMode, int NNSiz
 
 	ChromaEdi = default( ChromaEdi, "" )
 	CEed = (ChromaEdi == "")
+	
+	NNEDI3clp = EdiMode == "NNEDI3" || EdiMode == "EEDI3+NNEDI3" || EdiMode == "BWDIF+NNEDI3" || EdiMode == "BWDIF+EEDI3" ? Input.NNEDI3( field=-2, nsize=NNSize, nns=NNeurons, qual=EdiQual, threads=EdiThreads, U=CEed,V=CEed ) : undefined
+	EEDI3clp = EdiMode == "BWDIF+EEDI3" ? isyuy2(Input) ? Input.nonyuy2clipin(true).EEDI3( field=-2, mdis=EdiMaxD, threads=EdiThreads, U=CEed,V=CEed, sclip=NNEDI3clp.nonyuy2clipin(true) ).slimit_dif(NNEDI3clp.nonyuy2clipin(true),thr=4).nonyuy2clipout(true) : Input.EEDI3( field=-2, mdis=EdiMaxD, threads=EdiThreads, U=CEed,V=CEed, sclip=NNEDI3clp ).slimit_dif(NNEDI3clp,thr=4) : \
+	                                      EdiMode == "EEDI3" || EdiMode == "EEDI3+NNEDI3" ? Input.EEDI3( field=-2, mdis=EdiMaxD, threads=EdiThreads, U=CEed,V=CEed, sclip=NNEDI3clp ) : nop()
 
 	interp = (InputType == 1)            ? Input : \
-	         (EdiMode == "NNEDI3")       ? Input.NNEDI3( field=-2, nsize=NNSize, nns=NNeurons, qual=EdiQual, threads=EdiThreads, U=CEed,V=CEed ) : \
+	         (EdiMode == "NNEDI3")       ? NNEDI3clp : \
 	         (EdiMode == "NNEDI2")       ? Input.NNEDI2( field=-2, nsize=NNeurons, qual=EdiQual, threads=EdiThreads, U=CEed,V=CEed ) : \
 	         (EdiMode == "NNEDI")        ? Input.NNEDI( field=-2, U=CEed,V=CEed ) : \
-	         (EdiMode == "EEDI3+NNEDI3") ? Input.EEDI3( field=-2, mdis=EdiMaxD, threads=EdiThreads, U=CEed,V=CEed, \
-		                                                sclip=Input.NNEDI3( field=-2, nsize=NNSize, nns=NNeurons, qual=EdiQual, threads=EdiThreads, U=CEed,V=CEed ) ) : \
-	         (EdiMode == "EEDI3")        ? Input.EEDI3( field=-2, mdis=EdiMaxD, threads=EdiThreads, U=CEed,V=CEed ) : \
-	         (EdiMode == "EEDI2")        ? Input.SeparateFields().EEDI2( field=-2, maxd=EdiMaxD ) : \
+	         (EdiMode == "EEDI3+NNEDI3") ? EEDI3clp : \
+	         (EdiMode == "EEDI3")        ? EEDI3clp : \
+	         (EdiMode == "EEDI2")        ? isyuy2(Input) ? Input.nonyuy2clipin(true).SeparateFields().EEDI2( field=-2, maxd=EdiMaxD ).nonyuy2clipout(true) : Input.SeparateFields().EEDI2( field=-2, maxd=EdiMaxD ) : \
 	         (EdiMode == "Yadif")        ? isyuy2(Input) ? Input.nonyuy2clipin(true).Yadifmod2( mode=3 ).nonyuy2clipout(true) : Input.Yadifmod2( mode=3 ) : \
 	         (EdiMode == "cYadif")       ? Input.Yadif( mode=3 ) : \
 	         (EdiMode == "TDeint")       ? Input.TDeInt( mode=1 ) : \
-	         (EdiMode == "RepYadif")     ? isyuy2(Input) ? Repair( Input.nonyuy2clipin(true).Yadifmod2( mode=3 ), default( Fallback, Input.QTGMC_Bob( 0,0.5 ) ).nonyuy2clipin(true), 2, 0 ).nonyuy2clipout(true) : \
-                                                           Input.Yadifmod2( mode=3 ) : \	
-	         (EdiMode == "RepcYadif")    ? isyuy2(Input) ? Repair( Input.Yadif( mode=3 ).nonyuy2clipin(true), default( Fallback, Input.QTGMC_Bob( 0,0.5 ) ).nonyuy2clipin(true), 2, 0 ).nonyuy2clipout(true) : \
-	         	         	                       Repair( Input.Yadif( mode=3 ), default( Fallback, Input.QTGMC_Bob( 0,0.5 ) ), 2, 0 ) : \
-	                                       default( Fallback, Input.QTGMC_Bob( 0,0.5 ) )
+	         (EdiMode == "RepYadif")     ? isyuy2(Input) ? Repair( Input.nonyuy2clipin(true).Yadifmod2( mode=3 ), default( Fallback, Input.sh_Bob( 0,0.5 ) ).nonyuy2clipin(true), 2, 0 ).nonyuy2clipout(true) : \
+                                                           Repair( Input.Yadifmod2( mode=3 ), default( Fallback, Input.sh_Bob( 0,0.5 ) ), 2, 0 ) : \	
+	         (EdiMode == "RepcYadif")    ? isyuy2(Input) ? Repair( Input.Yadif( mode=3 ).nonyuy2clipin(true), default( Fallback, Input.sh_Bob( 0,0.5 ) ).nonyuy2clipin(true), 2, 0 ).nonyuy2clipout(true) : \
+	         	         	                               Repair( Input.Yadif( mode=3 ), default( Fallback, Input.sh_Bob( 0,0.5 ) ), 2, 0 ) : \
+	         (EdiMode == "BWDIF+NNEDI3") ? isyuy2(Input) ? Input.nonyuy2clipin(true).BWDIF(-2,edeint=NNEDI3clp.nonyuy2clipin(true)).Vinverse_avsi(custem=NNEDI3clp.nonyuy2clipin(true)).nonyuy2clipout(true) : Input.BWDIF(-2,edeint=NNEDI3clp).Vinverse_avsi(custem=NNEDI3clp) : \
+	         (EdiMode == "BWDIF+EEDI3")  ? isyuy2(Input) ? Input.nonyuy2clipin(true).BWDIF(-2,edeint=EEDI3clp.nonyuy2clipin(true)).Vinverse_avsi(custem=NNEDI3clp.nonyuy2clipin(true)).nonyuy2clipout(true) : Input.BWDIF(-2,edeint=EEDI3clp).Vinverse_avsi(custem=NNEDI3clp) : \
+	                                       default( Fallback, Input.sh_Bob( 0,0.5 ) )
 
 	interpuv = (InputType == 1)        ? NOP() : \
 	           (ChromaEdi == "NNEDI3") ? Input.NNEDI3( field=-2, nsize=4, nns=0, qual=1, threads=EdiThreads, Y=false ) : \
 	           (ChromaEdi == "Yadif")  ? isyuy2(Input) ? Input.nonyuy2clipin(true).Yadifmod2( mode=3 ).nonyuy2clipout(true) : Input.Yadifmod2( mode=3 ) : \
 	           (ChromaEdi == "cYadif") ? Input.Yadif( mode=3 ) : \
-	           (ChromaEdi == "Bob")    ? Input.QTGMC_Bob( 0,0.5 ) : \
+	           (ChromaEdi == "Bob")    ? Input.sh_Bob( 0,0.5 ) : \
 			                             NOP()
 
 	return (!IsClip(interpuv)) ? interp : interp.MergeChroma( interpuv )
@@ -1043,12 +1070,13 @@ function QTGMC_ApplySourceMatch( clip Deinterlace, int InputType, val Source, va
                                  int SubPel, int SubPelInterp, int hpad, int vpad, int ThSAD1, int ThSCD1, int ThSCD2, int SourceMatch, \
                                  int MatchTR1, string MatchEdi, int MatchNNSize, int MatchNNeurons, int MatchEdiQual, int MatchEdiMaxD,\
                                  int MatchTR2, string MatchEdi2, int MatchNNSize2, int MatchNNeurons2, int MatchEdiQual2, int MatchEdiMaxD2, \
-                                 float MatchEnhance, int EdiThreads, bool lsb, bool n16 )
+                                 float MatchEnhance, int EdiThreads, bool lsb, bool n16, bool bomt )
 {
 	# >>>> YUY2: 'Deinterlace' is planar, 'Source' is interleaved (changed to planar here for all processing except interpolation) - returns planar result
 	yuy2 = Source.IsYUY2()
 	Source = yuy2 ? Source.nonyuy2clipin(true) : Source
 	sMDegnl  = n16 ? ", out16=n16" : lsb ? ", lsb=lsb" : ""
+	sMDegnl  = defined(bomt) ? sMDegnl + ", mt=bomt" : sMDegnl
 
 	# Basic source-match. Find difference between source clip & equivalent fields in interpolated/smoothed clip (called the "error" in formula below). Ideally
 	# there should be no difference, we want the fields in the output to be as close as possible to the source whilst remaining shimmer-free. So adjust the
@@ -1063,14 +1091,14 @@ function QTGMC_ApplySourceMatch( clip Deinterlace, int InputType, val Source, va
 	match1Clip     = (SourceMatch < 1 || InputType == 1) ? Deinterlace : Deinterlace.SeparateFields().SelectEvery( 4, 0,3 ).Weave()
 	match1Update   = (SourceMatch < 1 || MatchTR1 == 0) \
 						? Source : mt_lutxy( Source, match1Clip, "x " + string(errorAdjust1 + 1) + " * y " + string(errorAdjust1) + " * -", clamp_float=true, use_expr=2, U=3,V=3 )
-	noyv16ma1Edi   = MatchEdi =="NNEDI2" || MatchEdi =="NNEDI" || MatchEdi =="EEDI3+NNEDI3" || MatchEdi =="EEDI3" || MatchEdi =="EEDI2" || MatchEdi =="TDeint" || MatchEdi =="cYadif" || MatchEdi =="RepcYadif"
-	noyv16ma2Edi   = MatchEdi2=="NNEDI2" || MatchEdi2=="NNEDI" || MatchEdi2=="EEDI3+NNEDI3" || MatchEdi2=="EEDI3" || MatchEdi2=="EEDI2" || MatchEdi2=="TDeint" || MatchEdi2=="cYadif" || MatchEdi2=="RepcYadif"
+	noyv16ma1Edi   = MatchEdi =="NNEDI2" || MatchEdi =="NNEDI" || MatchEdi =="EEDI3+NNEDI3" || MatchEdi =="EEDI3" || MatchEdi =="TDeint" || MatchEdi =="cYadif" || MatchEdi =="RepcYadif"
+	noyv16ma2Edi   = MatchEdi2=="NNEDI2" || MatchEdi2=="NNEDI" || MatchEdi2=="EEDI3+NNEDI3" || MatchEdi2=="EEDI3" || MatchEdi2=="TDeint" || MatchEdi2=="cYadif" || MatchEdi2=="RepcYadif"
 	match1Edi      = (SourceMatch == 0) ? NOP() : \
 	!noyv16ma1Edi || !yuy2 ? match1Update.QTGMC_Interpolate( InputType, MatchEdi, MatchNNSize, MatchNNeurons, MatchEdiQual, MatchEdiMaxD, EdiThreads ) : \
 	                         match1Update.nonyuy2clipout(true) \
 	                                     .QTGMC_Interpolate( InputType, MatchEdi, MatchNNSize, MatchNNeurons, MatchEdiQual, MatchEdiMaxD, EdiThreads ) \
 	                                     .nonyuy2clipin(true)
-	match1Super    = (SourceMatch > 0 && MatchTR1 > 0) ? match1Edi.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
+	match1Super    = (SourceMatch > 0 && MatchTR1 > 0) ? defined(bomt) ? match1Edi.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad, mt=bomt ) : match1Edi.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
 	match1Degrain1 = (SourceMatch > 0 && MatchTR1 > 0) ? eval("match1Edi.MDegrain1( match1Super, bVec1,fVec1, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()
 	match1Degrain2 = (SourceMatch > 0 && MatchTR1 > 1) ? eval("match1Edi.MDegrain1( match1Super, bVec2,fVec2, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()
 	match1Degrain1 = (SourceMatch > 0 && MatchTR1 > 0) ? lsb ? match1Degrain1.ditherpost(mode=6, slice=false) : n16 ? match1Degrain1.ConvertTo8bit(dither=1) : match1Degrain1 : match1Degrain1
@@ -1094,7 +1122,7 @@ function QTGMC_ApplySourceMatch( clip Deinterlace, int InputType, val Source, va
 	                         match2Diff.nonyuy2clipout(true) \
 	                                   .QTGMC_Interpolate( InputType, MatchEdi2, MatchNNSize2, MatchNNeurons2, MatchEdiQual2, MatchEdiMaxD2, EdiThreads ) \
 	                                   .nonyuy2clipin(true)
-	match2Super    = (SourceMatch > 1 && MatchTR2 > 0) ? match2Edi.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
+	match2Super    = (SourceMatch > 1 && MatchTR2 > 0) ? defined(bomt) ? match2Edi.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad, mt=bomt ) : match2Edi.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
 	match2Degrain1 = (SourceMatch > 1 && MatchTR2 > 0) ? eval("match2Edi.MDegrain1( match2Super, bVec1,fVec1, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()
 	match2Degrain2 = (SourceMatch > 1 && MatchTR2 > 1) ? eval("match2Edi.MDegrain1( match2Super, bVec2,fVec2, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()
 	match2Degrain1 = (SourceMatch > 1 && MatchTR2 > 0) ? lsb ? match2Degrain1.ditherpost(mode=6, slice=false) : n16 ? match2Degrain1.ConvertTo8bit(dither=1) : match2Degrain1 : match2Degrain1
@@ -1108,7 +1136,7 @@ function QTGMC_ApplySourceMatch( clip Deinterlace, int InputType, val Source, va
 	errorAdjust2   = Select( MatchTR2, 1.0, 2.0 / (1.0 + errorTemporalSimilarity), 8.0 / (3.0 + 5.0 * errorTemporalSimilarity) )
 	match3Update   = (SourceMatch < 3 || MatchTR2 == 0) \
 	                     ? match2Edi : mt_lutxy( match2Edi, match2, "x " + string(errorAdjust2 + 1) + " * y " + string(errorAdjust2) + " * -", clamp_float=true, use_expr=2, U=3,V=3 )
-	match3Super    = (SourceMatch > 2 && MatchTR2 > 0) ? match3Update.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
+	match3Super    = (SourceMatch > 2 && MatchTR2 > 0) ? defined(bomt) ? match3Update.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad, mt=bomt ) : match3Update.MSuper( pel=SubPel, sharp=SubPelInterp, levels=1, hpad=hpad, vpad=vpad ) : NOP()
 	match3Degrain1 = (SourceMatch > 2 && MatchTR2 > 0) ? eval("match3Update.MDegrain1( match3Super, bVec1,fVec1, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()
 	match3Degrain2 = (SourceMatch > 2 && MatchTR2 > 1) ? eval("match3Update.MDegrain1( match3Super, bVec2,fVec2, thSAD=ThSAD1, thSCD1=ThSCD1,thSCD2=ThSCD2" + sMDegnl + ")") : NOP()
 	match3Degrain1 = (SourceMatch > 2 && MatchTR2 > 0) ? lsb ? match3Degrain1.ditherpost(mode=6, slice=false) : n16 ? match3Degrain1.ConvertTo8bit(dither=1) : match3Degrain1 : match3Degrain1
