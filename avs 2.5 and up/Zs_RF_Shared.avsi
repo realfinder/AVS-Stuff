@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.138
+# V1.139
 
 ### Functions list:-
 # sh_StrReplace
@@ -1328,6 +1328,7 @@ sisphbd = AvsPlusVersionNumber > 2294
 qtgmc_lsb = default(qtgmc_lsb, sisphbd ? false : true)
 qtgmc_n16 = default(qtgmc_n16, sisphbd ? input.BitsPerComponent() > 8 ? false : true : false)
 repblend  = default(repblend, false)
+threads = sh_GetUserGlobalIMTint()
 
 defined(filter) ? Assert((Isclip(filter) || IsString(filter)),        "'filter' only accepts clip or string") : nop()
 
@@ -1338,9 +1339,9 @@ dslow           = default(dslow, sisbob ? 5 : -5)
 tr2             = default (tr2, sisbob ? 3 : 1)
 usedaa3mod      = default (usedaa3mod, exfilclp ? 0 : sisbob ? 1 : 2)
 
-infiltr = usedaa3mod == 1 ? input.daa3mod(dslow) : input
-filclip = defined(filter) ? exfilclp ? filter : eval("infiltr." + filter) : infiltr.QTGMC(InputType=1, tr0=0, tr1=sisbob ? undefined : 1, tr2=tr2, lsb=qtgmc_lsb, n16=qtgmc_n16, rep1=sisbob ? undefined : 11, rep2=sisbob ? undefined : 11, Sharpness=0.0, TV_range=TV_range, Str=Str, Amp=Amp)
-filclip = usedaa3mod == 2 ? filclip.daa3mod(dslow) : filclip
+infiltr = usedaa3mod == 1 ? input.daa3mod(dslow,threads=threads) : input
+filclip = defined(filter) ? exfilclp ? filter : eval("infiltr." + filter) : infiltr.QTGMC(InputType=1, tr0=0, tr1=sisbob ? undefined : 1, tr2=tr2, lsb=qtgmc_lsb, n16=qtgmc_n16, rep1=sisbob ? undefined : 11, rep2=sisbob ? undefined : 11, Sharpness=0.0, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads)
+filclip = usedaa3mod == 2 ? filclip.daa3mod(dslow,threads=threads) : filclip
 
 momask  = !defined(motionmask) ? input.smam_mask(prefilter,pel,blksize) : motionmask #if you deal with YUY2 then it should be Planar YUY2 in avs2.5 and yv16 in avs2.6
 isyuy2(input) && VersionNumber() < 2.60 ? mt_merge(input.Interleaved2Planar(),filclip.Interleaved2Planar(),momask,u=3,v=3).Planar2Interleaved() : isyuy2(input) ? mt_merge(input.converttoyv16(),filclip.converttoyv16(),momask,u=3,v=3).converttoyuy2() : mt_merge(input,filclip,momask,u=3,v=3)
@@ -1361,10 +1362,12 @@ function smam_mask(clip input, clip "prefilter", int "pel", int "blksize", bool 
     pel = default( pel,     HD ? 1 : 2 )
     dct = default( dct, sisbob ? 0 : 2 )
     blksize = default(blksize,HD ? sisbob ? 8 : 16 : sisbob ? 4 : 8)
-preclip= defined(prefilter) ? prefilter : (VersionNumber() < 2.60) && isyv12(input) ? input.HQdn3d().FFT3DFilter() : input.HQdn3d_2().sneo_FFT3D()
-sup    = preclip.MSuper(pel=pel,sharp=1)
-fv1    = sup.MAnalyse(isb=false,delta=1,DCT=dct,Truemotion=false,blksize=blksize,chroma=chroma)
-fv2    = sup.MAnalyse(isb=true,delta=1,DCT=dct,Truemotion=true,blksize=blksize,chroma=chroma)
+	threads = sh_GetUserGlobalIMTint()
+	mt = sh_GetUserGlobalIMTbool()
+preclip= defined(prefilter) ? prefilter : (VersionNumber() < 2.60) && isyv12(input) ? input.HQdn3d().FFT3DFilter(ncpu=threads) : input.HQdn3d_2().sneo_FFT3D(ncpu=threads)
+sup    = defined(mt) ? preclip.MSuper(pel=pel,sharp=1,mt=mt) : preclip.MSuper(pel=pel,sharp=1)
+fv1    = defined(mt) ? sup.MAnalyse(isb=false,delta=1,DCT=dct,Truemotion=false,blksize=blksize,chroma=chroma,mt=mt) : sup.MAnalyse(isb=false,delta=1,DCT=dct,Truemotion=false,blksize=blksize,chroma=chroma)
+fv2    = defined(mt) ? sup.MAnalyse(isb=true,delta=1,DCT=dct,Truemotion=true,blksize=blksize,chroma=chroma,mt=mt) : sup.MAnalyse(isb=true,delta=1,DCT=dct,Truemotion=true,blksize=blksize,chroma=chroma)
 
 momask1 = input.MMask(fv1, kind = 1, ml=2)
 momask2 = input.MMask(fv2, kind = 1, ml=3)
