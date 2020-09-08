@@ -1,4 +1,4 @@
-# YAHR's functions 2020-03-12
+# YAHR's functions 2020-09-06
 
 # Y'et A'nother H'alo R'educing script
 
@@ -24,6 +24,7 @@ function YAHR2(clip clp, int "depth", int "blur", bool "useawarp4", int "depthV"
 
 depth         = Default(depth, 8)
 useawarp4     = Default(useawarp4, false)
+threads       = sh_GetUserGlobalIMTint()
 
 blur = defined(blurV) && !defined(blur) ? depth==0 ? 0 : blur : blur
 
@@ -31,10 +32,11 @@ defined(depthV) ? depthV != 0 && depth==0 ? eval("blurV=defined(blurV) ? blurV :
 
 awarp_params = defined(depthV) ? ",depthV=" + string(depthV) : ""
 awarp_params = defined(blurV) ? awarp_params + ",blurV=" + string(blurV) : defined(depthV) ? depthV==0 ? ",blurV=0" : awarp_params : awarp_params
+awarp_params = defined(threads) ? awarp_params + ",threads=" + string(threads) : awarp_params
 
 b1    = clp.minblur(2).removegrain(11,-1)
 b1D   = mt_makediff(clp,b1)
-w1    = useawarp4 ? clp.aWarpSharp4xx(depth=depth,blur=blur,chroma=1,useawarp4=true,depthV=depthV,blurV=blurV) : eval("clp.aWarpSharp2(depth=depth,blur=blur,chroma=1" + awarp_params + ")")
+w1    = useawarp4 ? clp.aWarpSharp4xx(depth=depth,blur=blur,chroma=1,useawarp4=true,depthV=depthV,blurV=blurV,threads=threads) : eval("clp.aWarpSharp2(depth=depth,blur=blur,chroma=1" + awarp_params + ")")
 w1b1  = w1.minblur(2,1).removegrain(11,-1)
 w1b1D = mt_makediff(w1,w1b1)
 DD    = b1D.repair(w1b1D,13) 

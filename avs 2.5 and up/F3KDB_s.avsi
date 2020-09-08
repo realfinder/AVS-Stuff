@@ -1,5 +1,5 @@
 ###############
-# F3KDB_3 and it sisters v1.337
+# F3KDB_3 and it sisters v1.338
 
 
 function F3KDB_3(clip clip, int "range", int "Y", int "Cb", int "Cr", \
@@ -19,6 +19,7 @@ nlpmsk  = default (lastpassmask, nlpgra && pass > 1)
 ngrainY = isgrYd && !nlpgra ? grainY : pass > 1 ? 0 : pass < 2 && nlpgra ? undefined : 0
 chromad = defined(chroma)
 chroma      = default (chroma, true)
+mt          = default (mt, sh_GetUserGlobalIMTbool())
 cb = default (cb, chroma ? undefined : 0)
 cr = default (cr, chroma ? undefined : 0)
 ngrainC = default (grainC, chromad && chroma ? 64 : chroma ? ngrainY : 0)
@@ -251,6 +252,7 @@ sisphbd = AvsPlusVersionNumber > 2294
 bits = sisphbd ? BitsPerComponent(clip) : 8
 output_depth = default(output_depth, bits) 
 !sisphbd ? Assert(bits==8, "F3KDB_3_adg: this avs not work with HBD") : nop()
+mt   = default (mt, sh_GetUserGlobalIMTbool())
 pass = default (pass, 2)
 masking = default (masking, true)
 gf = default (gf, 512.0) / pow(2, 16 - bits)
