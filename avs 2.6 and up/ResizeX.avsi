@@ -1,4 +1,4 @@
-/* ResizeX v1.0.1 mod 9.37
+/* ResizeX v1.0.1 mod 9.39
 
 ResizeX is a wrapper function for AviSynth's internal resizers and Dither_resize16
 that corrects for the chroma shift caused by the internal resizers when they're
@@ -59,8 +59,9 @@ kernel     = Default(kernel, "Spline36")
 cplace     = Default(cplace, "MPEG2")
 luma       = Default(luma, true)
 chroma     = Default(chroma, true)
-mt         = Default(mt, true)
+mt         = Default(mt, Defined(sh_GetUserGlobalIMTbool) ? sh_GetUserGlobalIMTbool : true)
 mt_params  = Default(mt_params,      "")
+mt_params  = Defined(sh_GetUserGlobalIMTint) && (mt_params == "" ? true : FindStr(LCase(mt_params),"threads") == 0) ? mt_params + ",threads=" + string(sh_GetUserGlobalIMTint) : mt_params
 dither_params = Default(dither_params ,      "")
 dither_mode   = Default(dither_mode, 6)
 

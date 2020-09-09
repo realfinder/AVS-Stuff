@@ -1,4 +1,4 @@
-/* edi_rpow2 v1.0 mod 82
+/* edi_rpow2 v1.0 mod 83
 
 An improved rpow2 function for nnedi3, nnedi3ocl, eedi3, and eedi2.
 
@@ -199,6 +199,7 @@ bordfix   = Default(bordfix, edi != "eedi3" ? true : nnrep > 0)
 c420fix   = Default(c420fix, true)
 nsize     = Default(nsize, 0)
 nns       = Default(nns, 3)
+Threads   = default(Threads, sh_GetUserGlobalIMTint())
 
 sisphbd = AvsPlusVersionNumber > 2294
 

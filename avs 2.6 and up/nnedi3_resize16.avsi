@@ -1,5 +1,5 @@
 #################################################################################################
-###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2020.04.07      ######
+###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2020.09.09      ######
 #################################################################################################
 ###### from v2.8 on, nnedi3_resize16 only supports AviSynth v2.6+                          ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, nnedi3 v0.9.4.53,                  ######
@@ -74,7 +74,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     qual     = Default(qual,     2      )
     etype    = Default(etype,    0      )
     pscrn    = Default(pscrn,    2      )
-    threads  = Default(threads,  0      )
+    threads  = Default(threads,  sh_GetUserGlobalIMTint(true))
     pad      = Default(padding,  false  )
     
     ###############################################################################################################################

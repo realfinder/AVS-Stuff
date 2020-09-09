@@ -1,5 +1,5 @@
 #################################################################################################
-###### eedi3_resize16 v3.3.08 ###### by mawen1250 mod by A.SONY ######      2020.03.08      ######
+###### eedi3_resize16 v3.3.09 ###### by mawen1250 mod by A.SONY ######      2020.09.09      ######
 #################################################################################################
 ###### from v2.8 on, eedi3_resize16 only supports AviSynth v2.6+                          ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, eedi3 v0.9.2.3,                     ######
@@ -63,7 +63,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     qual     = Default(qual,     2      )
     etype    = Default(etype,    0      )
     pscrn    = Default(pscrn,    2      )
-    threads  = Default(threads,  0      )
+    threads  = Default(threads,  sh_GetUserGlobalIMTint(true))
     nnsclip  = Default(nnsclip,  false  )
     
     ###############################################################################################################################
