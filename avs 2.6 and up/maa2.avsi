@@ -1,5 +1,5 @@
 /*
-MAA2 v0.434 mod by A.SONY
+MAA2 v0.435 mod by A.SONY
 =========
 
 Updated version of the MAA antialising script from AnimeIVTC.
@@ -58,6 +58,7 @@ function maa2(clip c, int "mask", bool "chroma", float "ss", int "aa", int "aac"
     aa     = Default(aa, 48)
     aac    = Default(aac, aa-8)
     aac    = (aac < 0) ? 0 : aac
+	threads = default(Threads, sh_GetUserGlobalIMTint())
 
     sisphbd = AvsPlusVersionNumber > 2294
     sislumaonly = sisphbd  ? c.isy() : c.isy8()
@@ -130,15 +131,15 @@ function Sangnom2AA(clip c, float "ss", float "ss_h", int "threads", int "aa", i
 
     c
     Eval("""
-    aa_h==h && aa_w!=w ? eval("try { sisp ? dontdoft : fTurnLeft() } catch(error_msg) { TurnLeft() }") : last
+    aa_h==h && aa_w!=w ? eval("try { sisp ? dontdoft : fTurnLeft(mt=threads!=1) } catch(error_msg) { TurnLeft() }") : last
     aa_h==h ? threads!=1 ? Eval("try { Spline36Resizemt(aa_h, aa_w, threads=threads) } catch(error_msg) { Spline36Resize(aa_h, aa_w) }") : Spline36Resize(aa_h, aa_w) : last
     aa_h!=h ? threads!=1 ? Eval("try { Spline36Resizemt(aa_w, aa_h, threads=threads) } catch(error_msg) { Spline36Resize(aa_w, aa_h) }") : Spline36Resize(aa_w, aa_h) : last
             SangNom2(threads=threads, aa=aa, aac=aac)
-    aa_h!=h && aa_w!=w ? eval("try { sisp ? dontdoft : fTurnLeft() } catch(error_msg) { TurnLeft() }") : last
+    aa_h!=h && aa_w!=w ? eval("try { sisp ? dontdoft : fTurnLeft(mt=threads!=1) } catch(error_msg) { TurnLeft() }") : last
     aa_w==w ? last : aa_h!=h ? SangNom2(threads=threads, aa=aa, aac=aac) : last
     aa_h!=h && aa_w==w ? threads!=1 ? Eval("try { Spline36Resizemt(c.width, c.height, threads=threads) } catch(error_msg) { Spline36Resize(c.width, c.height) }") : Spline36Resize(c.width, c.height) : last
     aa_w!=w ? threads!=1 ? Eval("try { Spline36Resizemt(c.height, c.width, threads=threads) } catch(error_msg) { Spline36Resize(c.height, c.width) }") : Spline36Resize(c.height, c.width) : last
-    aa_w!=w ? eval("try { sisp ? dontdoft : fTurnRight() } catch(error_msg) { TurnRight() }") : last
+    aa_w!=w ? eval("try { sisp ? dontdoft : fTurnRight(mt=threads!=1) } catch(error_msg) { TurnRight() }") : last
     """)
 }
 
