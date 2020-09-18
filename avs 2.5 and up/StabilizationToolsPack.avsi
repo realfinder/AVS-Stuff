@@ -1,7 +1,7 @@
 ###                                                      #
 ###                                                      #
-### Stabilization Tools Pack 2.1 by Dogway (16-09-2015)  #
-###                  mod 2.52 by A.SONY in (18-09-2020)  #
+### Stabilization Tools Pack 2.1 by Dogway (18-09-2020)  #
+###                  mod 2.53 by A.SONY in (18-09-2020)  #
 ###                                                      #
 ##########################################################
 ###
@@ -110,7 +110,7 @@ eval("""stackhorizontal(scriptclip("Subtitle(c,"+Chr(34)+" Top & Bottom:"+Chr(34
 
 ####################################
 ###
-### FillBorder()
+### FillBorders_stabi()
 ###
 ###  (http://forum.videohelp.com/threads/371336)
 ###
@@ -128,7 +128,7 @@ eval("""stackhorizontal(scriptclip("Subtitle(c,"+Chr(34)+" Top & Bottom:"+Chr(34
 ### Below you can still use the the FindBlackBorders() function for manual handling of thick black borders.
 ### Use ClipClop() for the stab() results according to the statistics file of FindBlackBorders()
 ###
-### Mind you, for FillBorder() you need to manually load the AVSInpaint plugin:
+### Mind you, for FillBorders_stabi() you need to manually load the AVSInpaint plugin:
 ### LoadCPlugin("AVSInpaint.dll")
 ###
 ###  EXPERIMENTAL:
@@ -146,7 +146,7 @@ eval("""stackhorizontal(scriptclip("Subtitle(c,"+Chr(34)+" Top & Bottom:"+Chr(34
 ###
 ####################################
 
-function FillBorder(clip c, int "thr", int "pad", bool "blur", bool "debug", clip "FixFalPos", int "thr2", bool "mirror", float "PAR", bool "subsample", bool "maskonly", clip "FillBordersc" ) {
+function FillBorders_stabi(clip c, int "thr", int "pad", bool "blur", bool "debug", clip "FixFalPos", int "thr2", bool "mirror", float "PAR", bool "subsample", bool "maskonly", clip "FillBordersc" ) {
 
 thr      = Default(thr, 1)       # Threshold, pixel values below this will be considered borders
 pad      = Default(pad, 0)       # Pixels, you can expand the replacement area adding more pixels
@@ -323,7 +323,7 @@ ditherpost(mode=-1) }
 ### maybe a programmer realises the urge of an avisynth bug-free stabilizer:
 ### -Color tint (hue shift to green) when subpixel>0 to stablizated frames --> addressed here
 ### -Artifacts occasionally on frame borders (1px skew) --> crop out, check example
-### -No advanced border fill --> addressed above ( FillBorder() )
+### -No advanced border fill --> addressed above ( FillBorders_stabi() )
 ### -Some false-positives when people clapping, trembling...
 ### -Requires mod 4 inputs?
 ### -No medium jitter fix
@@ -419,7 +419,7 @@ DitherPost(stacked=true,prot=false,mode=6)
 ###
 ####################################
 
-function Stab3 (clip clp, int "ts", int "range", int "dxmax", int "dymax", bool "UVfix", bool "FixFalPos", float "zoom", int "mirror", float "PAR", clip "Prefilter", int "Luma_Exp", int "FillBorder", clip "FalPosclip") {
+function Stab3 (clip clp, int "ts", int "range", int "dxmax", int "dymax", bool "UVfix", bool "FixFalPos", float "zoom", int "mirror", float "PAR", clip "Prefilter", int "Luma_Exp", int "FillBorder", clip "FalPosclip", bool "use_ExInpaint") {
 
 ts     = default(ts, 7)        #frames to temporal average for better motion estimation (max. 7)
 range  = default(range, 1)     #frames before/after to estimate motion
@@ -430,6 +430,7 @@ mirror = default(mirror, 0)    #Edge filling. 0 off, 15 everything on
 PAR    = default(PAR, 1.0)     #PAR of your source
 UVfix  = default(UVfix, false)  # Fixes the bug of change of HUE in Depan, not need in depan 1.13.1 and up
 bfix   = default(FillBorder, 1) # 1=Fixes borders of 3 or less pixels wide.
+u_ExIn = default(use_ExInpaint, false)
 b3fix  = bfix > 0
 FixFalPos  = default(FixFalPos, true) # Fixes borders of 3 or more pixels wide. Use along crop(2,2,-2,-2)...
 									  # ...after stab2() to get rid of border issues entirely
@@ -467,8 +468,8 @@ crop(width-cropx,0,0,0).conditionalfilter(last,clp,ratiox,">","0")""") : last
 
 subsampl = b3fix ? AvsPlusVersionNumber > 2294 ? !(clp.is444() || clp.isy()) : VersionNumber() < 2.60 ? clp.isyv12() : !(clp.isyv24() || clp.isy8()) : nop()
 
-bfixc = bfix > 0 ? stabclip.FillBorder(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, maskonly=bfix > 1) : last
-bfix > 1 ? stabclip.FillBorder(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, FillBordersc=mt_merge(stabclip,clp,bfixc,luma=true).InpaintLogo(bfixc)) : bfixc
+bfixc = bfix > 0 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, maskonly=bfix > 1) : last
+bfix > 1 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, FillBordersc=u_ExIn ? mt_merge(stabclip,clp,bfixc,luma=true).ExInpaint(bfixc) : mt_merge(stabclip,clp,bfixc,luma=true).InpaintLogo(bfixc)) : bfixc
 
 UVfix ? eval("""
 lumaf=last
