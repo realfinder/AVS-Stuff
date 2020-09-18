@@ -1,7 +1,7 @@
 #Motion-Compensated Anti-aliasing with contra-sharpening by A.SONY
 #some ideas was taken from Didée scripts daa and this http://forum.doom9.org/showthread.php?t=153219
 #created because when applied daa3 to fixed scenes, it could damage some details and other issues.
-# v3.62
+# v3.63
 
 function mcdaa3(clip input) {
 sup    = input.HQdn3d().sneo_FFT3D().MSuper(pel=2,sharp=1)
@@ -17,7 +17,7 @@ mt_merge(input,csaa,momask,u=3,v=3)
 
 #############################
 
-#Anti-aliasing with contra-sharpening by Didée with some modifications, v3.61
+#Anti-aliasing with contra-sharpening by Didée with some modifications, v3.62
 
     FUNCTION daa3mod(clip c1, val "slow", int "threads", bool "FDCS") {
 avs25 = VersionNumber() < 2.60
@@ -31,7 +31,7 @@ slowb  = isslob ? slow : isslod
 threads = default (threads, sh_GetUserGlobalIMTint(true))
 FDCS = default (FDCS, issloi ? slow > 4 || slow < -4 : false)
 sisphbd = AvsPlusVersionNumber > 2294
-chr420  = sisphbd ? c1.is420() : input.isyv12()
+chr420  = sisphbd ? c1.is420() : c1.isyv12()
 
 rescale = slowb && issloi ? slow > -1 : slowb
 upsizer = rescale ? issloi ? slow!=0 ? "BilinearResize" : "Spline36Resize" : "Spline36Resize" : nop()
