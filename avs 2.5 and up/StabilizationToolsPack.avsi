@@ -1,7 +1,7 @@
 ###                                                      #
 ###                                                      #
 ### Stabilization Tools Pack 2.1 by Dogway (18-09-2020)  #
-###                  mod 2.53 by A.SONY in (18-09-2020)  #
+###                 mod 2.531 by A.SONY in (18-09-2020)  #
 ###                                                      #
 ##########################################################
 ###
@@ -473,14 +473,15 @@ bfix > 1 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsamp
 
 UVfix ? eval("""
 lumaf=last
+clpDith=Dither_convert_8_to_16()
+
 ScriptClip ("
 blue=round((AverageChromaU(clp) - AverageChromaU()) * 256.0)
 red=round((AverageChromaV(clp) - AverageChromaV()) * 256.0)
 
-Dither_convert_8_to_16()
-SmoothTweak16(saturation=1.0,hue1=min(384,blue),hue2=min(384,red),HQ=true)
+SmoothTweak16(clpDith,saturation=1.0,hue1=min(384,blue),hue2=min(384,red),HQ=true)
 DitherPost(stacked=true,prot=false,mode=6,y=1,slice=false)
-", args="clp" )
+", args="clp,clpDith" )
 Mergeluma(lumaf)
 """) : last
 
