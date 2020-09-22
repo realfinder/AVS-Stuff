@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.894
+# Advanced Denoising and anime bob v1.895
 # Collections of Functions
 
 ### Functions list:-
@@ -51,9 +51,9 @@ cfr=current_frame
  
 mtpav=cfr<3 ? 0 : mtcav
 global mtcav=cfr<2 ? 0 : mtnav
-mtnavb = sisphbdr ? BitsPerComponent() > 8 ? BitsPerComponent() == 10 ? 4 : BitsPerComponent() == 12 ? 8 : BitsPerComponent() == 14 ? 64 : nop() : nop() : nop()
+mtnavb = sisphbdr ? BitsPerComponent() > 8 ? BitsPerComponent() == 10 ? 4 : BitsPerComponent() == 12 ? 8 : BitsPerComponent() == 14 ? 64 : 256 : nop() : nop()
 global mtnav=sisphbdr ? isvideofloat() ? morinc.YDifferenceToNext()*255.0 : BitsPerComponent() > 8 ? BitsPerComponent() < 16 ? morinc.YDifferenceToNext()/mtnavb : morinc.YDifferenceToNext()/256 : morinc.YDifferenceToNext() : morinc.YDifferenceToNext()
-global mtnav=sisphbdr ? isvideofloat() ? motinc.trim(1,0).AverageLuma()*255.0 : BitsPerComponent() > 8 ? BitsPerComponent() < 16 ? motinc.trim(1,0).AverageLuma()/mtnavb : sqrt(motinc.trim(1,0).AverageLuma()) : motinc.trim(1,0).AverageLuma() : motinc.trim(1,0).AverageLuma()
+global mtnav=sisphbdr ? isvideofloat() ? motinc.trim(1,0).AverageLuma()*255.0 : BitsPerComponent() > 8 ? motinc.trim(1,0).AverageLuma()/mtnavb : motinc.trim(1,0).AverageLuma() : motinc.trim(1,0).AverageLuma()
 
 cond1 = abs(mtcav-mtpav) > MotionThreshthresh ? MotionThreshwhite : MotionThreshblack
 cond2 = abs(mtcav-mtnav) > MotionThreshthresh ? MotionThreshwhite : MotionThreshblack
