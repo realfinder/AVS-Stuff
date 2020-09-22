@@ -1,6 +1,6 @@
 #Author: eXmendiC, joletb, vinylfreak89, Gebbi
 #Version: 2.6
-#HBD mod 1.1
+#HBD mod 1.2
 function AutoDeblock2(clip c, float "edgeValue", float "db1", float "db2", float "db3", bool "deblockY", bool "deblockUV", bool "debug", bool "redfix", bool "fastdeblock", float "adb1", float "adb2", float "adb3", float "adb1d", float "adb2d", float "adb3d") {
  c
  global AutoDeblock2_o = c
@@ -55,6 +55,6 @@ function AutoDeblock2(clip c, float "edgeValue", float "db1", float "db2", float
  autodeblock2 = ConditionalFilter(mediumdeblock, autodeblock1, "(LumaDifference(AutoDeblock2_orig,AutoDeblock2_orig_d) > AutoDeblock2_adb2) && (YDifferenceToNext > AutoDeblock2_adb2d)", "==", "True")
  autodeblock3 = ConditionalFilter(strongdeblock, autodeblock2, "(LumaDifference(AutoDeblock2_orig,AutoDeblock2_orig_d) > AutoDeblock2_adb3) && (YDifferenceToNext > AutoDeblock2_adb3d)", "==", "True")
  
- reddeblock = redfix ? ConditionalFilter(sischbd ? unfiltered.Vinverse_avsi : unfiltered.vinverse(), autodeblock3, "(AverageLuma(AutoDeblock2_o) > 50) && (AverageLuma(AutoDeblock2_o) < 130) && (AverageChromaU(AutoDeblock2_o) > 95) && (AverageChromaU(AutoDeblock2_o) < 130) && (AverageChromaV(AutoDeblock2_o) > 130) && (AverageChromaV(AutoDeblock2_o) < 155)", "==", "True") : autodeblock3
+ reddeblock = redfix ? ConditionalFilter(sischbd ? unfiltered.Vinverse_avsi : unfiltered.vinverse(), autodeblock3, "(AverageLuma(AutoDeblock2_o) > " + string(ssIsVF ? 50/255 : sischbd ? 50*mtnavb : 50) + ") && (AverageLuma(AutoDeblock2_o) < " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaU(AutoDeblock2_o) > " + string(ssIsVF ? 95/255 : sischbd ? 95*mtnavb : 95) + ") && (AverageChromaU(AutoDeblock2_o) < " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaV(AutoDeblock2_o) > " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaV(AutoDeblock2_o) < " + string(ssIsVF ? 155/255 : sischbd ? 155*mtnavb : 155) + ")", "==", "True") : autodeblock3
  fastdeblock ? autodeblock0 : reddeblock
  }
