@@ -1,5 +1,5 @@
 ###############
-# F3KDB_3 and it sisters v1.338
+# F3KDB_3 and it sisters v1.339
 
 
 function F3KDB_3(clip clip, int "range", int "Y", int "Cb", int "Cr", \
@@ -173,7 +173,7 @@ Crclip  = !dosep ? nop() : output_mode == 3 && sischbd || o_depth>8 ? Crclip.Con
 Crclip  = !dosep ? nop() : sample_mode == 3 ? Crclip.sTryFTurnRight(chroma,output_mode==2 ? 16 : output_mode==1 ? 88 : 8,mt) : Crclip
 
 dosep ? sisphbd ? CombinePlanes(Cbclip, Crclip , Ypclip, planes="UVY",sample_clip=clip) : YToUV(Cbclip, Crclip , Ypclip) : Ypclip
-dosep && ktvr ? keep_tv_range ? sisphbd ? Limiter(16, 235, 16, 240, autoscale=true) : Limiter(16, 235, 16, 240) : last : last
+dosep && ktvr ? keep_tv_range ? sisphbd ? Limiter(16, 235, 16, 240, paramscale=true) : Limiter(16, 235, 16, 240) : last : last
 
 """) : sm4lsb ? Dither_merge16(pclip.L_F3KDB_3(range, Y, Cb, Cr, \
 		grainY, grainC, 1, seed, \
