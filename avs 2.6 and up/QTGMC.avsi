@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------#
 #                                                                   #
-#           QTGMC 3.375, by Vit, 2012, 2020 mod by A.SONY           #
+#           QTGMC 3.376, by Vit, 2012, 2020 mod by A.SONY           #
 #                                                                   #
 #   A high quality deinterlacer using motion-compensated temporal   #
 #  smoothing, with a range of features for quality and convenience  #
@@ -11,6 +11,9 @@
 # Full documentation is in the 'QTGMC' html file that may comes with this script, or even better see avisynth wiki
 #
 # --- LATEST CHANGES ---
+#
+# v3.376s
+# - fix keep_tv_range in avs+
 #
 # v3.375s
 # - new EdiMode modes "BWDIF+NNEDI3" and "BWDIF+EEDI3" (need moded Vinverse_avsi)
@@ -865,7 +868,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	# >>>> Restore YUY2 to interleaved
 	output = (ShowNoise == 0.0) ? cropped : finalNoise.mt_lut( "x range_half - " + string(ShowNoise) + " * range_half +", clamp_float=true, use_expr=2, U=CNmt128,V=CNmt128 )
 	output = yuy2 ? output.nonyuy2clipout(true) : output
-	output = keep_tv_range ? sisphbd ? output.Limiter(16, 235, 16, 240, autoscale=true) : output.Limiter(16, 235, 16, 240) : output
+	output = keep_tv_range ? sisphbd ? output.Limiter(16, 235, 16, 240, paramscale=true) : output.Limiter(16, 235, 16, 240) : output
 	return (ShowSettings == false) ? output : \
 		output.Subtitle( "TR0=" + string(TR0) + " | TR1=" + string(TR1) + " | TR2=" + string(TR2) + " | Rep0=" + string(Rep0) + " | Rep1=" + string(Rep1) + \
 		" | Rep2=" + string(Rep2) + " | RepChroma=" + string(RepChroma) + "\nEdiMode='" + EdiMode + "' | NNSize=" + string(NNSize) + " | NNeurons=" + \
