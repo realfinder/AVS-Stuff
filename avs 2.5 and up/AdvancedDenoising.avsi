@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.895
+# Advanced Denoising and anime bob v1.896
 # Collections of Functions
 
 ### Functions list:-
@@ -482,7 +482,7 @@ DeRainbowing ? LUTDeRainbow(cthresh, ythresh, y, linkUV, mask, org_minus, org_pl
 
 
 # sGConvolution by R.F
-# v1.01
+# v1.02
 function sGConvolution (clip clp, string "matrix", string "UVmatrix", float "bias", float "divisor", bool "auto", bool "luma", bool "chroma", bool "alpha")
 {
 sisphbd = AvsPlusVersionNumber > 2294
@@ -505,7 +505,7 @@ u=!sispngc ? sisphbd ? clp.ExtractU() : sisavs26 ? clp.UToY8() : clp.UToY().Conv
 v=!sispngc ? sisphbd ? clp.ExtractV() : sisavs26 ? clp.VToY8() : clp.VToY().ConvertToYV12() : nop()
 
 yc=luma ? sispngc ? y.GeneralConvolution(bias,matrix,divisor,auto,true,false,alpha) : MergeRGB(y,y,y).GeneralConvolution(bias,matrix,divisor,auto).ShowRed(sisavs26 ? "Y8" : "YV12") : y
-uv=sispngc ? chroma ? yc.GeneralConvolution(bias,matrix,divisor,auto,false,true,alpha) : yc : chroma ? MergeRGB(u,v,v).GeneralConvolution(bias,UVmatrix,divisor,auto) : nop()
+uv=sispngc ? chroma ? yc.GeneralConvolution(bias,UVmatrix,divisor,auto,false,true,alpha) : yc : chroma ? MergeRGB(u,v,v).GeneralConvolution(bias,UVmatrix,divisor,auto) : nop()
 uv=sispngc ? uv : chroma ? Interleave(uv.ShowRed(sisavs26 ? "Y8" : "YV12"),uv.ShowGreen(sisavs26 ? "Y8" : "YV12")) : nop()
 
 sispngc ? uv : YToUV (chroma ? uv.SelectEven() : u, chroma ? uv.SelectOdd() : v, yc)
