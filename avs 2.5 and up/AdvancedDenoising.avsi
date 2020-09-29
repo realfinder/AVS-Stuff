@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.896
+# Advanced Denoising and anime bob v1.897
 # Collections of Functions
 
 ### Functions list:-
@@ -443,10 +443,10 @@ sislumaonly ? last : sisphbd ? CombinePlanes(last,clip,planes="YUV",sample_clip=
 
 # LUTComb by real.finder
 # LUTComb wrapper for LUTDeRainbow and LUTDeCrawl, it can used with MC
-# v1.12
+# v1.13
 
 function LUTComb(clip input, float "cthresh", float "ythresh", bool "y", bool "linkUV", bool "mask", float "dythresh", float "dcthresh", float "maxdiff", 
-	          \ float "scnchg", bool "usemaxdiff", bool "dmask", bool "DeCrawing", bool "DeRainbowing", bool "mc", int "thSAD", clip "prefil", bool "chroma") {
+	          \ float "scnchg", bool "usemaxdiff", bool "dmask", bool "DeCrawing", bool "DeRainbowing", bool "mc", int "thSAD", clip "prefil", bool "chroma", bool "smoothmask") {
 
 sisfield = input.IsFieldBased()
 
@@ -476,7 +476,7 @@ org_plus=mc ? sisfield ? interleave(f1ce,f1co) : f1ce : input.Trim(sisfield ? 2 
 
 input
 
-DeCrawing ? LUTDeCrawl(dythresh, dcthresh, maxdiff, scnchg, usemaxdiff, dmask, org_minus, org_plus) : last
+DeCrawing ? LUTDeCrawl(dythresh, dcthresh, maxdiff, scnchg, usemaxdiff, dmask, org_minus, org_plus, smoothmask) : last
 DeRainbowing ? LUTDeRainbow(cthresh, ythresh, y, linkUV, mask, org_minus, org_plus) : last
 }
 
