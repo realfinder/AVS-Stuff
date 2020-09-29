@@ -2,7 +2,7 @@
 #                                                      #
 # LUTDeCrawl, a dot crawl removal script by Scintilla  #
 # Created 10/3/08				       #
-# Last updated 5/20/20                                 #
+# Last updated 9/28/20                                 #
 #                                                      #
 ########################################################
 #
@@ -60,7 +60,7 @@
 ###################
 
 function LUTDeCrawl(clip input, float "ythresh", float "cthresh", float "maxdiff", 
-	          \ float "scnchg", bool "usemaxdiff", bool "mask", clip "org_minus", clip "org_plus") {
+	          \ float "scnchg", bool "usemaxdiff", bool "mask", clip "org_minus", clip "org_plus", bool "smoothmask") {
 
 Assert(input.IsPlanar() && !IsRGB(input), "LUTDeCrawl: Planar YUV input only")
 
@@ -75,6 +75,7 @@ org_plusd = defined(org_plus)
 
 sismc = org_minusd && org_plusd
 
+smoothmask=default(smoothmask,sismc)
 cthresh=default(cthresh,sismc ? 10 : 15)
 ythresh=default(ythresh,10)
 cthr=string(cthresh)
@@ -83,9 +84,10 @@ scnchg=default(scnchg,sismc ? -2 : 25)
 scb = scnchg!=-2 ? sisphbd ? BitsPerComponent(input) > 8 ? BitsPerComponent(input) == 10 ? 4 : BitsPerComponent(input) == 12 ? 8 : BitsPerComponent(input) == 14 ? 64 : nop() : nop() : nop() : nop()
 scnchg = scnchg!=-2 ? sisphbd ? siscfloat ? scnchg/255.0 : BitsPerComponent(input) > 8 ? BitsPerComponent(input) < 16 ? scnchg*scb : scnchg*256 : scnchg : scnchg : -2
 sc=scnchg!=-2 ? string(scnchg) : nop()
-maxdiff=default(maxdiff,50)
+maxdiff=default(maxdiff,sismc ? 100 : 50)
 md=string(maxdiff)
 usemaxdiff=default(usemaxdiff,true)
+mask=default(mask,false)
 org=siscfloat ? expr(input, "x", "x 0.5 +", "x 0.5 +") : input
 
 fullchr = sisphbd ? org.is444() : sisavs26 ? org.isyv24() : false
@@ -107,28 +109,30 @@ org_plus_y=sisphbd ? ExtractY(org_plus) : sisavs26 ? ConvertToY8(org_plus) : org
 org_plus_u=sisphbd ? ExtractU(org_plus) : sisavs26 ? UToY8(org_plus) : UToY(org_plus)
 org_plus_v=sisphbd ? ExtractV(org_plus) : sisavs26 ? VToY8(org_plus) : VToY(org_plus)
 
-average_u=sisavs26 ? mt_lutxy(org_minus_u,org_plus_u,"x y - abs "+cthr+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_minus_u,org_plus_u,"x y - abs "+cthr+" < 255 0 ?")
-average_v=sisavs26 ? mt_lutxy(org_minus_v,org_plus_v,"x y - abs "+cthr+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_minus_v,org_plus_v,"x y - abs "+cthr+" < 255 0 ?")
+diffs_u=smoothmask ? sisavs26 ? mt_lutxy(org_minus_v,org_plus_v,"x y - abs "+cthr+" scalef < x y - abs "+cthr+" scalef 2 / < range_max range_max range_max "+cthr+" scalef / x y - abs * - ? 0 ?", use_expr=1) : mt_lutxy(org_minus_v,org_plus_v,"x y - abs "+cthr+" < x y - abs "+cthr+" 2 / < 255 255 255 "+cthr+" / x y - abs * - ? 0 ?") : sisavs26 ? mt_lutxy(org_minus_u,org_plus_u,"x y - abs "+cthr+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_minus_u,org_plus_u,"x y - abs "+cthr+" < 255 0 ?")
+diffs_v=smoothmask ? sisavs26 ? mt_lutxy(org_minus_u,org_plus_u,"x y - abs "+cthr+" scalef < x y - abs "+cthr+" scalef 2 / < range_max range_max range_max "+cthr+" scalef / x y - abs * - ? 0 ?", use_expr=1) : mt_lutxy(org_minus_u,org_plus_u,"x y - abs "+cthr+" < x y - abs "+cthr+" 2 / < 255 255 255 "+cthr+" / x y - abs * - ? 0 ?") : sisavs26 ? mt_lutxy(org_minus_v,org_plus_v,"x y - abs "+cthr+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_minus_v,org_plus_v,"x y - abs "+cthr+" < 255 0 ?")
+
 average_y=sisavs26 ? mt_lutxy(org_minus_y,org_plus_y,"x y - abs "+ythr+" scalef < x y + 2 / 0 ?", use_expr=1) : mt_lutxy(org_minus_y,org_plus_y,"x y - abs "+ythr+" < x y + 2 / 0 ?")
 
 diffplus_y =  usemaxdiff ? sisavs26 ? mt_lutxy(org_plus_y,  org_y, "x y - abs "+md+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_plus_y,  org, "x y - abs "+md+" < 255 0 ?") : nop()
 diffminus_y = usemaxdiff ? sisavs26 ? mt_lutxy(org_minus_y, org_y, "x y - abs "+md+" scalef < range_max 0 ?", use_expr=1) : mt_lutxy(org_minus_y, org, "x y - abs "+md+" < 255 0 ?") : nop()
-diffs_y = usemaxdiff ? mt_logic(diffplus_y, diffminus_y, "and") : nop()
+odiffs_y = usemaxdiff ? mt_logic(diffplus_y, diffminus_y, "and") : nop()
 
-ymask=average_y.mt_Binarize(threshold=0,upper=false)
-ymask=usemaxdiff ? mt_logic(ymask, diffs_y, "and") : ymask
-cmask=mt_logic(average_u.mt_Binarize(upper=false),average_v.mt_Binarize(upper=false),"and")
+ymask=smoothmask ? sisavs26 ? average_y.mt_lut("x 32 *", use_expr=1, clamp_float=true) : average_y.mt_lut("x 32 *") : average_y.mt_Binarize(threshold=0,upper=false)
+ymask=usemaxdiff ? mt_logic(ymask, odiffs_y, "and") : ymask
+cmask=mt_logic(diffs_u,diffs_v,"and")
 cmask=sisavs26 ? fullchr ? cmask : IsYV411(org) ? cmask.BilinearResize(input.width(), input.height(), src_left=0.375) : cmask.BilinearResize(input.width(), input.height(), src_left=0.25) : cmask.PointResize(cmask.Width()*2, cmask.Height()*2)
 
 themask=mt_logic(ymask,cmask,"and")
 
-fixed_y=sisavs26 ? mt_lutxy(average_y,org_y,"x y + 2 /", use_expr=1,y=3,u=2,v=2) : mt_lutxy(average_y,org_y,"x y + 2 /",y=3,u=2,v=2)
+fixed_y=mask ? nop() : smoothmask ? average(org_minus_y,0.25,org_y,0.5,org_plus_y,0.25).Repair(org_y) : mt_average(average_y,org_y)
 
-output=mt_Merge(org_y,fixed_y,themask)
-output=MergeChroma(sisavs26 ? YToUV(average_u,average_v,output) : output,input)
-output=scnchg!=-2 ? ConditionalFilter(input, input, output, "YDifferenceFromPrevious()", ">", sc) : output
-output=scnchg!=-2 ? ConditionalFilter(input, input, output, "YDifferenceToNext()", ">", sc) : output
+output=mask ? nop() : mt_Merge(org_y,fixed_y,themask,u=1,v=1)
+output=mask ? nop() : smoothmask ? mt_Merge(output.sBlackerPixel(output.blur(1.58,0).Sharpen(1,0),maxdiff=maxdiff,averagewithwhiterPixel=true),output,sisavs26 ? mt_lutxyz(output,org_y,themask.blur(1.58,0).Sharpen(1,0),"x y - abs "+md+" scalef 10 / < z 0 ?", use_expr=1) : mt_lutxyz(output,org_y,themask.blur(1.58,0).Sharpen(1,0),"x y - abs "+md+" 10 / < z 0 ?"),u=1,v=1) : output
+output=mask ? nop() : MergeChroma(sisavs26 ? YToUV(diffs_u,diffs_v,output) : output,input)
+output=mask ? nop() : scnchg!=-2 ? ConditionalFilter(input, input, output, "YDifferenceFromPrevious()", ">", sc) : output
+output=mask ? nop() : scnchg!=-2 ? ConditionalFilter(input, input, output, "YDifferenceToNext()", ">", sc) : output
 
-return (default(mask,false)?themask:output)
+return (mask?themask:output)
 
 }
