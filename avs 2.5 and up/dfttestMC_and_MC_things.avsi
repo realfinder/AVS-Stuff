@@ -1,5 +1,5 @@
 ####################################################
-# script v2.116
+# script v2.117
 ####################################################
 # Motion-compensated dfttest by twc
 # Aka: Really Really Really Slow
@@ -9,7 +9,7 @@
 # Added: Recalculate, (proper) 16 bit input handling, dither_luma_rebuild and some masking to prevent 16 bit data loss from 8 bit Mdegrain and Mcompensate
 #
 #
-# v3.932 by A.SONY
+# v3.933 by A.SONY
 # make it work in normal avs again and some fix, and not that slow if you use it without lsb/lsb_in
 # add slice bool to use it to avoid artifacts with avstp
 # clean up
@@ -180,10 +180,16 @@ function dfttestMC(clip input, clip "pp", int "mc", bool "mdg", bool "Y", bool "
 	# Perform dfttest. Exception handling required for official dfttest.
 	Eval("""
 	try {
+	lsb || lsb_enable || lsb_in ? nop() : isNotlsb
 		filtered = Eval("dfttest(interleaved16, Y=Y, U=U, V=V, sigma=sigma, sbsize=sbsize, sosize=sosize, tbsize=tbsize, dither=dither, lsb=lsb,lsb_in=lsb_enable || lsb_in, nstring=nstring, sstring=sstring, ssx=ssx, ssy=ssy, sst=sst, threads=threads" + dfttest_params + ")")
 		} catch(err_msg)
 		{
-		filtered = Eval("dfttest(mc16 ? lsbNotWorthIt : interleaved, Y=Y, U=U, V=V, sigma=sigma, sbsize=sbsize, sosize=sosize, tbsize=tbsize, dither=dither, nstring=nstring, sstring=sstring, ssx=ssx, ssy=ssy, sst=sst, threads=threads" + dfttest_params + ")")
+		nfi=defined(nstring) ? FindStr(nstring,"a:") : 0
+		alpha = nfi !=0 ? MidStr(nfi+1).Value : undefined
+		nlocation = defined(alpha) ? sh_StrReplace(nstring,"a:"+string(alpha)+ " ","") : nstring
+		sfi=defined(sstring) ? FindStr(sstring,"$") : 0
+		slocation = sfi != 0 ? sh_StrReplace(sstring,"$" + " ","") : sstring
+		filtered = Eval("sneo_dfttest(mc16 ? lsbNotWorthIt : interleaved, Y=Y ? 3 : 2, U=U ? 3 : 2, V=V ? 3 : 2, sigma=sigma, sbsize=sbsize, sosize=sosize, tbsize=tbsize, dither=dither, nlocation=nlocation, alpha=alpha, slocation=slocation, ssystem=sfi, ssx=ssx, ssy=ssy, sst=sst, threads=threads, fft_threads=threads" + dfttest_params + ")")
 		}
 	""")
 		
