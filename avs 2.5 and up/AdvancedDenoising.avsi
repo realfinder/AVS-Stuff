@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.897
+# Advanced Denoising and anime bob v1.898
 # Collections of Functions
 
 ### Functions list:-
@@ -205,15 +205,16 @@ return GScriptClip("""
 
 
 ##########
-#edge side bleed
+#edge side bleed v 2.2
 #original idea by "colours", this function mod by A.SONY
 ##########
-function edgesidebleed(clip input, float "w32", float "w16", float "w8", float "w4", float "w2", bool "bleed", bool "chroma", int "mode") {
+function edgesidebleed(clip input, float "w32", float "w16", float "w8", float "w4", float "w2", bool "bleed", bool "chroma", int "mode", float "w1") {
 w2     = Default(w2,     0.001)
 w4     = Default(w4,     0.055)
 w8     = Default(w8,     0.015)
 w16    = Default(w16,     0.02)
 w32    = Default(w32,    0.001)
+w1     = Default(w1,      0.00)
 chroma = default(chroma, false)
 mode   = default(mode,       0)
 avs26  = !(VersionNumber() < 2.6)
@@ -243,6 +244,9 @@ w4==0 ? last : mode == 0 ? average(last,1+w4,shift4,-w4) : mode==1 ? lightPreser
 shift2 = w2!=0 ? !bleed ? Crop(Width()-2,0,2,0,true).StackHorizontal(Crop(0,0,-2,0,true)) : nop() : nop()
 shift2 = w2!=0 ? bleed ? BicubicResize (w / 2, h, 1, 0,src_left=-2).BicubicResize (w, h, 1, 0) : shift2 : nop()
 w2==0 ? last : mode == 0 ? average(last,1+w2,shift2,-w2) : mode==1 ? lightPreserve_function(average(last,1+w2,shift2,-w2),last) : DarkPreserve_function(average(last,1+w2,shift2,-w2),last)
+shift1 = w1!=0 ? !bleed ? Crop(Width()-1,0,1,0,true).StackHorizontal(Crop(0,0,-1,0,true)) : nop() : nop()
+shift1 = w1!=0 ? bleed ? BicubicResize (w / 2, h, 1, 0,src_left=-1).BicubicResize (w, h, 1, 0) : shift1 : nop()
+w1==0 ? last : mode == 0 ? average(last,1+w1,shift1,-w1) : mode==1 ? lightPreserve_function(average(last,1+w1,shift1,-w1),last) : DarkPreserve_function(average(last,1+w1,shift1,-w1),last)
 
 !chroma ? sislumaonly ? last : sisphbd ? CombinePlanes(last,input,planes="YUV",sample_clip=input) : ytouv(input.utoy8(),input.vtoy8(),last) : last
 sisyuy2 ? converttoyuy2() : last

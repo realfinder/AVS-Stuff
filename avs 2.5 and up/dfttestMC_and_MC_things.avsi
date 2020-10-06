@@ -1,5 +1,5 @@
 ####################################################
-# script v2.118
+# script v2.119
 ####################################################
 # Motion-compensated dfttest by twc
 # Aka: Really Really Really Slow
@@ -333,10 +333,10 @@ function sMCwarper(clip input, string "filter", int "mc", val "prefilter", bool 
 		selectEvery(last, mc * 2 + 1, mc)
 }
 
-# mcKNLMeansCL v1.48
-function mcKNLMeansCL(clip input, String "device_type", int "device_id", bool "chroma", bool "lsb", bool "lsb_in", float "h", int "d", int "a", String "knlm_params", bool "Y", bool "U", bool "V",
+# mcKNLMeansCL v1.49
+function mcKNLMeansCL(clip input, String "device_type", int "device_id", bool "knlchroma", bool "lsb", bool "lsb_in", float "h", int "d", int "a", String "knlm_params", bool "Y", bool "U", bool "V",
 	\ val "prefilter", bool "TV_range", clip "exmcclip", clip "super", clip "pp_super", int "thSAD", int "thSCD1", int "thSCD2", bool "truemotion", bool "chroma", int "blksize", int "search", int "searchparam", int "overlap", int "dct",
-		\ bool "HD", bool "slices", float "rStr",float "Amp", int "pel", int "super_filter", bool "rprefilter", bool "knlchroma")
+		\ bool "HD", bool "slices", float "rStr",float "Amp", int "pel", int "super_filter", bool "rprefilter")
 {
 		sisphbd = AvsPlusVersionNumber > 2294
 		bomt    = sh_GetUserGlobalIMTbool()
