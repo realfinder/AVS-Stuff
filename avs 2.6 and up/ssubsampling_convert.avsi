@@ -34,3 +34,21 @@ Interleave(bot.UToY8(), bot.VToY8()).BilinearResize(c.width/2, c.height/2, src_t
   YToUV(U, V, f).Weave()
 }
 
+function YV24ToYV12(clip c, bool "bic", bool "desample") {
+Assert(IsYV24(c), "YV24ToYV12: input clip must be YV24")
+  bic    = default(bic, false)
+  desample = default(desample, false)
+  resizer = desample ? bic ? "DeBicubicResizeMT" : "DeBilinearResizeMT" : bic ? "BicubicResize" : "BilinearResize"
+  UV = eval("Interleave(c.UToY8(), c.VToY8())."+resizer+"(c.width/2, c.height/2, src_left=desample ? 0.25 : -0.25)")
+  YToUV(UV.SelectEven(), UV.SelectOdd(), c)
+}
+
+
+function YV12ToYV24(clip c, bool "bic") {
+Assert(Isyv12(c), "YV12ToYV24: input clip must be yv12")
+  bic    = default(bic, false)
+  UV = bic ? Interleave(c.UToY8(), c.VToY8()).BicubicResize(c.width, c.height, src_left=0.25) : \
+Interleave(c.UToY8(), c.VToY8()).BilinearResize(c.width, c.height, src_left=0.25)
+  YToUV(UV.SelectEven(), UV.SelectOdd(), c)
+}
+
