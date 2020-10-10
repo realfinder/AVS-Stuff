@@ -1,8 +1,8 @@
-# v1.1
+# v1.2
 function ssync(clip c, clip ref, float "thr", int "cache", bool "debug")
 {
 c
-thr = default(thr, 2.0)
+thr = default(thr, 10.0)
 cache = default(cache, 10)
 debug = default(debug, false)
 global ssprev = 0
