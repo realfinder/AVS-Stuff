@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.28 2020-10-04 mod
+# v2.28 2020-10-11 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -50,13 +50,14 @@ function AnimeIVTC (clip i, int "mode", int "aa", int "precision", int "killcomb
 		, int "bbob", int "cbob", string "edimode", int "degrain", int "omode", int "cthresh", int "blockx", int "blocky", int "MI", int "tfmm", int "pp", int "metric", int "micmatching", bool "mChroma", bool "Chroma" \
 		, int "i1", int "i2", int "e1", int "e2", int "e3", int "p1", int "p2", bool "dchr", bool "palf", bool "tcfv1", bool "nvfr", bool "real30p", bool "autoAssuf", int "ediandnn", bool "o3025cfr", string "bbob4_params", bool "crepwithtdeint", int "tdeinttype" \
 		, int "overlap", int "pel", int "search", bool "nnedi3pel", val "credconv", bool "mode22", val "ediext", string "bob4p", clip "extbob", string "extbobf", bool "repwithtdeint", bool "bobpresmooth", string "cbob4_params", bool "tdeintsharp", val "prefiltered_i" \
-		, float "dark", int "thin", int "sharp", int "smooth", bool "stabilize", int "tradius", int "aapel", int "aaov", int "aablk", string "aatype", int "vidDetect", string "d2v", string "tfmtrimIn", int "threads"){
+		, float "dark", int "thin", int "sharp", int "smooth", bool "stabilize", int "tradius", int "aapel", int "aaov", int "aablk", string "aatype", int "vidDetect", string "d2v", string "tfmtrimIn", int "threads", float "autoAssufthr1", float "autoAssufthr2", float "autoAssufmthr", int "tfmslow"){
 
 ###General arguments###
 Assert(defined(mode), "Specify a mode... please read the documentation.")
 
 #Highest quality by default
 precision 	= default ( precision, 		  3 ) 
+tfmslow 	= default ( tfmslow, 		  2 ) 
 
 #change pal fps
 palf	= default ( palf,         false )
@@ -79,7 +80,10 @@ creds = defined(e3) ? true : creds
 real30p	 = default( real30p,        false)
 
 # auto set field to match from to help with noisy old telecined source
-autoAssuf= default( autoAssuf,      false)
+autoAssuf = default( autoAssuf,      false)
+autoAssufthr1 = default( autoAssufthr1, 0.5)
+autoAssufthr2 = default( autoAssufthr2, 2.0)
+autoAssufmthr = default( autoAssufmthr, 3.0)
 
 ###Framerate preparation###
 normconv = default( normconv, false)
@@ -251,48 +255,50 @@ tfmtrimIn = defined(tfmtrimIn) ? tfmtrimIn : defined(d2v) && Exist("TrimInFile.t
 
 #field match for hard telecine or blend telecine restoration for mode==1
 
-fm =  (precision==0 && usefm) ? blend ? debprep.srestore(omode="pp0") : i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=0,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\	  (precision==1 && usefm) ? blend ? debprep.srestore(omode="pp1") : i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\	  (precision==2 && usefm) ? blend ? debprep.srestore(omode="pp2") : i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\	  (precision==3 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\	  (precision==4 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\	  (precision==5 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\	  (precision==6 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\	  (precision==7 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\	  (precision==8 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\	  (precision==9 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+fm =  (precision==0 && usefm) ? blend ? debprep.srestore(omode="pp0") : i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=0,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\	  (precision==1 && usefm) ? blend ? debprep.srestore(omode="pp1") : i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\	  (precision==2 && usefm) ? blend ? debprep.srestore(omode="pp2") : i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\	  (precision==3 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\	  (precision==4 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\	  (precision==5 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\	  (precision==6 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\	  (precision==7 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\	  (precision==8 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\	  (precision==9 && usefm) ? blend ? debprep.srestore(omode="pp3") : i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI,metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
 \	  nop()
 fm =  usefm ? ifade ? fm.smartfademod(sfthr, sfshow, cache) : fm : nop()
 
 #Field match + tfm.txt output for VFR clips (mode=4, pass=1)
 
-hybridfm = (usehfm && precision==0) ? i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=0,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\		   (usehfm && precision==1) ? i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\		   (usehfm && precision==2) ? i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\		   (usehfm && precision==3) ? i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\		   (usehfm && precision==4) ? i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\		   (usehfm && precision==5) ? i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\		   (usehfm && precision==6) ? i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\		   (usehfm && precision==7) ? i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\		   (usehfm && precision==8) ? i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
-\		   (usehfm && precision==9) ? i.tfm(slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+hybridfm = (usehfm && precision==0) ? i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=0,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\		   (usehfm && precision==1) ? i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\		   (usehfm && precision==2) ? i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\		   (usehfm && precision==3) ? i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\		   (usehfm && precision==4) ? i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\		   (usehfm && precision==5) ? i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\		   (usehfm && precision==6) ? i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\		   (usehfm && precision==7) ? i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\		   (usehfm && precision==8) ? i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
+\		   (usehfm && precision==9) ? i.tfm(slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=MI, output="tfm.txt",metric=metric,micmatching=micmatching,pp=pp,clip2=tfmcli2,mChroma=mChroma,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn) : 
 \		    nop()
 
 usefm && autoAssuf ? eval("""
 global aivtcfm = fm
+global aivtcaAthr1 = autoAssufthr1
+global aivtcaAthr2 = autoAssufthr2
 sourford = i.getparity() ? 1 : 0
-global iyadifmc = eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=3, edeint=edeint.yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2)
+iyadifmc = eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=3, edeint=edeint.yadifmodclipin(nonyuy2))").yadifmodclipout(nonyuy2)
 
-global invfm = i.Tfm(field=sourford==1 ? 0 : 1,slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=defined(MI) ? Int(MI*5/4) : undefined,metric=metric,pp=precision==0 ? 0 : pp,clip2=tfmcli2,micmatching=0, mchroma=false,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn)
-fminv2       = ScriptClip(Interleave(aivtcfm,aivtcfm), "
-						invfv=Interleave(iyadifmc.DeleteFrame(0).SelectEven(),invfm).crop(16,16,-16,-16).cFrameDiff(prevf=true, chroma=false, denoise=true, nt=1)
-						fv   =Interleave(iyadifmc.SelectEven(),             aivtcfm).crop(16,16,-16,-16).cFrameDiff(prevf=true, chroma=false, denoise=true, nt=1)
-						fv > 0.5 && invfv < 2 ? fv > invfv ? Interleave(invfm,invfm) : last : last
+global invfm = i.Tfm(field=sourford==1 ? 0 : 1,slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=defined(MI) ? Int(MI*5/4) : undefined,metric=metric,pp=precision==0 ? 0 : pp,clip2=tfmcli2,micmatching=0, mchroma=false,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn)
+fminv2       = ScriptClip(iyadifmc, "
+						invfv=Interleave(DeleteFrame(0).SelectEven(),invfm).crop(16,16,-16,-16).cFrameDiff(prevf=true, chroma=false, denoise=true, nt=1)
+						fv   =Interleave(SelectEven(),             aivtcfm).crop(16,16,-16,-16).cFrameDiff(prevf=true, chroma=false, denoise=true, nt=1)
+						fv > aivtcaAthr1 && invfv < aivtcaAthr2 ? fv > invfv ? Interleave(invfm,invfm) : Interleave(aivtcfm,aivtcfm) : Interleave(aivtcfm,aivtcfm)
 						").Selectodd()
-fm           = conditionalfilter(fm.crop(16,16,-16,-16),fminv2,fm,"cFrameDiff(prevf=false, chroma=false, denoise=true, nt=1)","<","3")
+fm           = conditionalfilter(fm.crop(16,16,-16,-16),fminv2,fm,"cFrameDiff(prevf=false, chroma=false, denoise=true, nt=1)","<",string(autoAssufmthr))
 """) : nop()
 
-invhybridfm    = usehfm ? autoAssuf ? conditionalfilter(hybridfm.crop(16,16,-16,-16),i.Tfm(field=sourford==1 ? 0 : 1,slow=2,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=defined(MI) ? Int(MI*5/4) : undefined,metric=metric,pp=precision==0 ? 0 : pp,clip2=tfmcli2,micmatching=0, mchroma=false,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn),hybridfm,"IsCombedTIVTC(15,13,false,8,4,1)","=","true") : hybridfm : nop()
+invhybridfm    = usehfm ? autoAssuf ? conditionalfilter(hybridfm.crop(16,16,-16,-16),i.Tfm(field=sourford==1 ? 0 : 1,slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=defined(MI) ? Int(MI*5/4) : undefined,metric=metric,pp=precision==0 ? 0 : pp,clip2=tfmcli2,micmatching=0, mchroma=false,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn),hybridfm,"IsCombedTIVTC(15,13,false,8,4,1)","=","true") : hybridfm : nop()
 hybridfm       = usehfm ? autoAssuf ? conditionalfilter(blankclip(hybridfm,length=1).crop(16,16,-16,-16)+invhybridfm.crop(16,16,-16,-16),hybridfm,invhybridfm,"IsCombedTIVTC(10,7,false,4,4,0)","=","true") : hybridfm : nop()
 
 hybridfm = usehfm ? ifade ? hybridfm.smartfademod(sfthr, sfshow, cache) : hybridfm : nop()
@@ -587,7 +593,7 @@ return omode==2 && pass==1 ? finalvfr : aaed
 
 # Abridgement trims
 function abtrim(string "trimline") {
-Assert(defined(trimline), "'intrim' trimline is needed")
+Assert(defined(trimline), "'abtrim' trimline is needed")
 function abtrimloop(string "trimline", int "remainder") {
 remainder = default(remainder, -1)
 otrimline = trimline
@@ -625,7 +631,6 @@ Assert(defined(trimline), "'intrim' trimline is needed")
 i
 lastframe = framecount() - 1
 TrimFile=defined(output) ? output : "TrimInFile.TXT"
-Exist(TrimFile) ? RT_FileDelete(TrimFile) : nop()
 function intrimloop(clip i, string "trimline", string "output", int "lastframe", bool "firstcall") {
 firstcall = default(firstcall, false)
 ofindtrim = FindStr(trimline, "trim")
@@ -650,7 +655,7 @@ istrim = !sishtrim ? nop() : !sishtrim ? nop() : strim !=0 && firstcall ? 0 : et
 ietrim = !sishtrim ? nop() : !sishtrim ? nop() : firstcall && istrim == 0 ? strim-1 : sishntrim ? sntrim - 1 : lastframe
 writeline = sishtrim ? etrim < lastframe : false
 writeline ? RT_WriteFile(output, \
-                 "%d,%d\n", istrim, ietrim, append=true) : nop()
+                 "%d,%d\n", istrim, ietrim, append=!firstcall) : nop()
 sishtrim ? intrimloop(i, firstcall && istrim == 0 ? trimline : rightStr(trimline,StrLen(trimline)-trimend), output, lastframe) : i
 }
 intrimloop(abtrim(trimline), TrimFile, lastframe, true)
