@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.28 2020-10-11 mod
+# v2.29 2020-10-12 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -663,6 +663,21 @@ eval(trimline)
 }
 
 
+# ghetto IVTC by Katie Boundary
+# maybe it need some modification in the future
+# v1.0, mod 0.0
+
+function KIVTC(clip i) {
+i
+separatefields()
+
+A=selecteven().tdecimate(mode=1)
+B=selectodd().tdecimate(mode=1)
+
+interleave(A,B).weave()
+}
+
+
 ##############
 # sanimebob by A.SONY
 # 1.72
@@ -725,4 +740,3 @@ daa3mclip = usedaa3mod ? QTGMCclip.daa3mod(dslow,threads=threads) : QTGMCclip
 !usesmam ? daa3mclip : \
            useBWDIF ? yadifclip.Vinverse_avsi(custem=yadifclip.smam(filter=daa3mclip,repblend=repblend)) : yadifclip.smam(filter=daa3mclip,repblend=repblend)
 }
-
