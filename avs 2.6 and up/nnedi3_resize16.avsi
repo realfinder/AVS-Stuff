@@ -1,5 +1,5 @@
 #################################################################################################
-###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2020.09.09      ######
+###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2020.10.13      ######
 #################################################################################################
 ###### from v2.8 on, nnedi3_resize16 only supports AviSynth v2.6+                          ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, nnedi3 v0.9.4.53,                  ######
@@ -31,10 +31,11 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 \                        int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads",
 \                        float "ratiothr", bool "mixed", float "thr", float "elast", float "sharp",
 \                        string "output", bool "tv_range", string "cplace", string "matrix", string "curve", float "gcor",
-\                        int "Y", int "U", int "V", bool "lsb_in", bool "lsb", int "dither", bool "nlsb", bool "padding")
+\                        int "Y", int "U", int "V", bool "lsb_in", bool "lsb", int "dither", bool "nlsb", bool "padding", bool "FastNnediHBD")
 {
     sisphbd = AvsPlusVersionNumber > 2294
-    sischbd = sisphbd ? input.BitsPerComponent() > 8 : false
+    sbpc    = sisphbd ? input.BitsPerComponent() : 8
+    sischbd = sisphbd ? sbpc > 8 : false
 	sisprgb = input.IsRGB() && input.IsPlanar()
 	sHAlpha = sisphbd ? input.HasAlpha : false
 	AlphaC  = sHAlpha ? input.ExtractA().nnedi3_resize16(target_width, target_height, src_left, src_top,
@@ -122,7 +123,8 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     lsb      = Default(lsb,      False  )   # output clip is 16-bit stacked or not
     tv_range = Default(tv_range, True   )   # input  clip is TV-range or PC-range
     dither   = tv_range ? Default(dither, 6) : Default(dither, 50)    # dither mode for 16-bit to 8-bit conversion
-    nlsb     = Default(nlsb,     false)   # avs+ HBD mixed with lsb
+    nlsb     = Default(nlsb,     false  )   # avs+ HBD mixed with lsb
+	FastNned = Default(FastNnediHBD, false)
     
     sCSP     = input.sh_GetCSP()
     fullchr  = sisprgb ? true : sisphbd ? input.is444() : sCSP=="YV24"
@@ -131,6 +133,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     nochr    = sisphbd ?   input.isy() : sCSP=="Y8"
     Assert(sisprgb || nochr || chr420 || chr422 || fullchr, """nnedi3_resize16: only accept Y8, YV12, YV16, YV24, YUVA, Planar RGB(A), or HBD input""")
     Assert(!((nlsb || lsb || lsb_in) && (sischbd || sisprgb)), """nnedi3_resize16: you can't use lsb hacks with HBD input or RGB""")
+    Assert(!((nlsb || lsb || lsb_in) && (FastNned)), """nnedi3_resize16: you can't use lsb with FastNnediHBD""")
     
     output   = Default(output,   sCSP   )
     # Output format. Possible values are:
@@ -380,7 +383,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     \                                                        wpre?prew:sw, hpre?preh:sh, kernel="point")
     \                                : input.PointResize(wpre?prew:sw, hpre?preh:sh, wpre?prel:0, hpre?pret:0, wpre?prew:sw, hpre?preh:sh)
     \                       : input
-    input8   = lsb_in ? input.nnedi3_resize16_Down8(tv_range, Yt, Ut, Vt, mixed ? -1 : dither) : input
+    input8   = lsb_in ? input.nnedi3_resize16_Down8(tv_range, Yt, Ut, Vt, mixed ? -1 : dither) : FastNned && sischbd ? input.convertbits(8,dither=1) : input
     input16  = lsb_in || sischbd || sisprgb ? input : input.nnedi3_resize16_U16(tv_range, True, True, True)
     
     ###############################################################################################################################
@@ -392,8 +395,10 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     Eval("""
         edgenn  = nnedi3_resize16_rpow2(nlsb ? input16 : input8, yvct, yhct, 1, 1, Yt, Ut, Vt, nsize, nns, qual, etype, pscrn, threads, nlsb = nlsb, pad=pad)
     	edgennY = sharp>0 ? nlsb ? edgenn.CSmod16(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp)
-    	\                        : sischbd ? edgenn.CSmod(chroma=false, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1) : edgenn.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).nnedi3_resize16_U16(tv_range, Yt, Ut, Vt)
-    	\                 : nlsb || sischbd ? edgenn : edgenn.nnedi3_resize16_U16(tv_range, Yt, Ut, Vt)
+    	\                        : sischbd ? FastNned ? edgenn.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).convertbits(sbpc)
+		\                                             : edgenn.CSmod(chroma=false, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
+		\                                                        : edgenn.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).nnedi3_resize16_U16(tv_range, Yt, Ut, Vt)
+    	\                 : nlsb || sischbd ? FastNned ? edgenn.convertbits(sbpc) : edgenn : edgenn.nnedi3_resize16_U16(tv_range, Yt, Ut, Vt)
     	edgennU = sisphbd ? edgennY.ExtractU() : edgennY.UToY8()
     	edgennV = sisphbd ? edgennY.ExtractV() : edgennY.VToY8()
     	edgennY = sisphbd ? edgennY.ConvertToY() : edgennY.ConvertToY8()
@@ -406,7 +411,10 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
         \                                   : nlsb ? input16.ConvertToY ().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
         \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = true, pad=pad)
         \                                 .CSmod16(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp)
-        \                                   : sischbd ? input8.""" + syext + """().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                   : sischbd && FastNned ? input8.""" + syext + """().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false, pad=pad)
+        \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).convertbits(sbpc)
+		\                         		    : sischbd ? input8.""" + syext + """().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
         \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false, pad=pad)
         \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
 		\                         		    : input8.""" + syext + """().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
@@ -415,7 +423,9 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     	\                                 .nnedi3_resize16_U16(tv_range, Yt, False, False)
         \                         : sisprgb ? input16.nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, Ut, Vt,
         \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false, pad=pad)
-        \                                   : nlsb || sischbd ? input16.ConvertToY ().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                   : nlsb || sischbd ? FastNned ? input16.ConvertToY ().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = !sischbd, pad=pad).convertbits(sbpc)
+        \                                : input16.ConvertToY ().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
         \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = !sischbd, pad=pad)
         \                                : input8.""" + syext + """().nnedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
         \                                                                        nsize, nns, qual, etype, pscrn, threads, nlsb = false, pad=pad)
@@ -424,12 +434,12 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     	\               : nnedi3_resize16_rpow2(nlsb ? input16.ExtractU() : input8.""" + suext + """(), cvct, chct, 1, 1, Ut, False, False,
         \                                                            nsize, nns, qual, etype, pscrn, threads, nlsb = nlsb, pad=pad)
     	edgennU = sisprgb || !Unnt ? NOP()
-    	\               : nlsb || sischbd ? edgennU : edgennU.nnedi3_resize16_U16(tv_range, Ut, False, False)
+    	\               : nlsb || sischbd ? FastNned ? edgennU.convertbits(sbpc) : edgennU : edgennU.nnedi3_resize16_U16(tv_range, Ut, False, False)
     	edgennV = sisprgb || !Vnnt ? NOP()
     	\               : nnedi3_resize16_rpow2(nlsb ? input16.ExtractV() : input8.""" + svext + """(), cvct, chct, 1, 1, Vt, False, False,
         \                                                            nsize, nns, qual, etype, pscrn, threads, nlsb = nlsb, pad=pad)
     	edgennV = sisprgb || !Vnnt ? NOP()
-    	\               : nlsb || sischbd ? edgennV : edgennV.nnedi3_resize16_U16(tv_range, Vt, False, False)
+    	\               : nlsb || sischbd ? FastNned ? edgennV.convertbits(sbpc) : edgennV : edgennV.nnedi3_resize16_U16(tv_range, Vt, False, False)
     """)
     
     ###############################################################################################################################
