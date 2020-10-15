@@ -1,4 +1,4 @@
-# v1.23
+# v1.24
 function ssync(clip c, clip ref, float "thr", bool "debug", bool "nolimit", bool "MoreFrames")
 {
 c
@@ -18,6 +18,12 @@ ssprev = LumaDifference(mshift,ref)
 ssnow = LumaDifference(last,ref)
 ssnext = LumaDifference(pshift,ref)
 ssnext2 = MoreFrames ? LumaDifference(p2shift,ref) : nop()
+
+p2shift=debug && MoreFrames ? p2shift.Subtitle("p2shift",size=40,align=5) : p2shift
+pshift=debug ? pshift.Subtitle("pshift",size=40,align=5) : pshift
+mshift=debug ? mshift.Subtitle("mshift",size=40,align=5) : mshift
+m2shift=debug && MoreFrames ? m2shift.Subtitle("m2shift",size=40,align=5) : m2shift
+debug ? Subtitle("noshift",size=40,align=5) : last
 
 smallest = nolimit ? MoreFrames ? min(ssnext2,ssnext,ssnow,ssprev,ssprev2) : min(ssnext,ssnow,ssprev) : nop()
 
