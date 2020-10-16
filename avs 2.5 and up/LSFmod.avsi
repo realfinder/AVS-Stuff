@@ -8,13 +8,15 @@
 ###                                                                                          ###
 ###                            another Modded Version by A.SONY.                             ###
 ###                                                                                          ###
-###                                 v2.191 - 17 August 2020                                  ###
+###                                v2.192 - 16 October 2020                                  ###
 ###                                                                                          ###
 ################################################################################################
 ###
 ### +-----------+
 ### | CHANGELOG |
 ### +-----------+
+###
+### v2.192 : - added smode=6 (CAS) from vs port
 ###
 ### v2.191 : - optimise lut/expr with some ideas of VS port
 ###
@@ -92,6 +94,7 @@
 ### -> Removegrain  (v1.0pre or up)
 ### -> Warpsharp    (2003.11.03 or up) [for Smode=1]
 ### -> Variableblur (v0.30 or up)      [for Smode=2]
+### -> CAS                             [for Smode=6]
 ### -> if you use avs+ then make sure it's the last one
 ###
 ###
@@ -121,7 +124,7 @@
 ### --------------
 ### Strength of the sharpening
 ###
-### Smode [int: 1,2,3,4,5]
+### Smode [int: 1,2,3,4,5,6]
 ### ----------------------
 ### Sharpen mode:
 ###    =1 : Unsharp masking (from warpsharp)
@@ -129,6 +132,7 @@
 ###    =3 : Range sharpening
 ###    =4 : Nonlinear sharpening (original  version)
 ###    =5 : Nonlinear sharpening (corrected version)
+###    =6 : Contrast Adaptive Sharpening (from CAS)
 ###
 ### Smethod [int: 1,2,3]
 ### --------------------
@@ -150,7 +154,7 @@
 ###
 ### preblur [string: "ON","OFF",...]
 ### --------------------------------
-### Mode to avoid noise sharpening & ringing (only used in Smode=3,4,5)
+### Mode to avoid noise sharpening & ringing (only used in Smode=3,4,5,6)
 ### "ON" is sufficient to prevent ringing, but to prevent noise sharpening you should set your own denoiser
 ###    Usage:   LSFmod(preblur="YourFavoriteDenoiser()")
 ###    Example: LSFmod(preblur="FFT3Dfilter(sigma=4,plane=0)")
@@ -159,7 +163,7 @@
 ### secure [bool]
 ### -------------
 ### Mode to avoid banding & oil painting (or face wax) effect of sharpening
-### (only used in Smode=3,4,5)
+### (only used in Smode=3,4,5,6)
 ###
 ### source [clip]
 ### -------------
@@ -438,44 +442,44 @@ oy = inclip.height
 
 Assert(num         != 3      ? true : false, chr(10) + """Defaults must be "old" or "slow" or "fast" !""" + chr(10))
 
-strength    = default( strength,    Select(num,                100 ,                100 ,                100 ) )
-Smode       = default( Smode,       Select(num,                  3 ,                  5 ,                  3 ) )
-Smethod     = default( Smethod,     Select(num,       Smode==3?2:1 ,                  3 ,                  2 ) )
-kernel      = default( kernel,      Select(num,                 11 ,                 11 ,                 11 ) )
+strength    = default( strength,    Select(num,                              100 ,                100 ,                100 ) )
+Smode       = default( Smode,       Select(num,                                3 ,                  5 ,                  3 ) )
+Smethod     = default( Smethod,     Select(num,                     Smode==3?2:1 ,                  3 ,                  2 ) )
+kernel      = default( kernel,      Select(num,                               11 ,                 11 ,                 11 ) )
 
-preblur     = default( preblur,     Select(num,              "OFF" ,              "OFF" ,              "OFF" ) )
-secure      = default( secure,      Select(num,              false ,               true ,               true ) )
+preblur     = default( preblur,     Select(num,                            "OFF" ,              "OFF" ,              "OFF" ) )
+secure      = default( secure,      Select(num,                            false ,               true ,               true ) )
 
-Szrp        = default( Szrp,        Select(num,                 16 ,                 16 ,                 16 ) )
-Spwr        = default( Spwr,        Select(num,                  2 ,                  4 ,                  4 ) )
-SdmpLo      = default( SdmpLo,      Select(num,        strength/25 ,                  4 ,                  4 ) )
-SdmpHi      = default( SdmpHi,      Select(num,                  0 ,                 48 ,                 48 ) )
+Szrp        = default( Szrp,        Select(num,                               16 ,                 16 ,                 16 ) )
+Spwr        = default( Spwr,        Select(num,                                2 ,                  4 ,                  4 ) )
+SdmpLo      = default( SdmpLo,      Select(num,                      strength/25 ,                  4 ,                  4 ) )
+SdmpHi      = default( SdmpHi,      Select(num,                                0 ,                 48 ,                 48 ) )
 
-Lmode       = default( Lmode,       Select(num,                  1 ,                  4 ,                  1 ) )
-overshoot   = default( overshoot,   Select(num,                  1 ,       strength/100 ,       strength/100 ) )
-undershoot  = default( undershoot,  Select(num,          overshoot ,          overshoot ,          overshoot ) )
-overshoot2  = default( overshoot2,  Select(num,        overshoot*2 ,        overshoot*2 ,        overshoot*2 ) )
-undershoot2 = default( undershoot2, Select(num,         overshoot2 ,         overshoot2 ,         overshoot2 ) )
+Lmode       = default( Lmode,       Select(num,                                1 ,                  4 ,                  1 ) )
+overshoot   = default( overshoot,   Select(num,                                1 ,       strength/100 ,       strength/100 ) )
+undershoot  = default( undershoot,  Select(num,                        overshoot ,          overshoot ,          overshoot ) )
+overshoot2  = default( overshoot2,  Select(num,                      overshoot*2 ,        overshoot*2 ,        overshoot*2 ) )
+undershoot2 = default( undershoot2, Select(num,                       overshoot2 ,         overshoot2 ,         overshoot2 ) )
 
 soft        = default( soft,        Select(num,                  0 ,                 -2 ,                  0 ) )
-soothe      = default( soothe,      Select(num,              false ,               true ,               true ) )
-keep        = default( keep,        Select(num,                 25 ,                 20 ,                 20 ) )
+soothe      = default( soothe,      Select(num,                            false ,               true ,               true ) )
+keep        = default( keep,        Select(num,                               25 ,                 20 ,                 20 ) )
 
-edgemode    = default( edgemode,    Select(num,                  0 ,                  0 ,                  0 ) )
-edgemaskHQ  = default( edgemaskHQ,  Select(num,               true ,               true ,              false ) )
+edgemode    = default( edgemode,    Select(num,                                0 ,                  0 ,                  0 ) )
+edgemaskHQ  = default( edgemaskHQ,  Select(num,                             true ,               true ,              false ) )
 
-ss_x        = default( ss_x,        Select(num, Smode==3?1.50:1.25 ,               1.50 ,               1.25 ) )
-ss_y        = default( ss_y,        Select(num,               ss_x ,               ss_x ,               ss_x ) )
-dest_x      = default( dest_x,      Select(num,                 ox ,                 ox ,                 ox ) )
-dest_y      = default( dest_y,      Select(num,                 oy ,                 oy ,                 oy ) )
+ss_x        = default( ss_x,        Select(num, Smode==6?1.00:Smode==3?1.50:1.25 ,               1.50 ,               1.25 ) )
+ss_y        = default( ss_y,        Select(num,                             ss_x ,               ss_x ,               ss_x ) )
+dest_x      = default( dest_x,      Select(num,                               ox ,                 ox ,                 ox ) )
+dest_y      = default( dest_y,      Select(num,                               oy ,                 oy ,                 oy ) )
 
-show        = default( show,        Select(num,              false ,              false ,              false ) )
-screenW     = default( screenW,     Select(num,               1280 ,               1280 ,               1280 ) )
-screenH     = default( screenH,     Select(num,               1024 ,               1024 ,               1024 ) )
+show        = default( show,        Select(num,                            false ,              false ,              false ) )
+screenW     = default( screenW,     Select(num,                             1280 ,               1280 ,               1280 ) )
+screenH     = default( screenH,     Select(num,                             1024 ,               1024 ,               1024 ) )
 
 Assert(!isRGB(inclip), chr(10) + "LSFmod: not work with an RGB clip !" + chr(10))
 Assert( ( strength >= 0 )                                                ? true : false, chr(10) + "'strength' have not a correct value! [>=0]" + chr(10))
-Assert( ( Smode >= 1 && Smode <= 5 )                                     ? true : false, chr(10) + "'Smode' have not a correct value! [1,2,3,4,5]" + chr(10))
+Assert( ( Smode >= 1 && Smode <= 6 )                                     ? true : false, chr(10) + "'Smode' have not a correct value! [1,2,3,4,5]" + chr(10))
 Assert( ( Smethod >= 1 && Smethod <= 4 )                                 ? true : false, chr(10) + "'Smethod' have not a correct value! [1,2,3,4]" + chr(10))
 Assert( ( kernel == 19 || kernel == 20 || kernel == 11 || kernel == 12 ) ? true : false, chr(10) + "'kernel' have not a correct value! [19,20,11,12]" + chr(10))
 Assert( ( Szrp >= 1 && Szrp <= 255 )                                     ? true : false, chr(10) + "'Szrp' have not a correct value! [1...255]" + chr(10))
@@ -555,12 +559,14 @@ normsharp = Smode==1 ? tmp.unsharpmask(strength=int(str*100),radius=round(1.0+((
 \                                                   			    +string(SdmpLo)+" + / * x y - x y - abs / * 1 "+string(SdmpHi)+" 0 == 0 x y - abs "+string(SdmpHi)+" / 4 ^ ? + / + ?",U=1,V=1) \
 				 : mt_lutxy(tmp, method, yexpr="x y == x x x y - abs "+string(Szrp)+" scalef / 1 "+string(Spwr)+" / ^ "+string(Szrp) +" scalef * "+string(str)+" * x y - dup * dup "
 \                                                   			    +string(SdmpLo)+" scalef scalef + / * x y - dup abs / * 1 "+string(SdmpHi)+" scalef 0 == 0 x y - abs "+string(SdmpHi)+" scalef / 4 ^ ? + / + ?",use_expr=2,U=1,V=1)
-\         :            !sisavs26 ? mt_lutxy(tmp, method, yexpr="x y == x x x y - abs "+string(Szrp)+" / 1 "+string(Spwr)+" / ^ "+string(Szrp)+" * "+string(str)+" * x y - x y - abs / * x y - 2 ^ "
+\         : Smode==5 ? !sisavs26 ? mt_lutxy(tmp, method, yexpr="x y == x x x y - abs "+string(Szrp)+" / 1 "+string(Spwr)+" / ^ "+string(Szrp)+" * "+string(str)+" * x y - x y - abs / * x y - 2 ^ "
 \                                                   			    +string(Szrp)+" 2 ^ "+string(SdmpLo)+" + * x y - 2 ^ "+string(SdmpLo)+" + "+string(Szrp)+" 2 ^ * / * 1 "
 \                                                   			    +string(SdmpHi)+" 0 == 0 "+string(Szrp)+" "+string(SdmpHi)+" / 4 ^ ? + 1 "+string(SdmpHi)+" 0 == 0 x y - abs "+string(SdmpHi)+" / 4 ^ ? + / * + ?",U=1,V=1) \
 				 : mt_lutxy(tmp, method, yexpr="x y == x x x y - abs "+string(Szrp)+" / 1 "+string(Spwr)+" / ^ "+string(Szrp)+" * "+string(str)+" * x y - dup abs / * x y - dup * "
 \                                                   			    +string(Szrp)+" dup * "+string(SdmpLo)+" + * x y - dup * "+string(SdmpLo)+" + "+string(Szrp)+" dup * * / * 1 "
 \                                                   			    +string(SdmpHi)+" 0 == 0 "+string(Szrp)+" "+string(SdmpHi)+" / 4 ^ ? + 1 "+string(SdmpHi)+" 0 == 0 x y - abs "+string(SdmpHi)+" / 4 ^ ? + / * + ?",U=1,V=1,use_expr=2,scale_inputs="allf")
+\         : preblur!="OFF" && secure ? tmp.mt_makediff(mt_makediff(pre,pre.cas(min(Str, 1)).mt_lutxy(pre,"x y < x 0.51 scaleb + x y > x 0.51 scaleb - x ? ?",use_expr=2,U=1,V=1),U=1,V=1),U=1,V=1)
+\                                    : preblur!="OFF" ? tmp.mt_makediff(mt_makediff(pre,pre.cas(min(Str, 1)),U=1,V=1),U=1,V=1) : secure ? pre.cas(min(Str, 1)).mt_lutxy(pre,"x y < x 0.51 scaleb + x y > x 0.51 scaleb - x ? ?",use_expr=2,U=1,V=1) : pre.cas(min(Str, 1))
 
 
 ### LIMIT

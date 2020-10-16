@@ -1,5 +1,5 @@
 ####################################################
-# script v2.119
+# script v2.120
 ####################################################
 # Motion-compensated dfttest by twc
 # Aka: Really Really Really Slow
@@ -285,7 +285,7 @@ function spp_super(clip input, clip "pp", bool "lsb", bool "lsb_in",bool "pp_lsb
 
 	pelclip = pel>1 && subpixel == 3
 	pclip = pelclip ? pel==4 ? pp.nnedi3_rpow2(rfactor=2,nns=4, threads).nnedi3_rpow2(rfactor=2,nns=4, threads) : pp.nnedi3_rpow2(rfactor=2,nns=4, threads) : undefined
-	pp_super = pp_enabled ? dbomt ? MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter, pelclip=pclip, mt=bomt) : MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter, pelclip=pclip) : dbomt ? MSuper(input8, pel=pel, chroma=chroma) : MSuper(input8, pel=pel, chroma=chroma, mt=bomt)
+	pp_super = pp_enabled ? dbomt ? MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter, pelclip=pclip, mt=bomt) : MSuper(pp, pel=pel, chroma=chroma,rfilter=super_filter, pelclip=pclip) : dbomt ? MSuper(input8, pel=pel, chroma=chroma, mt=bomt) : MSuper(input8, pel=pel, chroma=chroma)
 		
 	return pp_super
 }
@@ -333,10 +333,10 @@ function sMCwarper(clip input, string "filter", int "mc", val "prefilter", bool 
 		selectEvery(last, mc * 2 + 1, mc)
 }
 
-# mcKNLMeansCL v1.49
+# mcKNLMeansCL v1.50
 function mcKNLMeansCL(clip input, String "device_type", int "device_id", bool "knlchroma", bool "lsb", bool "lsb_in", float "h", int "d", int "a", String "knlm_params", bool "Y", bool "U", bool "V",
 	\ val "prefilter", bool "TV_range", clip "exmcclip", clip "super", clip "pp_super", int "thSAD", int "thSCD1", int "thSCD2", bool "truemotion", bool "chroma", int "blksize", int "search", int "searchparam", int "overlap", int "dct",
-		\ bool "HD", bool "slices", float "rStr",float "Amp", int "pel", int "super_filter", bool "rprefilter")
+		\ bool "HD", bool "slices", float "rStr",float "Amp", int "pel", int "super_filter", bool "rprefilter", clip "r_super")
 {
 		sisphbd = AvsPlusVersionNumber > 2294
 		bomt    = sh_GetUserGlobalIMTbool()
@@ -353,14 +353,9 @@ function mcKNLMeansCL(clip input, String "device_type", int "device_id", bool "k
 		prefilterisint = prefilterdef ? isint(prefilter) : false
 		prefilterbool = prefilterdef ? isbool(prefilter) ? prefilter : prefilterisint ? prefilter!=0 : true : true
 		prefilter = prefilterisint && prefilterbool ? input.blur(1.53) : prefilter
-		rclip = rprefilter && prefilterdef ? d==0 ? prefilter : prefilter.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD,b1vec,f1vec,b2vec,f2vec,b3vec,f3vec,b4vec,f4vec,b5vec,f5vec) : undefined
-		sbitsn = rprefilter && prefilterdef && sisphbd ? input.BitsPerComponent() : 8
-		rclip = rprefilter && prefilterdef ? sisphbd ? rclip.BitsPerComponent() != sbitsn ? rclip.ConvertBits(sbitsn) : rclip : rclip : rclip
+		exmc = defined(exmcclip)
 		bomts = dbomt ? ", mt=bomt" : ""
-d==0 ? SH_KNLMeansCL(input, device_type, device_id, knlchroma, lsb, lsb_in, h, d, a, knlm_params, rclip) : \
-        eval("""
-     exmc = defined(exmcclip)
-		!exmc ? eval("
+		d!=0 && (!exmc || rprefilter) ? eval("
 		mc = d
 		chroma = default(chroma, true)
 		Y = default(Y, true)
@@ -374,21 +369,25 @@ d==0 ? SH_KNLMeansCL(input, device_type, device_id, knlchroma, lsb, lsb_in, h, d
 		pel = default( pel, HD ? 1 : 2 )
 		prefilterisclip = prefilterdef ? isclip(prefilter) : false
 		sppbool = prefilterisclip ? true : TV_range ? true : false
-		pp_super =  defined(pp_super) ? pp_super : sppbool ? spp_super(input ,prefilterisclip ? prefilter :  input ,HD=HD,slices=slices,rStr=rStr,Amp=Amp,pel=pel,super_filter=super_filter,luma_rebuild=TV_range,y=y,u=u,v=v) : MSuper(pel=pel,rfilter=super_filter)
+		pp_super =  defined(pp_super) ? pp_super : sppbool ? spp_super(input ,prefilterisclip ? prefilter :  input ,HD=HD,slices=slices,rStr=rStr,Amp=Amp,pel=pel,super_filter=super_filter,luma_rebuild=TV_range,y=y,u=u,v=v) : MSuper(prefilterisclip ? prefilter :  input ,pel=pel,rfilter=super_filter" + bomts + ")
 		super = defined(super) ? super : sppbool ? input.MSuper(levels=1,pel=pel,rfilter=0" + bomts + ") : pp_super
+		r_super = rprefilter ? defined(r_super) ? r_super : sppbool ? prefilter.MSuper(levels=1,pel=pel,rfilter=0" + bomts + ") : pp_super : nop()
+		b5vec = mc == 5 ? MAnalyse(pp_super, delta=5, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion" + bomts + ") : undefined
+		b4vec = mc >  3 ? MAnalyse(pp_super, delta=4, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion" + bomts + ") : undefined
+		b3vec = mc >  2 ? MAnalyse(pp_super, delta=3, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion" + bomts + ") : undefined
+		b2vec = mc >  1 ? MAnalyse(pp_super, delta=2, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion" + bomts + ") : undefined
+		b1vec = MAnalyse(pp_super, delta=1, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion" + bomts + ")
+		f1vec = MAnalyse(pp_super, delta=1, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion" + bomts + ")
+		f2vec = mc >  1 ? MAnalyse(pp_super, delta=2, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion" + bomts + ") : undefined
+		f3vec = mc >  2 ? MAnalyse(pp_super, delta=3, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion" + bomts + ") : undefined
+		f4vec = mc >  3 ? MAnalyse(pp_super, delta=4, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion" + bomts + ") : undefined
+		f5vec = mc == 5 ? MAnalyse(pp_super, delta=5, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion" + bomts + ") : undefined
 		            ") : nop()
-
-		b5vec = mc == 5 ? MAnalyse(pp_super, delta=5, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
-		b4vec = mc >  3 ? MAnalyse(pp_super, delta=4, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
-		b3vec = mc >  2 ? MAnalyse(pp_super, delta=3, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
-		b2vec = mc >  1 ? MAnalyse(pp_super, delta=2, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
-		b1vec = MAnalyse(pp_super, delta=1, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """)
-		f1vec = MAnalyse(pp_super, delta=1, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """)
-		f2vec = mc >  1 ? MAnalyse(pp_super, delta=2, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
-		f3vec = mc >  2 ? MAnalyse(pp_super, delta=3, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
-		f4vec = mc >  3 ? MAnalyse(pp_super, delta=4, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
-		f5vec = mc == 5 ? MAnalyse(pp_super, delta=5, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion""" + bomts + """) : undefined
-
+		rclip = rprefilter && prefilterdef ? d==0 ? prefilter : prefilter.sMCclips(pp_super, r_super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD,b1vec,f1vec,b2vec,f2vec,b3vec,f3vec,b4vec,f4vec,b5vec,f5vec) : undefined
+		sbitsn = rprefilter && prefilterdef && sisphbd ? input.BitsPerComponent() : 8
+		rclip = rprefilter && prefilterdef ? sisphbd ? rclip.BitsPerComponent() != sbitsn ? rclip.ConvertBits(sbitsn) : rclip : rclip : rclip
+d==0 ? SH_KNLMeansCL(input, device_type, device_id, knlchroma, lsb, lsb_in, h, d, a, knlm_params, rclip) : \
+        eval("""
 		exmc ? exmcclip : input.sMCclips(pp_super, super,mc,thSAD,thSCD1,thSCD2,truemotion,chroma,blksize,search,searchparam,overlap,dct,HD,b1vec,f1vec,b2vec,f2vec,b3vec,f3vec,b4vec,f4vec,b5vec,f5vec)
 		SH_KNLMeansCL(last, device_type, device_id, knlchroma, lsb, lsb_in, h, d, a, knlm_params, rclip)
 		selectEvery(last, mc * 2 + 1, mc)
