@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.29 2020-10-12 mod
+# v2.29 2020-10-17 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -680,9 +680,9 @@ interleave(A,B).weave()
 
 ##############
 # sanimebob by A.SONY
-# 1.72
+# 1.73
 
-function sanimebob(clip i, val "useqtgmc", val "bobpresmooth", float "Str", float "Amp", bool "TV_range", bool "qtgmc_lsb", bool "usedaa3mod", bool "usesmam", int "tr2", bool "repblend", val "dslow", bool "qtgmc_n16", int "nnrep", bool "nnedi3pad", bool "usetfm", string "tfm_params", bool "useBWDIF", int "NNSize", int "NNeurons", int "EdiQual", int "EdiMaxD") {
+function sanimebob(clip i, val "useqtgmc", val "bobpresmooth", float "Str", float "Amp", bool "TV_range", bool "qtgmc_lsb", bool "usedaa3mod", bool "usesmam", int "tr2", bool "repblend", val "dslow", bool "qtgmc_n16", int "nnrep", bool "nnedi3pad", bool "usetfm", string "tfm_params", bool "useBWDIF", int "NNSize", int "NNeurons", int "EdiQual", int "EdiMaxD", int "tfm_mi") {
 
 sisphbd = AvsPlusVersionNumber > 2294
 qtgmc_lsb = default(qtgmc_lsb, sisphbd ? false : true)
@@ -699,6 +699,7 @@ usedaa3mod   = default (usedaa3mod,                                          use
 usesmam        = default (usesmam,                           (usedaa3mod && useBWDIF) || (  !Stringuseq ? !(useq==0 || useq==1 || useq==8) : false))
 nnrep               = default (nnrep, useBWDIF ? 2 : 0)
 nnedi3pad       = default (nnedi3pad, useBWDIF)
+tfm_mi = default (tfm_mi, useBWDIF ? 40 : undefined)
 usetfm       = default (usetfm, useBWDIF)
 tfm_params = default(tfm_params, "")
 NNeurons = default(NNeurons, usesmam && useBWDIF ? 1 : undefined)
@@ -723,7 +724,7 @@ pei       = nnrep > 0 ? nnrep > 1 ? pei.nonyuy2clipin(nonyuy2).slimit_dif(pni.no
 istff     = GetParity(i)
 
 ymodclip  = useBWDIF ? pyi.nonyuy2clipin(nonyuy2).BWDIF(-2, edeint=pei.nonyuy2clipin(nonyuy2)).crop(0,4,-0,-4) : !sisavs26 ? pyi.yadifmod(mode=3, edeint=pei).crop(0,4,-0,-4) : pyi.nonyuy2clipin(nonyuy2).yadifmod2(mode=3, edeint=pei.nonyuy2clipin(nonyuy2)).crop(0,4,-0,-4)
-ymodclip  = usetfm ? eval("Interleave(i.TFM(field=istff ? 1 : 0, micmatching=0, mode=0, clip2=ymodclip.selecteven()" + tfm_params + "), i.TFM(field=istff ? 0 : 1, micmatching=0, mode=0, clip2=ymodclip.selectodd()" + tfm_params + "))") : ymodclip
+ymodclip  = usetfm ? eval("Interleave(i.TFM(field=istff ? 1 : 0, micmatching=0, mode=0, clip2=ymodclip.selecteven(), mi=tfm_mi" + tfm_params + "), i.TFM(field=istff ? 0 : 1, micmatching=0, mode=0, clip2=ymodclip.selectodd(), mi=tfm_mi" + tfm_params + "))") : ymodclip
 yadifclip = sisyuy2 && !sisavs26 ? ymodclip.Interleaved2Planar().Repair(i.TDeint(1,emask=iforbob.tmm2_ortmm1(1)).Interleaved2Planar(),Planar=true).Planar2Interleaved() : \
                                                   ymodclip.Repair(i.TDeint(1,emask=iforbob.tmm2_ortmm1(1)).nonyuy2clipin(nonyuy2)).nonyuy2clipout(nonyuy2)
 
