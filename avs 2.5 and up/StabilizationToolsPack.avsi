@@ -1,7 +1,7 @@
 ###                                                      #
 ###                                                      #
 ### Stabilization Tools Pack 2.1 by Dogway (18-09-2020)  #
-###                 mod 2.531 by A.SONY in (18-09-2020)  #
+###                 mod 2.532 by A.SONY in (20-10-2020)  #
 ###                                                      #
 ##########################################################
 ###
@@ -222,7 +222,7 @@ x2inp=cropnpad && subsampl ? int(round(x2o/2.0)*2) : x2
 y1inp=cropnpad && subsampl ? int(round(y1o/2.0)*2) : y1
 y2inp=cropnpad && subsampl ? int(round(y2o/2.0)*2) : y2
 
-PaCl = mskonly ? nop() : mirror && !ter ? c.crop(x1inp,y1inp,-x2inp,-y2inp,align=true).Padding(x1inp,y1inp,x2inp,y2inp) : c
+PaCl = mskonly ? nop() : mirror && !ter ? c.crop(x1inp,y1inp,-x2inp,-y2inp,align=true).sh_Padding(x1inp,y1inp,x2inp,y2inp) : c
 
 msk  = LetterBox(BlankClip(last, Color_yuv=$000000),y1,y2,x1,x2,$ffffff)
 msk  = !mirror ? msk.mt_lut("x 128 > 255 x ?") : msk
