@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.29 2020-10-19 mod
+# v2.29 2020-10-20 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -675,6 +675,31 @@ A=selecteven().tdecimate(mode=1)
 B=selectodd().tdecimate(mode=1)
 
 interleave(A,B).weave()
+}
+
+
+##############
+# detearing
+
+function detearing(clip c)
+{
+c
+swapped = StackVertical(Crop(0,0,0,-Height()/2, align=true),DuplicateFrame(0).Crop(0,Height()/2,0,0, align=true))
+cmetric = Crop(0, (Height()/2)-2, 0, (Height()/2)+2, align=true)
+smetric = swapped.Crop(0, (Height()/2)-2, 0, (Height()/2)+2, align=true)
+
+gscriptclip(last,"""
+sisphbd = AvsPlusVersionNumber > 2294
+sischbd = sisphbd ? BitsPerComponent() > 8 : false
+vsc = sischbd ? BitsPerComponent() == 10 ? 4 : BitsPerComponent() == 12 ? 8 : BitsPerComponent() == 14 ? 64 : 256 : nop()
+diff=LumaDifference(smetric, cmetric)
+botc=last.Crop(0,Height()/2,0,0, align=true)
+cdiff=mt_average(swapped.Crop(0,Height()/2,0,0, align=true),botc)
+cdiff=LumaDifference(cdiff, botc)
+smetric=YPlaneMax(smetric.mt_convolution(horizontal="-1 2 -1",vertical="-1 2 -1"))
+cmetric=YPlaneMax(cmetric.mt_convolution(horizontal="-1 2 -1",vertical="-1 2 -1"))
+smetric > cmetric || diff > (sischbd ? isvideofloat() ? 0.6/255 : 0.6*vsc : 0.6) ? last : cdiff < (sischbd ? isvideofloat() ? 1.0/255 : 1.0*vsc : 1) ? swapped : last
+""", args="cmetric,smetric,swapped")
 }
 
 
