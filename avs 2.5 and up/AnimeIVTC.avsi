@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.29 2020-10-17 mod
+# v2.29 2020-10-19 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -680,7 +680,7 @@ interleave(A,B).weave()
 
 ##############
 # sanimebob by A.SONY
-# 1.73
+# 1.74
 
 function sanimebob(clip i, val "useqtgmc", val "bobpresmooth", float "Str", float "Amp", bool "TV_range", bool "qtgmc_lsb", bool "usedaa3mod", bool "usesmam", int "tr2", bool "repblend", val "dslow", bool "qtgmc_n16", int "nnrep", bool "nnedi3pad", bool "usetfm", string "tfm_params", bool "useBWDIF", int "NNSize", int "NNeurons", int "EdiQual", int "EdiMaxD", int "tfm_mi") {
 
@@ -700,7 +700,7 @@ usesmam        = default (usesmam,                           (usedaa3mod && useB
 nnrep               = default (nnrep, useBWDIF ? 2 : 0)
 nnedi3pad       = default (nnedi3pad, useBWDIF)
 tfm_mi = default (tfm_mi, useBWDIF ? 40 : undefined)
-usetfm       = default (usetfm, useBWDIF)
+usetfm       = default (usetfm, false)
 tfm_params = default(tfm_params, "")
 NNeurons = default(NNeurons, usesmam && useBWDIF ? 1 : undefined)
 NNSize = default(NNSize, usesmam && useBWDIF ? 1 : undefined)
