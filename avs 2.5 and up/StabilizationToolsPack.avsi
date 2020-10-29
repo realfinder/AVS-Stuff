@@ -1,7 +1,7 @@
 ###                                                      #
 ###                                                      #
 ### Stabilization Tools Pack 2.1 by Dogway (18-09-2020)  #
-###                 mod 2.531 by A.SONY in (18-09-2020)  #
+###                 mod 2.533 by A.SONY in (21-10-2020)  #
 ###                                                      #
 ##########################################################
 ###
@@ -222,10 +222,11 @@ x2inp=cropnpad && subsampl ? int(round(x2o/2.0)*2) : x2
 y1inp=cropnpad && subsampl ? int(round(y1o/2.0)*2) : y1
 y2inp=cropnpad && subsampl ? int(round(y2o/2.0)*2) : y2
 
-PaCl = mskonly ? nop() : mirror && !ter ? c.crop(x1inp,y1inp,-x2inp,-y2inp,align=true).Padding(x1inp,y1inp,x2inp,y2inp) : c
+PaCl = mskonly ? nop() : mirror && !ter ? c.crop(x1inp,y1inp,-x2inp,-y2inp,align=true).sh_Padding(x1inp,y1inp,x2inp,y2inp) : c
 
-msk  = LetterBox(BlankClip(last, Color_yuv=$000000),y1,y2,x1,x2,$ffffff)
-msk  = !mirror ? msk.mt_lut("x 128 > 255 x ?") : msk
+sispLBox = AvsPlusVersionNumber > 3042
+msk  = sispLBox ? LetterBox(BlankClip(last, Color_yuv=$000000),y1,y2,x1,x2, Color_yuv=$ffffff) : LetterBox(BlankClip(last, Color_yuv=$000000),y1,y2,x1,x2,$ffffff)
+msk  = sispLBox ? msk : !mirror ? msk.mt_lut("x 128 > 255 x ?") : msk
 msk  = !mirror && blur ? msk.mt_convolution("1 1 1 1 1", "1 1 1 1 1") : msk
 msk  = contoy ? sisphbd ? CombinePlanes(msk,c,planes="YUV",sample_clip=c) : YToUV(c.UToY8(),c.VToY8(),msk) : msk
 
@@ -469,7 +470,7 @@ crop(width-cropx,0,0,0).conditionalfilter(last,clp,ratiox,">","0")""") : last
 subsampl = b3fix ? AvsPlusVersionNumber > 2294 ? !(clp.is444() || clp.isy()) : VersionNumber() < 2.60 ? clp.isyv12() : !(clp.isyv24() || clp.isy8()) : nop()
 
 bfixc = bfix > 0 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, maskonly=bfix > 1) : last
-bfix > 1 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, FillBordersc=u_ExIn ? mt_merge(stabclip,clp,bfixc,luma=true).ExInpaint(bfixc) : mt_merge(stabclip,clp,bfixc,luma=true).InpaintLogo(bfixc)) : bfixc
+bfix > 1 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, FillBordersc=u_ExIn ? mt_merge(stabclip,clp,bfixc,luma=true).ExInpaint(bfixc.mt_lut(u=-255,v=-255)) : mt_merge(stabclip,clp,bfixc,luma=true).InpaintLogo(bfixc)) : bfixc
 
 UVfix ? eval("""
 lumaf=last

@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.29 2020-10-12 mod
+# v2.31 2020-10-22 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -38,6 +38,7 @@
 # added mode 7 same as 5 but use better but slower nnrep method to ediandnn, mode 8 too, but it's like 6, and now you can use negative value for use nnedi3 with Padding to avoids edges distortion on top and bottom
 # add d2v and tfmtrimIn
 # simiauto using tfmtrimIn (autoload TrimInFile.txt)
+# change mode22 from bool to int from -1 to 3, 0 now same as false, 1 now same as true
 
 # Read the documentation for all the required info to know how to use this function, With note that there are some things have changed in this MOD
 
@@ -49,7 +50,7 @@ function AnimeIVTC (clip i, int "mode", int "aa", int "precision", int "killcomb
 		, int "pass", bool "rendering" \
 		, int "bbob", int "cbob", string "edimode", int "degrain", int "omode", int "cthresh", int "blockx", int "blocky", int "MI", int "tfmm", int "pp", int "metric", int "micmatching", bool "mChroma", bool "Chroma" \
 		, int "i1", int "i2", int "e1", int "e2", int "e3", int "p1", int "p2", bool "dchr", bool "palf", bool "tcfv1", bool "nvfr", bool "real30p", bool "autoAssuf", int "ediandnn", bool "o3025cfr", string "bbob4_params", bool "crepwithtdeint", int "tdeinttype" \
-		, int "overlap", int "pel", int "search", bool "nnedi3pel", val "credconv", bool "mode22", val "ediext", string "bob4p", clip "extbob", string "extbobf", bool "repwithtdeint", bool "bobpresmooth", string "cbob4_params", bool "tdeintsharp", val "prefiltered_i" \
+		, int "overlap", int "pel", int "search", bool "nnedi3pel", val "credconv", int "mode22", val "ediext", string "bob4p", clip "extbob", string "extbobf", bool "repwithtdeint", bool "bobpresmooth", string "cbob4_params", bool "tdeintsharp", val "prefiltered_i" \
 		, float "dark", int "thin", int "sharp", int "smooth", bool "stabilize", int "tradius", int "aapel", int "aaov", int "aablk", string "aatype", int "vidDetect", string "d2v", string "tfmtrimIn", int "threads", float "autoAssufthr1", float "autoAssufthr2", float "autoAssufmthr", int "tfmslow"){
 
 ###General arguments###
@@ -155,7 +156,7 @@ dchr	= default ( dchr,       false )
 chr_rep_thr = chrfix_f ? chrfix : 0.125
 
 #mode22 for Spatial field-blend
-mode22	= default ( mode22,       false )
+mode22	= default ( mode22,       0 )
 
 #Set cache to 10 frames for all functions using scriptclip to prevent seeking issues + frame order mess-up with temporal filters
 cache		= default ( cache,		 10 )
@@ -321,8 +322,11 @@ dhtbob = mode==3 ? chrfix_b ? debprep : clearbob : nop()
 fmdecim = mode==1 ? chrfix_b ? (palf && Ofrate==2) ? debprep.tdecimate(1,13,25) : (o3025cfr) ? debprep.tdecimate(1,3,6) : debprep.tdecimate(1,3,5) : (palf && Ofrate==2) ? fm.tdecimate(1,1,25) : (o3025cfr) ? fm : (autoAssuf) ? fm.tdecimate(1) : fm.tdecimate() : nop()
 
 #Field blended blend removal & decimation (mode=2) No need to check for chrfix since it was done in the previous step
-fbdecim = mode==2 ? mode22 ? chrfix_b ? fbbob.srestore(omode=2, mode=4, thresh=44, cache=cache*3/2, dclip=fbbob.crop(16,16,-16,-16)).srestore(frate=frate, mode=4, speed=-4, cache=cache) : 	fbbob.srestore(omode=2, mode=4, thresh=44, cache=cache*3/2, dclip=fbbob.crop(16,16,-16,-16)).srestore(frate=frate, mode=-4, speed=-4, cache=cache) 	:
-\chrfix_b ? fbbob.srestore(frate=frate, cache=cache) : 	fbbob.srestore(frate=frate, cache=cache, dclip=i.bob(-0.2,0.6).nonyuy2clipin(nonyuy2).reduceflicker(strength=1).nonyuy2clipout(nonyuy2)) 	: nop()
+fbdecim = mode==2 ? mode22 > 2 ? chrfix_b ? Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob.detearing()).srestore(omode=1, thresh=44).RequestLinear().SelectOdd().srestore(omode=2, mode=4, thresh=44, cache=cache*3/2).srestore(frate=frate, mode=4, speed=-4, cache=cache) : 	Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob.detearing()).srestore(omode=1, thresh=44).RequestLinear().SelectOdd().srestore(omode=2, mode=4, thresh=44, cache=cache*3/2).srestore(frate=frate, mode=-4, speed=-4, cache=cache) 	:
+\                   mode22 > 1 ? chrfix_b ? Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob).srestore(omode=1, thresh=44).RequestLinear().SelectOdd().srestore(omode=2, mode=4, thresh=44, cache=cache*3/2).srestore(frate=frate, mode=4, speed=-4, cache=cache) : 	Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob).srestore(omode=1, thresh=44).RequestLinear().SelectOdd().srestore(omode=2, mode=4, thresh=44, cache=cache*3/2).srestore(frate=frate, mode=-4, speed=-4, cache=cache) 	:
+\                   mode22 > 0 ? chrfix_b ? fbbob.srestore(omode=2, mode=4, thresh=44, cache=cache*3/2, dclip=fbbob.crop(16,16,-16,-16)).srestore(frate=frate, mode=4, speed=-4, cache=cache) : 	fbbob.srestore(omode=2, mode=4, thresh=44, cache=cache*3/2, dclip=fbbob.crop(16,16,-16,-16)).srestore(frate=frate, mode=-4, speed=-4, cache=cache) 	:
+\                   mode22 < 0 ? chrfix_b ? Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob).srestore(frate=frate*2, mode=4, speed=-4).RequestLinear().srestore(frate=frate, mode=4, speed=-4, cache=cache) : 	Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob).srestore(frate=frate*2, mode=-4, speed=-4).RequestLinear().srestore(frate=frate, mode=-4, speed=-4, cache=cache) 	:
+\                                chrfix_b ? fbbob.srestore(frate=frate, cache=cache) : 	fbbob.srestore(frate=frate, cache=cache, dclip=i.bob(-0.2,0.6).nonyuy2clipin(nonyuy2).reduceflicker(strength=1).nonyuy2clipout(nonyuy2)) 	: nop()
 
 #Pattern finding and decimation for double hard telecine (mode=3) No need to check for chrfix since it was done in the previous step
 a= mode==3 && (pattern==1 || pattern==-1) ? palf && Ofrate==2 ? dhtbob.selectevery(4,0,2).tdecimate(1,1,25) : o3025cfr ? dhtbob.selectevery(4,0,2) : dhtbob.selectevery(5,0,3) : NOP()
@@ -679,10 +683,35 @@ interleave(A,B).weave()
 
 
 ##############
-# sanimebob by A.SONY
-# 1.72
+# detearing
 
-function sanimebob(clip i, val "useqtgmc", val "bobpresmooth", float "Str", float "Amp", bool "TV_range", bool "qtgmc_lsb", bool "usedaa3mod", bool "usesmam", int "tr2", bool "repblend", val "dslow", bool "qtgmc_n16", int "nnrep", bool "nnedi3pad", bool "usetfm", string "tfm_params", bool "useBWDIF", int "NNSize", int "NNeurons", int "EdiQual", int "EdiMaxD") {
+function detearing(clip c)
+{
+c
+swapped = StackVertical(Crop(0,0,0,-Height()/2, align=true),DuplicateFrame(0).Crop(0,Height()/2,0,0, align=true))
+cmetric = Crop(0, (Height()/2)-2, 0, (Height()/2)+2, align=true)
+smetric = swapped.Crop(0, (Height()/2)-2, 0, (Height()/2)+2, align=true)
+
+gscriptclip(last,"""
+sisphbd = AvsPlusVersionNumber > 2294
+sischbd = sisphbd ? BitsPerComponent() > 8 : false
+vsc = sischbd ? BitsPerComponent() == 10 ? 4 : BitsPerComponent() == 12 ? 8 : BitsPerComponent() == 14 ? 64 : 256 : nop()
+diff=LumaDifference(smetric, cmetric)
+botc=last.Crop(0,Height()/2,0,0, align=true)
+cdiff=mt_average(swapped.Crop(0,Height()/2,0,0, align=true),botc)
+cdiff=LumaDifference(cdiff, botc)
+smetric=YPlaneMax(smetric.mt_convolution(horizontal="-1 2 -1",vertical="-1 2 -1"))
+cmetric=YPlaneMax(cmetric.mt_convolution(horizontal="-1 2 -1",vertical="-1 2 -1"))
+smetric > cmetric || diff > (sischbd ? isvideofloat() ? 0.6/255 : 0.6*vsc : 0.6) ? last : cdiff < (sischbd ? isvideofloat() ? 1.0/255 : 1.0*vsc : 1) ? swapped : last
+""", args="cmetric,smetric,swapped")
+}
+
+
+##############
+# sanimebob by A.SONY
+# 1.74
+
+function sanimebob(clip i, val "useqtgmc", val "bobpresmooth", float "Str", float "Amp", bool "TV_range", bool "qtgmc_lsb", bool "usedaa3mod", bool "usesmam", int "tr2", bool "repblend", val "dslow", bool "qtgmc_n16", int "nnrep", bool "nnedi3pad", bool "usetfm", string "tfm_params", bool "useBWDIF", int "NNSize", int "NNeurons", int "EdiQual", int "EdiMaxD", int "tfm_mi") {
 
 sisphbd = AvsPlusVersionNumber > 2294
 qtgmc_lsb = default(qtgmc_lsb, sisphbd ? false : true)
@@ -699,7 +728,8 @@ usedaa3mod   = default (usedaa3mod,                                          use
 usesmam        = default (usesmam,                           (usedaa3mod && useBWDIF) || (  !Stringuseq ? !(useq==0 || useq==1 || useq==8) : false))
 nnrep               = default (nnrep, useBWDIF ? 2 : 0)
 nnedi3pad       = default (nnedi3pad, useBWDIF)
-usetfm       = default (usetfm, useBWDIF)
+tfm_mi = default (tfm_mi, useBWDIF ? 40 : undefined)
+usetfm       = default (usetfm, false)
 tfm_params = default(tfm_params, "")
 NNeurons = default(NNeurons, usesmam && useBWDIF ? 1 : undefined)
 NNSize = default(NNSize, usesmam && useBWDIF ? 1 : undefined)
@@ -723,7 +753,7 @@ pei       = nnrep > 0 ? nnrep > 1 ? pei.nonyuy2clipin(nonyuy2).slimit_dif(pni.no
 istff     = GetParity(i)
 
 ymodclip  = useBWDIF ? pyi.nonyuy2clipin(nonyuy2).BWDIF(-2, edeint=pei.nonyuy2clipin(nonyuy2)).crop(0,4,-0,-4) : !sisavs26 ? pyi.yadifmod(mode=3, edeint=pei).crop(0,4,-0,-4) : pyi.nonyuy2clipin(nonyuy2).yadifmod2(mode=3, edeint=pei.nonyuy2clipin(nonyuy2)).crop(0,4,-0,-4)
-ymodclip  = usetfm ? eval("Interleave(i.TFM(field=istff ? 1 : 0, micmatching=0, mode=0, clip2=ymodclip.selecteven()" + tfm_params + "), i.TFM(field=istff ? 0 : 1, micmatching=0, mode=0, clip2=ymodclip.selectodd()" + tfm_params + "))") : ymodclip
+ymodclip  = usetfm ? eval("Interleave(i.TFM(field=istff ? 1 : 0, micmatching=0, mode=0, clip2=ymodclip.selecteven(), mi=tfm_mi" + tfm_params + "), i.TFM(field=istff ? 0 : 1, micmatching=0, mode=0, clip2=ymodclip.selectodd(), mi=tfm_mi" + tfm_params + "))") : ymodclip
 yadifclip = sisyuy2 && !sisavs26 ? ymodclip.Interleaved2Planar().Repair(i.TDeint(1,emask=iforbob.tmm2_ortmm1(1)).Interleaved2Planar(),Planar=true).Planar2Interleaved() : \
                                                   ymodclip.Repair(i.TDeint(1,emask=iforbob.tmm2_ortmm1(1)).nonyuy2clipin(nonyuy2)).nonyuy2clipout(nonyuy2)
 

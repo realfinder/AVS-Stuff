@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.140
+# V1.141
 
 ### Functions list:-
 # sh_StrReplace
@@ -73,6 +73,8 @@
 # svsTTempSmoothf
 # svsMSharpen
 # svsTBilateral
+# svsTcanny
+# sTcannyMod
 # sh_GetUserGlobalIMT
 # sh_GetUserGlobalIMTint
 # sh_GetUserGlobalIMTbool
@@ -1576,13 +1578,13 @@ input.TTempSmoothf(maxr=maxr, lthresh=lthresh, cthresh=cthresh, strength=strengt
 }
 
 
-Function svsMSharpen(clip input, float "threshold", float "strength", bool "mask", bool "luma", bool "chroma")
+Function svsMSharpen(clip input, float "threshold", float "strength", bool "highq", bool "mask", bool "luma", bool "chroma")
 {
 threshold=Default(threshold,15)
 strength=Default(strength,100)
 	   try { input.vsMSharpen(threshold=threshold/2.55, strength=strength/2.55, mask=mask, luma=luma, chroma=chroma)
 } catch(error_msg) { 
-input.MSharpen (threshold=round(threshold), strength=round(strength), mask=mask)   }
+input.MSharpen (threshold=round(threshold), strength=round(strength), highq=highq, mask=mask)   }
 }
 
 
@@ -1593,6 +1595,30 @@ Function svsTBilateral(clip input, int "diameterL", int "diameterC", float "sDev
 input.TBilateral(diameterL=diameterL, diameterC=diameterC, sDevL=sDevL, sDevC=sDevC, iDevL=iDevL, iDevC=iDevC, csL=csL, csC=csC, d2=d2, chroma=chroma, ppClip=ppClip, kernS=kernS, kernI=kernI, resType=resType)   }
 }
 
+
+Function svsTcanny(clip clip, float "sigma", float "t_h", float "t_l", int "mode", float "gmmax", int "y", int "u", int "v", int "opt") 
+{
+sigma=Default(sigma,1.5)
+	   try { vsTCanny(clip, sigmaY=sigma, sigmaU=sigma, sigmaV=sigma, sigma_vY=sigma, sigma_vU=sigma, sigma_vV=sigma, t_h=t_h, t_l=t_l, mode=mode, op=0, gmmax=gmmax, y=y, u=u, v=v, opt=opt)
+} catch(error_msg) { 
+sTcannymod(clip, mode=mode, sigma=sigma, t_h=t_h, t_l=t_l, opt=opt, gmmax=gmmax, y=y, u=u, v=v, opt=opt)
+}
+}
+
+
+Function sTcannyMod(clip clip, float "sigma", float "t_h", float "t_l", int "mode", float "gmmax", int "y", int "u", int "v", int "opt") 
+{
+gmmax=Default(gmmax,50)
+y=Default(y,3)
+u=Default(u,3)
+v=Default(v,3)
+chroma = max(u,v) == 3 ? 1 : max(u,v) == 2 ? 2 : 0
+try { TCannyMod(clip, mode=mode, sigma=sigma, t_h=t_h, t_l=t_l, sobel=false, chroma=chroma, gmmax=gmmax, opt=opt)
+} catch(error_msg) { 
+plane = y==3 && u!=3 && v!=3 ? 1 : y!=3 && u==3 && v!=3 ? 2 : y!=3 && u!=3 && v==3 ? 4 : y!=3 && u==3 && v==3 ? 6 : y==3 && u==3 && v!=3 ? 3 : y==3 && u!=3 && v==3 ? 5 : 7
+TCanny(clip, mode=mode, sigma=sigma, t_h=t_h, t_l=t_l, gmmax=gmmax, plane=plane)
+}
+}
 
 function sh_GetUserGlobalIMT(bool "setzero")
 {
