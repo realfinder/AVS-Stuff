@@ -6,6 +6,6 @@ AVS-Stuff
 
 ### To-Do-List
 To-Do-List
-*  use avs+ FunctionExists when using avs+
+*  use avs+ FunctionExists instead of try catch when avs+ is used
 *  add frame properties
 *  more updates
