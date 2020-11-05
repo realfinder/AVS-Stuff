@@ -1,5 +1,5 @@
 # base on ChromaReconstructor and fulltonative by feisty2
-# 1.08
+# 1.09
 
 function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mode", int "device_type", int "device_id", int "fast", float "sDev", float "iDev", float "cs", bool "d2", int "kernS", int "kernI", int "resType", bool "onecall", string "CkJMod")
 {
@@ -22,21 +22,21 @@ function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mo
 	kernI		= default (kernI,        3)
 	restype		= default (restype,      0)
 	onecall     	= default(onecall, false)
-	pad             = CkJMod != "eedi3" && fast > -1 ? sishasalpha ? src.RemoveAlphaPlane().sh_padding (4, 4, 4, 4) : src.sh_padding (4, 4, 4, 4) : src
+	pad             = CkJMod == "none" && fast > -1 ? sishasalpha ? src.RemoveAlphaPlane().sh_padding (4, 4, 4, 4) : src.sh_padding (4, 4, 4, 4) : src
 	srcy            = sisphbd ? ExtractY(pad) : ConvertToY8(pad)
 	pad             = CkJMod == "nnedi3" ? pad.edi_rpow2(cshift="bilinearresize",Y=false) : CkJMod == "eedi3" ? pad.edi_rpow2(edi="eedi3", cshift="bilinearresize",Y=false) : pad
 	srcu            = sisphbd ? ExtractU(pad) : UToY8(pad)
 	srcv            = sisphbd ? ExtractV(pad) : VToY8(pad)
 	u4x             = CkJMod != "none" ? nop() : abs(fast) < 3 && abs(fast) != 1 ? pad.nnedi3_rpow2(2, nns=4, qual=2, etype=1, nsize=0).nnedi3_rpow2(2, nns=4, qual=2, etype=1, nsize=0) : pad
-	luma            = CkJMod != "none" ? nop() : abs(fast) < 3 && abs(fast) != 1 ? sisphbd ? ExtractY(u4x) : ConvertToY8(u4x) : srcy
+	luma            = CkJMod != "none" ? srcy : abs(fast) < 3 && abs(fast) != 1 ? sisphbd ? ExtractY(u4x) : ConvertToY8(u4x) : srcy
 	u               = siscfloat ? expr(CkJMod != "none" ? srcu : ExtractU(u4x), "x 0.5 +") : CkJMod == "none" && abs(fast) < 3 && abs(fast) != 1 ? sisphbd ? ExtractU(u4x) : UToY8(u4x) : srcu
 	v               = siscfloat ? expr(CkJMod != "none" ? srcv : ExtractV(u4x), "x 0.5 +") : CkJMod == "none" && abs(fast) < 3 && abs(fast) != 1 ? sisphbd ? ExtractV(u4x) : VToY8(u4x) : srcv
 	chroma		= onecall ? Interleave(u,v) : nop()
 	luma            = onecall ? Interleave(luma,luma) : luma
 	u               = onecall ? chroma : u
-	unew            = abs(fast) > 1 ? U.svsTBilateral(diameterL=Round(pow(2 * a + 1,2)), sDevL=sDev, iDevL=iDev, csL=cs, d2=d2, chroma=false, ppclip=CkJMod != "none" ? srcy : luma, kernS=kernS, kernI=kernI, resType=resType) : KNLMeansCL (u, d=0, a=a, s=0, h=h, wref=1.0, rclip=CkJMod != "none" ? srcy : luma, device_type=device_type, device_id=device_id)
+	unew            = abs(fast) > 1 ? U.svsTBilateral(diameterL=Round(pow(2 * a + 1,2)), sDevL=sDev, iDevL=iDev, csL=cs, d2=d2, chroma=false, ppclip=luma, kernS=kernS, kernI=kernI, resType=resType) : KNLMeansCL (u, d=0, a=a, s=0, h=h, wref=1.0, rclip=luma, device_type=device_type, device_id=device_id)
 	unew            = CkJMod == "none" && abs(fast) < 3 && abs(fast) != 1 ? sresizexnr (unew, pad.width, pad.height, src_left=-1.5, src_top=-1.5, kernel="spline64") : unew
-	vnew            = !onecall ? abs(fast) > 1 ? V.svsTBilateral(diameterL=Round(pow(2 * a + 1,2)), sDevL=sDev, iDevL=iDev, csL=cs, d2=d2, chroma=false, ppclip=CkJMod != "none" ? srcy : luma, kernS=kernS, kernI=kernI, resType=resType) : KNLMeansCL (v, d=0, a=a, s=0, h=h, wref=1.0, rclip=CkJMod != "none" ? srcy : luma, device_type=device_type, device_id=device_id) : nop()
+	vnew            = !onecall ? abs(fast) > 1 ? V.svsTBilateral(diameterL=Round(pow(2 * a + 1,2)), sDevL=sDev, iDevL=iDev, csL=cs, d2=d2, chroma=false, ppclip=luma, kernS=kernS, kernI=kernI, resType=resType) : KNLMeansCL (v, d=0, a=a, s=0, h=h, wref=1.0, rclip=luma, device_type=device_type, device_id=device_id) : nop()
 	vnew            = !onecall ? CkJMod == "none" && abs(fast) < 3 && abs(fast) != 1 ? sresizexnr (vnew, pad.width, pad.height, src_left=-1.5, src_top=-1.5, kernel="spline64") : vnew : nop()
 	unew            = CkJMod != "none" ? unew.Repair(U, 1) : unew
 	vnew            = !onecall && CkJMod != "none" ? vnew.Repair(U, 1) : vnew
@@ -45,7 +45,7 @@ function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mo
 	ufinal          = !siscfloat ? srcu.mt_AddDiff(uhi) : expr(mt_MakeDiff(expr(srcu, "x 0.5 +"), uhi), "x 0.5 -")
 	vfinal          = !onecall ? !siscfloat ? srcv.mt_AddDiff(vhi) : expr(mt_MakeDiff(expr(srcv, "x 0.5 +"), vhi), "x 0.5 -") : nop()
 	fmerge          = sisphbd ? CombinePlanes(!onecall ? UFinal : UFinal.SelectEven(), !onecall ? VFinal : UFinal.SelectOdd(),srcy,planes="UVY") : YToUV(!onecall ? UFinal : UFinal.SelectEven(), !onecall ? VFinal : UFinal.SelectOdd(), srcy)
-	fclip           = CkJMod != "eedi3" && fast > -1 ? Crop (fmerge, 4, 4, -4, -4) : fmerge
+	fclip           = CkJMod == "none" && fast > -1 ? Crop (fmerge, 4, 4, -4, -4) : fmerge
 	fclip           = sishasalpha ? fclip.AddAlphaPlane(src.ExtractA) : fclip
 	return fclip
 	}
