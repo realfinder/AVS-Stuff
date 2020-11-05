@@ -1,5 +1,5 @@
 # base on ChromaReconstructor and fulltonative by feisty2
-# 1.09
+# 1.10
 
 function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mode", int "device_type", int "device_id", int "fast", float "sDev", float "iDev", float "cs", bool "d2", int "kernS", int "kernI", int "resType", bool "onecall", string "CkJMod")
 {
@@ -7,8 +7,9 @@ function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mo
 	sishasalpha	= sisphbd ? src.hasalpha : false
 	fullchr		= sisphbd ? src.is444() : src.isyv24()
 	halfchr		= sisphbd ? src.is420() : src.isyv12()
+	sis411      = src.isyv411()
 	CkJMod     	= default(CkJMod, "none").LCase()
-	CkJMod != "none" ? Assert(halfchr, "scaled444tonative: CkJMod need 420 input") : Assert(fullchr, "scaled444tonative: need 444 input")
+	CkJMod != "none" ? Assert(!fullchr, "scaled444tonative: CkJMod not work with full chroma sampling input") : Assert(fullchr, "scaled444tonative: need 444 input")
 	siscfloat	= sisphbd ? IsVideoFloat(src) : false
 	fast     	= default(fast, 0)
 	a	     	= default(a, fast!=0 ? 1 : 32)
@@ -24,7 +25,7 @@ function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mo
 	onecall     	= default(onecall, false)
 	pad             = CkJMod == "none" && fast > -1 ? sishasalpha ? src.RemoveAlphaPlane().sh_padding (4, 4, 4, 4) : src.sh_padding (4, 4, 4, 4) : src
 	srcy            = sisphbd ? ExtractY(pad) : ConvertToY8(pad)
-	pad             = CkJMod == "nnedi3" ? pad.edi_rpow2(cshift="bilinearresize",Y=false) : CkJMod == "eedi3" ? pad.edi_rpow2(edi="eedi3", cshift="bilinearresize",Y=false) : pad
+	pad             = CkJMod != "none" ? pad.edi_rpow2(sis411 ? 4 : 2,halfchr ? 2 : 1,edi=CkJMod, cshift="bilinearresize",Y=false) : pad
 	srcu            = sisphbd ? ExtractU(pad) : UToY8(pad)
 	srcv            = sisphbd ? ExtractV(pad) : VToY8(pad)
 	u4x             = CkJMod != "none" ? nop() : abs(fast) < 3 && abs(fast) != 1 ? pad.nnedi3_rpow2(2, nns=4, qual=2, etype=1, nsize=0).nnedi3_rpow2(2, nns=4, qual=2, etype=1, nsize=0) : pad
