@@ -1,7 +1,7 @@
 # base on ChromaReconstructor and fulltonative by feisty2
-# 1.10
+# 1.11
 
-function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mode", int "device_type", int "device_id", int "fast", float "sDev", float "iDev", float "cs", bool "d2", int "kernS", int "kernI", int "resType", bool "onecall", string "CkJMod")
+function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mode", int "device_type", int "device_id", int "fast", float "sDev", float "iDev", float "cs", bool "d2", int "kernS", int "kernI", int "resType", bool "onecall", string "CkJMod", string "cplace")
 {
 	sisphbd 	= AvsPlusVersionNumber > 2294
 	sishasalpha	= sisphbd ? src.hasalpha : false
@@ -9,6 +9,7 @@ function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mo
 	halfchr		= sisphbd ? src.is420() : src.isyv12()
 	sis411      = src.isyv411()
 	CkJMod     	= default(CkJMod, "none").LCase()
+	cplace      = Default(cplace, "MPEG2")
 	CkJMod != "none" ? Assert(!fullchr, "scaled444tonative: CkJMod not work with full chroma sampling input") : Assert(fullchr, "scaled444tonative: need 444 input")
 	siscfloat	= sisphbd ? IsVideoFloat(src) : false
 	fast     	= default(fast, 0)
@@ -23,11 +24,13 @@ function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mo
 	kernI		= default (kernI,        3)
 	restype		= default (restype,      0)
 	onecall     	= default(onecall, false)
-	pad             = CkJMod == "none" && fast > -1 ? sishasalpha ? src.RemoveAlphaPlane().sh_padding (4, 4, 4, 4) : src.sh_padding (4, 4, 4, 4) : src
+	pad             = fast > -1 ? sishasalpha ? src.RemoveAlphaPlane().sh_padding (4, 4, 4, 4) : src.sh_padding (4, 4, 4, 4) : src
 	srcy            = sisphbd ? ExtractY(pad) : ConvertToY8(pad)
-	pad             = CkJMod != "none" ? pad.edi_rpow2(sis411 ? 4 : 2,halfchr ? 2 : 1,edi=CkJMod, cshift="bilinearresize",Y=false) : pad
+	pad             = CkJMod != "none" ? pad.edi_rpow2(sis411 ? 4 : 2,halfchr ? 2 : 1,edi=CkJMod, cshift="bilinearresize",Y=false,cplace=cplace,bordfix=false) : pad
 	srcu            = sisphbd ? ExtractU(pad) : UToY8(pad)
 	srcv            = sisphbd ? ExtractV(pad) : VToY8(pad)
+	srcu            = CkJMod != "none" ? sis411 ? srcu.bilinearresize(width(srcy),height(srcy),src_left=-1.5) : !(halfchr && cplace != "MPEG2") ? srcu.bilinearresize(width(srcy),height(srcy),src_left=-0.5) : srcu : srcu
+	srcv            = CkJMod != "none" ? sis411 ? srcv.bilinearresize(width(srcy),height(srcy),src_left=-1.5) : !(halfchr && cplace != "MPEG2") ? srcv.bilinearresize(width(srcy),height(srcy),src_left=-0.5) : srcv : srcv
 	u4x             = CkJMod != "none" ? nop() : abs(fast) < 3 && abs(fast) != 1 ? pad.nnedi3_rpow2(2, nns=4, qual=2, etype=1, nsize=0).nnedi3_rpow2(2, nns=4, qual=2, etype=1, nsize=0) : pad
 	luma            = CkJMod != "none" ? srcy : abs(fast) < 3 && abs(fast) != 1 ? sisphbd ? ExtractY(u4x) : ConvertToY8(u4x) : srcy
 	u               = siscfloat ? expr(CkJMod != "none" ? srcu : ExtractU(u4x), "x 0.5 +") : CkJMod == "none" && abs(fast) < 3 && abs(fast) != 1 ? sisphbd ? ExtractU(u4x) : UToY8(u4x) : srcu
@@ -46,7 +49,7 @@ function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mo
 	ufinal          = !siscfloat ? srcu.mt_AddDiff(uhi) : expr(mt_MakeDiff(expr(srcu, "x 0.5 +"), uhi), "x 0.5 -")
 	vfinal          = !onecall ? !siscfloat ? srcv.mt_AddDiff(vhi) : expr(mt_MakeDiff(expr(srcv, "x 0.5 +"), vhi), "x 0.5 -") : nop()
 	fmerge          = sisphbd ? CombinePlanes(!onecall ? UFinal : UFinal.SelectEven(), !onecall ? VFinal : UFinal.SelectOdd(),srcy,planes="UVY") : YToUV(!onecall ? UFinal : UFinal.SelectEven(), !onecall ? VFinal : UFinal.SelectOdd(), srcy)
-	fclip           = CkJMod == "none" && fast > -1 ? Crop (fmerge, 4, 4, -4, -4) : fmerge
+	fclip           = fast > -1 ? Crop (fmerge, 4, 4, -4, -4) : fmerge
 	fclip           = sishasalpha ? fclip.AddAlphaPlane(src.ExtractA) : fclip
 	return fclip
 	}
