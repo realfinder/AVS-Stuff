@@ -1,4 +1,4 @@
-/* edi_rpow2 v1.0 mod 83
+/* edi_rpow2 v1.0 mod 84
 
 An improved rpow2 function for nnedi3, nnedi3ocl, eedi3, and eedi2.
 
@@ -18,7 +18,7 @@ Scripts:
   ResizeX (1.0.1 mod 7 or up)
 
 Dither is only required if lsb=true.
-FTurn is optional but recommended.
+FTurn is optional but recommended in non plus-avs.
 MaskTools2 is only required if eedi3's mclip parameter is used.
 
 Color formats:
@@ -266,61 +266,29 @@ cshiftH_c = cplace == "MPEG1"     ? cshiftH_c+MPEG1shift
 \           !no_MPEG2shift_kernel ? cshiftH_c+MPEG2shift
 \                                 : cshiftH_c
 
-# Pad the frame with rows of duplicate pixels to support mod1 and mod2
-# resolutions with eedi3 and eedi2 since they have to work in YV12.
-# Also pad at least four rows if bordfix=true.
-iw_ismod8 = iw%8 == 0 ? true : false
-ih_ismod8 = ih%8 == 0 ? true : false
-iw_ismod4 = iw%4 == 0 ? true : false
-ih_ismod4 = ih%4 == 0 ? true : false
+# pad for bordfix=true.
 
-pad8 = edi == "eedi3" && hssc14 && !iw_ismod8 ||
-\      edi == "eedi3" && hssc14 && !ih_ismod8 ||
-\      edi == "eedi2" && hssc14 && !iw_ismod8 ||
-\      edi == "eedi2" && hssc14 && !ih_ismod8  ? true : false
-pad4 = edi == "eedi3" && !chr420 && !iw_ismod4 ||
-\      edi == "eedi3" && !chr420 && !ih_ismod4 ||
-\      edi == "eedi2" && !chr420 && !iw_ismod4 ||
-\      edi == "eedi2" && !chr420 && !ih_ismod4  ? true : false
-pad  = pad8 || pad4 ? true : false
-
-padR = pad8 && !iw_ismod8 ? 8-iw%8
-\    : pad4 && !iw_ismod4 ? 4-iw%4
-\                         : 0
-padT = pad8 && !ih_ismod8 ? 8-ih%8
-\    : pad4 && !ih_ismod4 ? 4-ih%4
-\                         : 0
-
-padR = padR >= 4                       ? padR
-\    : bordfix && rfactorX > 1         ? padR+4
-\                                      : padR
-padT = padT >= 4                       ? padT
-\    : bordfix && rfactorY > 1         ? padT+4
-\                                      : padT
-padL = bordfix && rfactorX > 1 && pad8 ? 8
-\    : bordfix && rfactorX > 1         ? 4
-\                                      : 0
-padB = bordfix && rfactorY > 1 && pad8 ? 8
-\    : bordfix && rfactorY > 1         ? 4
-\                                      : 0
+padR = bordfix && rfactorX > 1         ? 4 : 0
+padT = bordfix && rfactorY > 1         ? 4 : 0
+padL = bordfix && rfactorX > 1         ? 4 : 0
+padB = bordfix && rfactorY > 1         ? 4 : 0
 
 padL_c = hssc12 ? padL/2 : hssc14 ? padL/4 : padL
 padT_c = vssc12 ? padT/2 : padT
 padR_c = hssc12 ? padR/2 : hssc14 ? padR/4 : padR
 padB_c = vssc12 ? padB/2 : padB
 
-einput = pad || bordfix ? input.ResizeX(iw+padL+padR, ih+padT+padB, -padL, -padT, iw+padL+padR, ih+padT+padB,
-\                                       kernel="Point", luma=Y, chroma=U||V?true:false,mt=mt,mt_params=mt_params)
+einput = bordfix ? input.ResizeX(iw+padL+padR, ih+padT+padB, -padL, -padT, iw+padL+padR, ih+padT+padB,
+\                                kernel="Point", luma=Y, chroma=U||V?true:false,mt=mt,mt_params=mt_params)
 \                       : input
-emclip = mclip.Defined() && pad     ||
-\        mclip.Defined() && bordfix  ? mclip.ResizeX(iw+padL+padR, ih+padT+padB, -padL, -padT, iw+padL+padR, ih+padT+padB,
+emclip = mclip.Defined() && bordfix  ? mclip.ResizeX(iw+padL+padR, ih+padT+padB, -padL, -padT, iw+padL+padR, ih+padT+padB,
 \                                                   kernel="Point", luma=Y, chroma=U||V?true:false,mt=mt,mt_params=mt_params)
 \                                    : mclip
 
 # nnedi3 image enlargement
     edi == "nnedi3" && (sisphbd ? input.isy() : csp == "Y8") ?
 \   Eval("""
-         pow2  = einput.edi_rpow2_nnedi3(rfactorX,rfactorY,alignc,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox)
+         pow2  = einput.edi_rpow2_nnedi3(rfactorX,rfactorY,alignc,y,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox)
          """)
 \ : edi == "nnedi3" && chr420  ||
 \   edi == "nnedi3" && chr422  ||
@@ -330,11 +298,11 @@ emclip = mclip.Defined() && pad     ||
 \   Eval("""
          # For nnedi3 and nnedi3ocl, it's faster to split YV12 channels into separate Y8 clips even though they don't need to be
          pow2Y = sisphbd ? einput.ConvertToY() : einput.ConvertToY8()
-         pow2Y = pow2Y.edi_rpow2_nnedi3(rfactorX,rfactorY,alignc,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox)
+         pow2Y = pow2Y.edi_rpow2_nnedi3(rfactorX,rfactorY,alignc,y,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox)
          pow2U = sisphbd ? einput.ExtractU() : einput.UToY8()
-         pow2U = pow2U.edi_rpow2_nnedi3(rfactorX,rfactorY,alignc,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox)
+         pow2U = pow2U.edi_rpow2_nnedi3(rfactorX,rfactorY,alignc,u,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox)
          pow2V = sisphbd ? einput.ExtractV() : einput.VToY8()
-         pow2V = pow2V.edi_rpow2_nnedi3(rfactorX,rfactorY,alignc,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox)
+         pow2V = pow2V.edi_rpow2_nnedi3(rfactorX,rfactorY,alignc,v,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox)
          """)
 \ : edi == "nnedi3" && input.isrgb() ?
 \   Eval("""
@@ -356,7 +324,7 @@ emclip = mclip.Defined() && pad     ||
 # nnedi3ocl image enlargement
     edi == "nnedi3ocl" && (sisphbd ? input.isy() : csp == "Y8") ?
 \   Eval("""
-         pow2  = einput.edi_rpow2_nnedi3ocl(rfactorX,rfactorY,alignc,true,false,false,nsize,nns,qual,etype)
+         pow2  = einput.edi_rpow2_nnedi3ocl(rfactorX,rfactorY,alignc,y,false,false,nsize,nns,qual,etype)
          """)
 \ : edi == "nnedi3ocl" && chr420  ||
 \   edi == "nnedi3ocl" && chr422  ||
@@ -365,11 +333,11 @@ emclip = mclip.Defined() && pad     ||
 \   edi == "nnedi3ocl" && chr444   ?
 \   Eval("""
          pow2Y = sisphbd ? einput.ConvertToY() : einput.ConvertToY8()
-         pow2Y = pow2Y.edi_rpow2_nnedi3ocl(rfactorX,rfactorY,alignc,true,false,false,nsize,nns,qual,etype)
+         pow2Y = pow2Y.edi_rpow2_nnedi3ocl(rfactorX,rfactorY,alignc,y,false,false,nsize,nns,qual,etype)
          pow2U = sisphbd ? einput.ExtractU() : einput.UToY8()
-         pow2U = pow2U.edi_rpow2_nnedi3ocl(rfactorX,rfactorY,alignc,true,false,false,nsize,nns,qual,etype)
+         pow2U = pow2U.edi_rpow2_nnedi3ocl(rfactorX,rfactorY,alignc,u,false,false,nsize,nns,qual,etype)
          pow2V = sisphbd ? einput.ExtractV() : einput.VToY8()
-         pow2V = pow2V.edi_rpow2_nnedi3ocl(rfactorX,rfactorY,alignc,true,false,false,nsize,nns,qual,etype)
+         pow2V = pow2V.edi_rpow2_nnedi3ocl(rfactorX,rfactorY,alignc,v,false,false,nsize,nns,qual,etype)
          """)
 \ : edi == "nnedi3ocl" && csp == "RGB24" ?
 \   Eval("""
@@ -403,88 +371,85 @@ emclip = mclip.Defined() && pad     ||
     edi == "eedi3" && (sisphbd ? input.isy() : csp == "Y8") ?
 \   Eval("""
          pow2  = einput
-         \            .edi_rpow2_eedi3(rfactorX,rfactorY,alignc,true,false,false,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
+         \            .edi_rpow2_eedi3(rfactorX,rfactorY,alignc,y,false,false,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
          \                             vcheck,vthresh0,vthresh1,vthresh2,sclip,sclip_params,threads,emclip,opt,mt=mt,mt_params=mt_params,nnrep=nnrep)
-         """)
-\ : edi == "eedi3" && chr420 ?
-\   Eval("""
-         pow2  = einput.edi_rpow2_eedi3(rfactorX,rfactorY,alignc,Y,U,V,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
-         \                             vcheck,vthresh0,vthresh1,vthresh2,sclip,sclip_params,threads,emclip,opt,mt=mt,mt_params=mt_params,nnrep=nnrep)
-         pow2Y = sisphbd ? pow2.ConvertToY() : pow2.ConvertToY8()
-         pow2U = sisphbd ? pow2.ExtractU() : pow2.UToY8()
-         pow2V = sisphbd ? pow2.ExtractV() : pow2.VToY8()
          """)
 \ : edi == "eedi3" && csp == "YV411" ||
+\   edi == "eedi3" && chr420 ||
 \   edi == "eedi3" && chr422 ||
 \   edi == "eedi3" && chr444 ||
 \   edi == "eedi3" && csp == "YUY2" ?
 \   Eval("""
          pow2Y = sisphbd ? einput.ConvertToY() : einput.ConvertToY8()
-         pow2Y = pow2Y.edi_rpow2_eedi3(rfactorX,rfactorY,alignc,true,false,false,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
+         pow2Y = pow2Y.edi_rpow2_eedi3(rfactorX,rfactorY,alignc,y,false,false,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
          \                             vcheck,vthresh0,vthresh1,vthresh2,sclip,sclip_params,threads,mclipY,opt,mt=mt,mt_params=mt_params,nnrep=nnrep)
          pow2U = sisphbd ? einput.ExtractU() : einput.UToY8()
-         pow2U = pow2U.edi_rpow2_eedi3(rfactorX,rfactorY,alignc,true,false,false,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
+         pow2U = pow2U.edi_rpow2_eedi3(rfactorX,rfactorY,alignc,u,false,false,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
          \                             vcheck,vthresh0,vthresh1,vthresh2,sclip,sclip_params,threads,mclipU,opt,mt=mt,mt_params=mt_params,nnrep=nnrep)
          pow2V = sisphbd ? einput.ExtractV() : einput.VToY8()
-         pow2V = pow2V.edi_rpow2_eedi3(rfactorX,rfactorY,alignc,true,false,false,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
+         pow2V = pow2V.edi_rpow2_eedi3(rfactorX,rfactorY,alignc,v,false,false,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
          \                             vcheck,vthresh0,vthresh1,vthresh2,sclip,sclip_params,threads,mclipV,opt,mt=mt,mt_params=mt_params,nnrep=nnrep)
          """)
 \ : edi == "eedi3" && input.isrgb() ?
 \   Eval("""
          # Always split RGB24 so that the sclip and mclip parameters work
-         pow2 = sisphbd ? Interleave(einput.ExtractR(),einput.ExtractG(),einput.ExtractB()) : Interleave(einput.ShowRed("Y8"),einput.ShowGreen("Y8"),einput.ShowBlue("Y8"))
-         pow2 = pow2.edi_rpow2_eedi3(rfactorX,rfactorY,alignc,true,false,false,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
-         \                           vcheck,vthresh0,vthresh1,vthresh2,sclip,sclip_params,threads,emclip,opt,mt=mt,mt_params=mt_params,nnrep=nnrep)
-         splitRGB24 = true
+         try {
+             IsAvsPlus || csp != "RGB24" ? dontdoft : nop()
+             tft  = BlankClip(pixel_type="Y8").FTurnRight()
+             pow2 = sisphbd ? Interleave(einput.ExtractR(),einput.ExtractG(),einput.ExtractB()) : Interleave(einput.ShowRed("Y8"),einput.ShowGreen("Y8"),einput.ShowBlue("Y8"))
+             pow2 = pow2.edi_rpow2_eedi3(rfactorX,rfactorY,alignc,true,false,false,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
+         \                               vcheck,vthresh0,vthresh1,vthresh2,sclip,sclip_params,threads,emclip,opt,mt=mt,mt_params=mt_params,nnrep=nnrep)
+             splitRGB24 = true
+             }
+         catch(err_msg) {
+             pow2 = einput.edi_rpow2_eedi3(rfactorX,rfactorY,alignc,true,false,false,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
+         \                               vcheck,vthresh0,vthresh1,vthresh2,sclip,sclip_params,threads,emclip,opt,mt=mt,mt_params=mt_params,nnrep=nnrep)
+             splitRGB24 = false
+             }
          """)
 \ : NOP()
 
 # eedi2 image enlargement
-    edi == "eedi2" && csp == "Y8" ?
-\   Eval("""
-         pow2  = einput.ConvertToYV12()
-         \            .edi_rpow2_eedi2(rfactorX,rfactorY,alignc,mthresh,lthresh,vthresh,estr,dstr,maxd,map,nt,pp)
-         \            .ConvertToY8()
-         """)
-\ : edi == "eedi2" && csp == "YV12" ?
+    edi == "eedi2" && (sisphbd ? input.isy() : csp == "Y8") ?
 \   Eval("""
          pow2  = einput.edi_rpow2_eedi2(rfactorX,rfactorY,alignc,mthresh,lthresh,vthresh,estr,dstr,maxd,map,nt,pp)
-         pow2Y = pow2.ConvertToY8()
-         pow2U = pow2.UToY8()
-         pow2V = pow2.VToY8()
          """)
-\ : edi == "eedi2" && csp == "YV16"  ||
-\   edi == "eedi2" && csp == "YUY2"  ||
-\   edi == "eedi2" && csp == "YV411" ||
-\   edi == "eedi2" && csp == "YV24"   ?
+\ : edi == "eedi2" && chr420  ||
+\   edi == "eedi2" && chr422  ||
+\   edi == "eedi2" && csp == "YUY2" ||
+\   edi == "eedi2" && chr444  ||
+\   edi == "eedi2" && csp == "YV411"   ?
 \   Eval("""
-         pow2Y = einput.ConvertToYV12()
-         \            .edi_rpow2_eedi2(rfactorX,rfactorY,alignc,mthresh,lthresh,vthresh,estr,dstr,maxd,map,nt,pp)
-         \            .ConvertToY8()
-         pow2U = einput.UToY8().ConvertToYV12()
-         \            .edi_rpow2_eedi2(rfactorX,rfactorY,alignc,mthresh,lthresh,vthresh,estr,dstr,maxd,map,nt,pp)
-         \            .ConvertToY8()
-         pow2V = einput.VToY8().ConvertToYV12()
-         \            .edi_rpow2_eedi2(rfactorX,rfactorY,alignc,mthresh,lthresh,vthresh,estr,dstr,maxd,map,nt,pp)
-         \            .ConvertToY8()
+         pow2Y = sisphbd ? einput.ConvertToY() : einput.ConvertToY8()
+         pow2Y = einput.edi_rpow2_eedi2(rfactorX,rfactorY,alignc,mthresh,lthresh,vthresh,estr,dstr,maxd,map,nt,pp)
+         pow2U = sisphbd ? einput.ExtractU() : einput.UToY8()
+         pow2U = pow2U.edi_rpow2_eedi2(rfactorX,rfactorY,alignc,mthresh,lthresh,vthresh,estr,dstr,maxd,map,nt,pp)
+         pow2V = sisphbd ? einput.ExtractV() : einput.VToY8()
+         pow2V = pow2V.edi_rpow2_eedi2(rfactorX,rfactorY,alignc,mthresh,lthresh,vthresh,estr,dstr,maxd,map,nt,pp)
          """)
-\ : edi == "eedi2" && csp == "RGB24" ?
+\ : edi == "eedi2" && input.isrgb() ?
 \   Eval("""
-         pow2  = Interleave(einput.ShowRed("YV12"),einput.ShowGreen("YV12"),einput.ShowBlue("YV12"))
-         pow2  = pow2.edi_rpow2_eedi2(rfactorX,rfactorY,alignc,mthresh,lthresh,vthresh,estr,dstr,maxd,map,nt,pp).ConvertToY8()
-         splitRGB24 = true
+         try {
+             IsAvsPlus || csp != "RGB24" ? dontdoft : nop()
+             tft  = BlankClip(pixel_type="Y8").FTurnRight()
+             pow2 = sisphbd ? Interleave(einput.ExtractR(),einput.ExtractG(),einput.ExtractB()) : Interleave(einput.ShowRed("Y8"),einput.ShowGreen("Y8"),einput.ShowBlue("Y8"))
+             pow2  = pow2.edi_rpow2_eedi2(rfactorX,rfactorY,alignc,mthresh,lthresh,vthresh,estr,dstr,maxd,map,nt,pp)
+             splitRGB24 = true
+             }
+         catch(err_msg) {
+             pow2 = einput.edi_rpow2_eedi2(rfactorX,rfactorY,alignc,mthresh,lthresh,vthresh,estr,dstr,maxd,map,nt,pp)
+             splitRGB24 = false
+             }
          """)
 \ : NOP()
 
 # Crop off the padding
-    pad     && (sisphbd ? input.isy() : csp == "Y8")    ||
-\   bordfix && (sisphbd ? input.isy() : csp == "Y8")    ||
-\   pad     && input.isRGB() ||
+    bordfix && (sisphbd ? input.isy() : csp == "Y8")    ||
 \   bordfix && input.isRGB()  ?
 \   Eval("""
          pow2  = pow2.Crop(padL*rfactorX, padT*rfactorY, -padR*rfactorX, -padB*rfactorY)
          """)
-\ : pad || bordfix ?
+\ : bordfix ?
 \   Eval("""
          pow2Y = pow2Y.Crop(padL*rfactorX, padT*rfactorY, -padR*rfactorX, -padB*rfactorY)
          pow2U = pow2U.Crop(padL_c*rfactorX, padT_c*rfactorY, -padR_c*rfactorX, -padB_c*rfactorY)
@@ -605,11 +570,11 @@ t        = Default(t, false)
 Assert(rfactorX > 0 && BitAnd(rfactorX,rfactorX-1) == 0, "edi_rpow2_nnedi3: rfactorX must be a power of 2")
 Assert(rfactorY > 0 && BitAnd(rfactorY,rfactorY-1) == 0, "edi_rpow2_nnedi3: rfactorY must be a power of 2")
 
-# YV16/YUY2/YV411 chroma gets mangled by turning, so don't allow processing it
+# 422/YUY2/YV411 chroma gets mangled by turning, so don't allow processing it
 sisphbd = AvsPlusVersionNumber > 2294
 chr422  = sisphbd ? input.is422() : input.isYV16()
 Assert(!chr422 && !input.IsYUY2() && !input.IsYV411() || !U && !V,
-\      "edi_rpow2_nnedi3: YV16/YUY2/YV411 supported only when U and V are false")
+\      "edi_rpow2_nnedi3: 422/YUY2/YV411 supported only when U and V are false")
 
 # If alignc=true, always use field=1 for doubling the width
 # to maintain alignment of horizontally subsampled chroma.
