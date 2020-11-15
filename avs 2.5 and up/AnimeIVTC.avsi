@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.33 2020-11-15 mod
+# v2.34 2020-11-15 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -293,15 +293,15 @@ iyadifmc = eval("i.yadifmodclipin(nonyuy2)."+yadiffun+"(mode=3, edeint=edeint.ya
 
 global invfm = i.Tfm(field=sourford==1 ? 0 : 1,slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=defined(MI) ? Int(MI*5/4) : undefined,metric=metric,pp=precision==0 ? 0 : pp,clip2=tfmcli2,micmatching=0, mchroma=false,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn)
 fminv2       = ScriptClip(iyadifmc, "
-						invfv=Interleave(DeleteFrame(0).SelectEven(),invfm).crop(16,16,-16,-16).cFrameDiff(prevf=true, chroma=false, denoise=true, nt=1)
-						fv   =Interleave(SelectEven(),             aivtcfm).crop(16,16,-16,-16).cFrameDiff(prevf=true, chroma=false, denoise=true, nt=1)
+						invfv=Interleave(DeleteFrame(0).SelectEven(),invfm).crop(16,16,-16,-16,true).cFrameDiff(prevf=true, chroma=false, denoise=true, nt=1)
+						fv   =Interleave(SelectEven(),             aivtcfm).crop(16,16,-16,-16,true).cFrameDiff(prevf=true, chroma=false, denoise=true, nt=1)
 						fv > aivtcaAthr1 && invfv < aivtcaAthr2 ? fv > invfv ? Interleave(invfm,invfm) : Interleave(aivtcfm,aivtcfm) : Interleave(aivtcfm,aivtcfm)
 						").Selectodd()
-fm           = conditionalfilter(fm.crop(16,16,-16,-16),fminv2,fm,"cFrameDiff(prevf=false, chroma=false, denoise=true, nt=1)","<",string(autoAssufmthr))
+fm           = conditionalfilter(fm.crop(16,16,-16,-16,true),fminv2,fm,"cFrameDiff(prevf=false, chroma=false, denoise=true, nt=1)","<",string(autoAssufmthr))
 """) : nop()
 
-invhybridfm    = usehfm ? autoAssuf ? conditionalfilter(hybridfm.crop(16,16,-16,-16),i.Tfm(field=sourford==1 ? 0 : 1,slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=defined(MI) ? Int(MI*5/4) : undefined,metric=metric,pp=precision==0 ? 0 : pp,clip2=tfmcli2,micmatching=0, mchroma=false,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn),hybridfm,"IsCombedTIVTC(15,13,false,8,4,1)","=","true") : hybridfm : nop()
-hybridfm       = usehfm ? autoAssuf ? conditionalfilter(blankclip(hybridfm,length=1).crop(16,16,-16,-16)+invhybridfm.crop(16,16,-16,-16),hybridfm,invhybridfm,"IsCombedTIVTC(10,7,false,4,4,0)","=","true") : hybridfm : nop()
+invhybridfm    = usehfm ? autoAssuf ? conditionalfilter(hybridfm.crop(16,16,-16,-16,true),i.Tfm(field=sourford==1 ? 0 : 1,slow=tfmslow,mode=tfmm,cthresh=cthresh,blockx=blockx,blocky=blocky,MI=defined(MI) ? Int(MI*5/4) : undefined,metric=metric,pp=precision==0 ? 0 : pp,clip2=tfmcli2,micmatching=0, mchroma=false,Chroma=Chroma,d2v=d2v,trimIn=tfmtrimIn),hybridfm,"IsCombedTIVTC(15,13,false,8,4,1)","=","true") : hybridfm : nop()
+hybridfm       = usehfm ? autoAssuf ? conditionalfilter(blankclip(hybridfm,length=1).crop(16,16,-16,-16,true)+invhybridfm.crop(16,16,-16,-16,true),hybridfm,invhybridfm,"IsCombedTIVTC(10,7,false,4,4,0)","=","true") : hybridfm : nop()
 
 hybridfm = usehfm ? ifade ? hybridfm.smartfademod(sfthr, sfshow, cache) : hybridfm : nop()
 
@@ -325,7 +325,7 @@ fmdecim = mode==1 ? chrfix_b ? (palf && Ofrate==2) ? debprep.tdecimate(1,13,25) 
 #Field blended blend removal & decimation (mode=2) No need to check for chrfix since it was done in the previous step
 fbdecim = mode==2 ? mode22 == 3 ? chrfix_b ? Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob.detearing()).srestore(omode=1, thresh=44).RequestLinear().SelectOdd().srestore(omode=2, mode=4, thresh=44, cache=cache*3/2).srestore(frate=frate, mode=4, speed=-4, cache=cache) : 	Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob.detearing()).srestore(omode=1, thresh=44).RequestLinear().SelectOdd().srestore(omode=2, mode=4, thresh=44, cache=cache*3/2).srestore(frate=frate, mode=-4, speed=-4, cache=cache) 	:
 \                   mode22 == 2 ? chrfix_b ? Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob).srestore(omode=1, thresh=44).RequestLinear().SelectOdd().srestore(omode=2, mode=4, thresh=44, cache=cache*3/2).srestore(frate=frate, mode=4, speed=-4, cache=cache) : 	Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob).srestore(omode=1, thresh=44).RequestLinear().SelectOdd().srestore(omode=2, mode=4, thresh=44, cache=cache*3/2).srestore(frate=frate, mode=-4, speed=-4, cache=cache) 	:
-\                   mode22 == 1 ? chrfix_b ? fbbob.srestore(omode=2, mode=4, thresh=44, cache=cache*3/2, dclip=fbbob.crop(16,16,-16,-16)).srestore(frate=frate, mode=4, speed=-4, cache=cache) : 	fbbob.srestore(omode=2, mode=4, thresh=44, cache=cache*3/2, dclip=fbbob.crop(16,16,-16,-16)).srestore(frate=frate, mode=-4, speed=-4, cache=cache) 	:
+\                   mode22 == 1 ? chrfix_b ? fbbob.srestore(omode=2, mode=4, thresh=44, cache=cache*3/2, dclip=fbbob.crop(16,16,-16,-16,true)).srestore(frate=frate, mode=4, speed=-4, cache=cache) : 	fbbob.srestore(omode=2, mode=4, thresh=44, cache=cache*3/2, dclip=fbbob.crop(16,16,-16,-16,true)).srestore(frate=frate, mode=-4, speed=-4, cache=cache) 	:
 \                  mode22 == -2 ? fbbob.sAnimeDeblend(frate=frate, usechroma=!chrfix_b, hqbob=bbob>3, cache=cache) :
 \                  mode22 == -1 ? chrfix_b ? Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob).srestore(frate=frate*2, mode=4, speed=-4).RequestLinear().srestore(frate=frate, mode=4, speed=-4, cache=cache) : 	Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob).srestore(frate=frate*2, mode=-4, speed=-4).RequestLinear().srestore(frate=frate, mode=-4, speed=-4, cache=cache) 	:
 \                                 chrfix_b ? fbbob.srestore(frate=frate, cache=cache) : 	fbbob.srestore(frate=frate, cache=cache, dclip=i.bob(-0.2,0.6).nonyuy2clipin(nonyuy2).reduceflicker(strength=1).nonyuy2clipout(nonyuy2)) 	: nop()
@@ -776,7 +776,7 @@ daa3mclip = usedaa3mod ? QTGMCclip.daa3mod(dslow,threads=threads) : QTGMCclip
 
 ##############
 # sAnimeDeblend by A.SONY
-# 1.1
+# 1.2
 
 function sAnimeDeblend(clip i, float "frate", bool "usechroma", bool "hqbob", int "cache")
 {
@@ -786,6 +786,6 @@ hqbob = default(hqbob, false)
 cache = default(cache, 3)
 i
 Interleave(Merge(DuplicateFrame(0).DeleteFrame(FrameCount()),last),last)
-srestore(omode=1, thresh=44,cache=3,dclip=blur(1).Crop(8,8,-8,-8)).SelectOdd()
-srestore(frate, mode=usechroma ? -4 : 4, speed=-4, thresh=!hqbob ? 33 : Undefined(),cache=cache,dclip=!hqbob ? Blur(1).Crop(8,8,-8,-8) : Undefined())
+srestore(omode=1, thresh=44,cache=3,dclip=blur(1).Crop(16,16,-16,-16,true)).SelectOdd()
+srestore(frate, mode=usechroma ? -4 : 4, speed=-4, thresh=!hqbob ? 33 : Undefined(),cache=cache,dclip=!hqbob ? Blur(1).Crop(16,16,-16,-16,true) : Crop(16,16,-16,-16,true))
 }
