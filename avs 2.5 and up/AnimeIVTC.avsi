@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.32 2020-11-15 mod
+# v2.33 2020-11-15 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -776,17 +776,14 @@ daa3mclip = usedaa3mod ? QTGMCclip.daa3mod(dslow,threads=threads) : QTGMCclip
 
 ##############
 # sAnimeDeblend by A.SONY
-# 1.0
+# 1.1
 
 function sAnimeDeblend(clip i, float "frate", bool "usechroma", bool "hqbob", int "cache")
 {
-sisavs26 = !(VersionNumber() < 2.60)
-sisyuy2 = i.isyuy2()
-nonyuy2=sisavs26 && sisyuy2
 frate = default(frate, 23.976)
 usechroma = default(usechroma, true)
 hqbob = default(hqbob, false)
-cache = default(cache, 10)
+cache = default(cache, 3)
 i
 Interleave(Merge(DuplicateFrame(0).DeleteFrame(FrameCount()),last),last)
 srestore(omode=1, thresh=44,cache=3,dclip=blur(1).Crop(8,8,-8,-8)).SelectOdd()
