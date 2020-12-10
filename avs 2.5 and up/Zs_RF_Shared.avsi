@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.141
+# V1.142
 
 ### Functions list:-
 # sh_StrReplace
@@ -15,6 +15,7 @@
 # Camembert_dhhMod
 # EMask_dhh
 # spasses
+# spasses2
 # sminideen
 # DarkPreserve_function
 # lightPreserve_function
@@ -331,6 +332,12 @@ return e_mask
 Function spasses(clip i, int "pass", string "filter")
 {
 return pass > 0 ? eval("spasses(i." + filter + ", pass-1, filter)") : i
+}
+
+Function spasses2(clip i, int "pass", string "filter", clip "fclip2")
+{
+Assert(defined(fclip2), "fclip2 clip is needed")
+return pass > 0 ? eval("spasses2(" + filter + ", pass-1, filter, fclip2)") : i
 }
 
 
