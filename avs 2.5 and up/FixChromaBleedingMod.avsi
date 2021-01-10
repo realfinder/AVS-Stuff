@@ -1,6 +1,6 @@
-# FixChromaBleedingMod v1.36
+# FixChromaBleedingMod v1.37
 
-Function FixChromaBleedingMod(clip input, int "cxShift", int "cyShift", float "thr", float "strength", bool "f", float "opacity", bool "n", bool "xysh", bool "Bic") {
+Function FixChromaBleedingMod(clip input, int "cxShift", int "cyShift", float "thr", float "strength", bool "f", float "opacity", bool "n", bool "xysh", bool "Bic", bool "YIQNTSC") {
 sisavs26 = !(VersionNumber() < 2.60)
 sisphbd = AvsPlusVersionNumber > 2294
 sisyuy2 = input.isyuy2()
@@ -13,10 +13,11 @@ input = sisavs26 && sisyuy2 ? input.converttoyv16() : input
   n =  default ( n,       false )
   sh =  default ( xysh,       false )
   Bic = default ( Bic,       false )
+  YIQNTSC = default ( YIQNTSC,   false )
   opacity = default ( opacity,       1 )
 
   # prepare to work on the V channel and reduce to speed up and filter noise
-  vch  = sisphbd ? input.tweak(sat=thr).ExtractV() : !sisavs26 ? input.tweak(sat=thr).VtoY : input.tweak(sat=thr).VtoY8
+  vch  = sisphbd ? YIQNTSC ? input.SwapUV().Tweak(hue=-33).tweak(sat=thr).ExtractU() : input.tweak(sat=thr).ExtractV() : !sisavs26 ? YIQNTSC ? input.SwapUV().Tweak(hue=-33).tweak(sat=thr).UtoY : input.tweak(sat=thr).VtoY : YIQNTSC ? input.SwapUV().Tweak(hue=-33).tweak(sat=thr).UtoY8 : input.tweak(sat=thr).VtoY8
   area = f ? !sisavs26 ? vch.ConvertToyv12.ReduceBy2 : vch.ReduceBy2 : n ? !sisavs26 ? vch.ConvertToyv12.Blur(1) : vch.Blur(1) : !sisavs26 ? vch.ConvertToyv12 : vch
 
   # select and normalize both extremes of the scale
