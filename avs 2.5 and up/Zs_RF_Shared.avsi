@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.141
+# V1.143
 
 ### Functions list:-
 # sh_StrReplace
@@ -15,6 +15,7 @@
 # Camembert_dhhMod
 # EMask_dhh
 # spasses
+# spasses2
 # sminideen
 # DarkPreserve_function
 # lightPreserve_function
@@ -78,6 +79,7 @@
 # sh_GetUserGlobalIMT
 # sh_GetUserGlobalIMTint
 # sh_GetUserGlobalIMTbool
+# sChromaShift2
 # IsAvsNeo
 # IsAvsPlus
 # AvsPlusVersionNumber
@@ -331,6 +333,12 @@ return e_mask
 Function spasses(clip i, int "pass", string "filter")
 {
 return pass > 0 ? eval("spasses(i." + filter + ", pass-1, filter)") : i
+}
+
+Function spasses2(clip i, int "pass", string "filter", clip "fclip2")
+{
+Assert(defined(fclip2), "spasses2: fclip2 clip is needed")
+return pass > 0 ? eval("spasses2(" + filter + ", pass-1, filter, fclip2)") : i
 }
 
 
@@ -1644,6 +1652,50 @@ function sh_GetUserGlobalIMTbool()
 	catch (e) { ret = defined(sh_GetUserGlobalIMT) ? sh_GetUserGlobalIMT!=1 : Undefined }
 	return ret
 }
+
+
+# sChromaShift2: Shift U & V chroma separately with subpixel accuracy, based on the ChromaShiftSP2 function by Asd-g
+# try to clone ChromaShift() work
+# sChromaShift2 v1.1
+function sChromaShift2(clip clp, float "UX", float "UY", float "VX", float "VY", string "ResizeMethod", bool "LinkToY", bool "SPClone") {
+sisavs26 = !(VersionNumber() < 2.60)
+sisphbd = AvsPlusVersionNumber > 2294
+
+sisyuy2 = clp.isyuy2()
+clp = sisavs26 && sisyuy2 ? clp.converttoyv16() : clp
+fullchr = sisphbd ? clp.is444() : sisavs26 ? clp.isyv24() : false
+chr420  = sisphbd ? clp.is420() : clp.isyv12()
+chr422  = sisyuy2 || (sisphbd ? clp.is422() : sisavs26 ? clp.isyv16() : false)
+chr411  = sisavs26 ? clp.isyv411() : false
+nochr   = sisphbd ? clp.isy() : sisavs26 ? clp.isy8() : false
+
+Assert(!nochr, "sChromaShift2: clip must has chroma")
+Assert(!(clp.isrgb()), "sChromaShift2: not work with RGB clip")
+
+UX = default(UX, 0.0) # positive values shift the U chroma to left, negative values to right
+UY = default(UY, 0.0) # positive values shift the U chroma upwards, negative values downwards
+VX = default(VX,  UX) # positive values shift the V chroma to left, negative values to right
+VY = default(VY,  UY) # positive values shift the V chroma upwards, negative values downwards
+ResizeMethod = Default(ResizeMethod, "Point")
+LinkToY = Default(LinkToY, true)
+SPClone = Default(SPClone, ResizeMethod != "Point")
+
+LinkToY = fullchr ? false : LinkToY
+
+UX = UX !=0.0 && LinkToY ? chr411 ? UX/4 : UX/2 : UX
+UY = UY !=0.0 && LinkToY && chr420 ? UY/2 : UY
+VX = VX !=0.0 && LinkToY ? chr411 ? VX/4 : VX/2 : VX
+VY = VY !=0.0 && LinkToY && chr420 ? VY/2 : VY
+
+U = sisphbd ? clp.PlaneToY("U") : sisavs26 ? clp.Utoy8() : clp.Utoy()
+V = sisphbd ? clp.PlaneToY("V") : sisavs26 ? clp.Vtoy8() : clp.Vtoy()
+w = U.Width()
+h = V.Height()
+U = SPClone ? Eval("U." + ResizeMethod + "Resize(w, h, UX, UY, w+UX, h+UY)") : Eval("U." + ResizeMethod + "Resize(w, h, -UX, -UY)")
+V = SPClone ? Eval("V." + ResizeMethod + "Resize(w, h, VX, VY, w+VX, h+VY)") : Eval("V." + ResizeMethod + "Resize(w, h, -VX, -VY)")
+
+YToUV(U, V, clp)
+sisavs26 && sisyuy2 ? converttoyuy2() : last }
 
 
 VersionNumber() < 2.60 ? eval("""
