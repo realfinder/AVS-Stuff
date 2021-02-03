@@ -1,5 +1,5 @@
 # base on ChromaReconstructor and fulltonative by feisty2
-# 1.12
+# 1.13
 
 function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mode", int "device_type", int "device_id", int "fast", float "sDev", float "iDev", float "cs", bool "d2", int "kernS", int "kernI", int "resType", bool "onecall", string "CkJMod", string "cplace")
 {
@@ -24,7 +24,7 @@ function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mo
 	kernI		= default (kernI,        3)
 	restype		= default (restype,      0)
 	onecall     	= default(onecall, false)
-	pad             = fast > -1 ? sishasalpha ? src.RemoveAlphaPlane().sh_padding (4, 4, 4, 4) : src.sh_padding (4, 4, 4, 4) : src
+	pad             = fast > -1 ? sishasalpha ? src.RemoveAlphaPlane().sh_padding (a, a, a, a) : src.sh_padding (a, a, a, a) : src
 	srcy            = sisphbd ? ExtractY(pad) : ConvertToY8(pad)
 	pad             = CkJMod != "none" ? pad.edi_rpow2(sis411 ? 4 : 2,halfchr ? 2 : 1,edi=CkJMod, cshift="bilinearresize",Y=false,cplace=cplace,bordfix=false) : pad
 	srcu            = sisphbd ? ExtractU(pad) : UToY8(pad)
@@ -49,7 +49,7 @@ function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mo
 	ufinal          = !siscfloat ? srcu.mt_AddDiff(uhi) : expr(mt_MakeDiff(expr(srcu, "x 0.5 +"), uhi), "x 0.5 -")
 	vfinal          = !onecall ? !siscfloat ? srcv.mt_AddDiff(vhi) : expr(mt_MakeDiff(expr(srcv, "x 0.5 +"), vhi), "x 0.5 -") : nop()
 	fmerge          = sisphbd ? CombinePlanes(!onecall ? UFinal : UFinal.SelectEven(), !onecall ? VFinal : UFinal.SelectOdd(),srcy,planes="UVY") : YToUV(!onecall ? UFinal : UFinal.SelectEven(), !onecall ? VFinal : UFinal.SelectOdd(), srcy)
-	fclip           = fast > -1 ? Crop (fmerge, 4, 4, -4, -4) : fmerge
+	fclip           = fast > -1 ? Crop (fmerge, a, a, -a, -a) : fmerge
 	fclip           = sishasalpha ? fclip.AddAlphaPlane(src.ExtractA) : fclip
 	return fclip
 	}
