@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.899
+# Advanced Denoising and anime bob v1.901
 # Collections of Functions
 
 ### Functions list:-
@@ -334,15 +334,15 @@ LRepair==0 && CRepair==0 ? last : last.Repair(clip,LRepair,CRepair)
 
 
 # scombmask by RF
-# v1.16
-function scombmask(clip c, float "ythr", float "ythr2", float "ythr3", float "ythr4", float "cthr", bool "ntsc", bool "prefilter", bool "yexpand")
+# v1.17
+function scombmask(clip c, float "ythr", float "ythr2", float "ythr3", float "ythr4", float "cthr", bool "ntsc", int "prefilter", bool "yexpand")
 {
 sisphbd = AvsPlusVersionNumber > 2294
 sisavs26   = !(VersionNumber() < 2.6)
-ythr=Default(ythr,2) #first threshold for chroma Minimal changes between Pixels
-ythr2=Default(ythr2,6) #threshold for chroma changes vs luma changes
+prefil=Default(prefilter,0)
+ythr=Default(ythr,prefil > 0 ? 6 : 2) #first threshold for chroma Minimal changes between Pixels
+ythr2=Default(ythr2,prefil > 0 ? 2 : 6) #threshold for chroma changes vs luma changes
 cthr=Default(cthr,10)
-prefil=Default(prefilter,false)
 yexpand=Default(yexpand,false)
 ymaskb=ythr!=0
 cmaskb=cthr!=0
@@ -358,25 +358,26 @@ nochr   = sisphbd ?   isy() : sisavs26 ? isy8() : false
 Assert(!nochr, "scombmask: not work with Greyscale video")
 
 ntsc = default (ntsc, !((framerate()==50 || framerate()==25) && Height()!=480))
-prefil ? sminideen(2,cmaskb ? 10 : 0,ymaskb ? 10 : 0) : last
-prefil && ymaskb ? Tweak(sat=1.5) : last
-prefil ? MinBlur(uv=ymaskb ? 3 : 0,y=cmaskb ? 3 : 0) : last
+prefil > 0 ? sminideen(2,cmaskb ? 10 : 0,ymaskb ? 10 : 0) : last
+prefil > 1 && ymaskb ? Tweak(sat=1.5) : last
+prefil > 2 ? MinBlur(uv=ymaskb ? 3 : 0,y=cmaskb ? 3 : 0) : last
 iqchr  = ymaskb && ntsc ? SwapUV().Tweak(hue=-33) : last
 
 Y = sisphbd ? ConvertToY() : sisavs26 ? ConvertToY8() : last
 I = sisphbd ? iqchr.ExtractU() : sisavs26 ? iqchr.utoy8() : iqchr.utoy()
 Q = sisphbd ? iqchr.ExtractV() : sisavs26 ? iqchr.vtoy8() : iqchr.vtoy()
 
-YD = prefil ? Y.LSFmod(defaults="old").Sharpen(1).sypixsub(2,left=false) : Y.sypixsub(2,left=false)
+YD = prefil !=0 ? Y.DDSharp().sypixsub(2,left=false) : Y.sypixsub(2,left=false)
+YDV = prefil !=0 ? Y.DDSharp().sypixsub(2,2,left=false,top=false) : YD
 Chrm=sisavs26 ? YD.mt_lut("x "+string(cthr)+" scalef > range_max x "+string(cthr/2)+" scalef < 0 range_max x "+string(cthr)+" scalef - range_max "+string(cthr/2)+" scalef "+string(cthr)+" scalef - / * -  ? ?", use_expr=2) : YD.mt_lut("x "+string(cthr)+" > 255 x "+string(cthr/2)+" < 0 255 x "+string(cthr)+" - 255 "+string(cythr/2)+" "+string(cthr)+" - / * -  ? ?")
 YFIQ =Chrm.BilinearResize(I.width(),Q.Height(),chr422 || chr420 ? -0.5 : fullchr ? undefined : -1.5)
 
-Chr = ymaskb ? sisavs26 ? mt_lutxy(I,Q, "x 0.999999084248 * y -0.001353330381 * -", use_expr=1) : mt_lutxy(I,Q, "x 0.999999084248 * y -0.001353330381 * -") : nop()
-chrd = ymaskb ? prefil ? Chr.LSFmod(defaults="old").Sharpen(1).sypixsub(2,2,left=false,top=ntsc) : Chr.sypixsub(2,2,left=false,top=ntsc) : nop()
+Chr = ymaskb ? !ntsc ? sisavs26 ? mt_lutxy(I,Q, "x range_half - abs y range_half - abs +", use_expr=1) : mt_lutxy(I,Q, "x 128 - abs y 128 - abs +") : sisavs26 ? mt_lutxy(I,Q, "x 0.999999084248 * y -0.001353330381 * -", use_expr=1) : mt_lutxy(I,Q, "x 0.999999084248 * y -0.001353330381 * -") : nop()
+chrd = ymaskb ? prefil !=0 ? Chr.DDSharp().sypixsub(2,2,left=false,top=ntsc) : Chr.sypixsub(2,2,left=false,top=ntsc) : nop()
 ym = sisavs26 ? chrd.mt_lut("x "+string(ythr)+" scalef > range_max x "+string(ythr/2)+" scalef < 0 range_max x "+string(ythr)+" scalef - range_max "+string(ythr/2)+" scalef "+string(ythr)+" scalef - / * -  ? ?", use_expr=2) : chrd.mt_lut("x "+string(ythr)+" > 255 x "+string(ythr/2)+" < 0 255 x "+string(ythr)+" - 255 "+string(ythr/2)+" "+string(ythr)+" - / * -  ? ?")
 chrfy = ymaskb ? ym.BilinearResize(width(),Height(),chr422 || chr420 ? 0.25 : fullchr ? undefined : 0.375) : nop()
-chrfy = ymaskb ? mt_logic(chrfy,sisavs26 ? YD.mt_lut("x "+string(ythr2)+" scalef > range_max x "+string(ythr2/2)+" scalef < 0 range_max x "+string(ythr2)+" scalef - range_max "+string(ythr2/2)+" scalef "+string(ythr2)+" scalef - / * -  ? ?", use_expr=2) : YD.mt_lut("x "+string(ythr2)+" > 255 x "+string(ythr2/2)+" < 0 255 x "+string(ythr2)+" - 255 "+string(ythr2/2)+" "+string(ythr2)+" - / * -  ? ?"),"min") : nop()
-chrfy = ymaskb ? mt_logic(chrfy,y,"min") : ym
+chrfy = ymaskb ? mt_logic(chrfy,sisavs26 ? YDV.mt_lut("x "+string(ythr2)+" scalef > range_max x "+string(ythr2/2)+" scalef < 0 range_max x "+string(ythr2)+" scalef - range_max "+string(ythr2/2)+" scalef "+string(ythr2)+" scalef - / * -  ? ?", use_expr=2) : YDV.mt_lut("x "+string(ythr2)+" > 255 x "+string(ythr2/2)+" < 0 255 x "+string(ythr2)+" - 255 "+string(ythr2/2)+" "+string(ythr2)+" - / * -  ? ?"),"min") : nop()
+chrfy = ymaskb ? prefil > 0 ? chrfy : mt_logic(chrfy,y,"min") : ym
 ytouv(cmaskb ? YFIQ : I,cmaskb ? YFIQ : Q,ymaskb ? chrfy : Y)
 ymaskb && yexpand ? mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 2 : 1).mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 2 : 1) : last
 }
