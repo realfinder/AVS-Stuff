@@ -7,7 +7,7 @@
 ###          Special Thanks: Sagekilla, Didée, cretindesalpes, Gavino and MVtools people     ###
 ###                                                                                          ###
 ###                       v3.1.2d (Dogway's mod) - 21 July 2015                              ###
-###   v3.1.2.110s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
+###   v3.1.2.111s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
 ###                     and yuy2 support in avs 2.6 with masktools 2.6                       ###
 ### and medianblur2 now will be used in Minblur instead of Quantile RemoveGrainHD in avs 2.6 ###
 ###                                    and add TV_range bool                                 ###
@@ -203,7 +203,7 @@ pref   = !GlobalR ? (!planar && lsb ? ((!preclip ? ((lsb_in && prefilter==-1) ||
                      pref.Dither_Luma_Rebuild(S0=Str,lsb=lsb,lsb_in=pref16,slice=slices,c=Amp,uv=bug_wa)))                                  : \
                      pref
 
-pref = sisphbd ? n16 && sbitsn != pref.BitsPerComponent() ? pref.ConvertBits(sbitsn,dither=mode) : pref : pref
+pref = sisphbd ? n16 && sbitsn != pref.BitsPerComponent() ? pref.ConvertBits(sbitsn,dither=1) : pref : pref
 
 
 
@@ -423,7 +423,7 @@ output = !GlobalO && !lsb && if0 ? ifC ? ContraSharpeningHD(output, CClip, plana
 			               		LSFmod(output,source=CClip,defaults="slow",strength=Contrasharp,soothe=false,Lmode=0,soft=-2,keep=0) \
 			    : output
 
-!GlobalO ? n16_out ? output : n16 ? output.ConvertBits(sbitsn,dither=mode) : \
+!GlobalO ? n16_out ? output : n16 ? output.ConvertBits(sbitsn,dither=interlaced ? 1 : mode) : \
 	 	  lsb_out ? (if0 ? ctr16 : output)  : \
                       		 if0 && lsb ?  (interlaced ?  ctr16.weave().DitherPost(u=u,v=v,mode=6,slice=slices,interlaced=true)               :  ctr16.DitherPost(mode=mode,slice=slices,ampn=ampn,u=Uin,v=Vin)) : \
                              		 lsb ?             (interlaced ? output.weave().DitherPost(u=u,v=v,mode=6,slice=slices,interlaced=true)              : output.DitherPost(mode=mode,slice=slices,ampn=ampn,u=Uin,v=Vin)) : \
