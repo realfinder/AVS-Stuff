@@ -1,7 +1,7 @@
 ##############################################################################
 #
 #	High bitdepth tools for Avisynth
-#       v1.27.2
+#       v1.28.0
 #	Author: Firesledge
 #
 #	See the documentation for the function description.
@@ -778,8 +778,8 @@ Function Dither_resize16nr (clip src, int width, int height,
 
 	Assert (width > 0 && height > 0, "Dither_resize16nr: width and height must be > 0.")
 
-	sr_h  = Float (width ) / Float (src.width ()  )
-	sr_v  = Float (height) / Float (src.height()/2)
+	sr_h  = Float (width ) / Float (src.width ()     )
+	sr_v  = Float (height) / Float (src.height () / 2)
 	sr_up =       Dither_max (sr_h, sr_v)
 	sr_dw = 1.0 / Dither_min (sr_h, sr_v)
 	sr    = Dither_max (sr_up, sr_dw)
@@ -1375,6 +1375,85 @@ Function Dither_lutxyz8_lsb (clip src1, clip src2, clip src3,
 
 	mt_lutxyz (src1, src2, src3,
 \		expr=expr, yexpr=yexpr, uexpr=uexpr, vexpr=vexpr, y=y, u=u, v=v)
+}
+
+
+
+Function Dither_lutspa16 (clip src, string "mode",
+\	string "expr", string "yexpr", string "uexpr", string "vexpr",
+\	bool "relative", bool "biased",
+\	int "y", int "u", int "v")
+{
+	s_msb = src.Dither_get_msb ()
+	s_lsb = src.Dither_get_lsb ()
+	d_msb = Dither_lutspa8_msb (s_msb, mode=mode,
+\		expr=expr, yexpr=yexpr, uexpr=uexpr, vexpr=vexpr,
+\		relative=relative, biased=biased, y=y, u=u, v=v)
+	d_lsb = Dither_lutspa8_lsb (s_lsb, mode=mode,
+\		expr=expr, yexpr=yexpr, uexpr=uexpr, vexpr=vexpr,
+\		relative=relative, biased=biased, y=y, u=u, v=v)
+	StackVertical (d_msb, d_lsb)
+}
+
+Function Dither_lutspa8 (clip src, string "mode",
+\	string "expr", string "yexpr", string "uexpr", string "vexpr",
+\	bool "relative", bool "biased",
+\	int "y", int "u", int "v")
+{
+	s_lsb = src.Dither_gen_null_lsb ()
+	d_msb = Dither_lutspa8_msb (src, mode=mode,
+\		expr=expr, yexpr=yexpr, uexpr=uexpr, vexpr=vexpr,
+\		relative=relative, biased=biased, y=y, u=u, v=v)
+	d_lsb = Dither_lutspa8_lsb (s_lsb, mode=mode,
+\		expr=expr, yexpr=yexpr, uexpr=uexpr, vexpr=vexpr,
+\		relative=relative, biased=biased, y=y, u=u, v=v)
+	StackVertical (d_msb, d_lsb)
+}
+
+Function Dither_lutspa8_msb (clip src, string "mode",
+\	string "expr", string "yexpr", string "uexpr", string "vexpr",
+\	bool "relative", bool "biased",
+\	int "y", int "u", int "v")
+{
+	expr  = Default (expr,  "x")
+	yexpr = Default (yexpr, expr)
+	uexpr = Default (uexpr, expr)
+	vexpr = Default (vexpr, expr)
+	part  = Dither_expr_part (true)
+	expr  = expr  + part
+	yexpr = yexpr + part
+	uexpr = uexpr + part
+	vexpr = vexpr + part
+	y = (Defined (y) && y < 0) ? y / 256 : y
+	u = (Defined (u) && u < 0) ? u / 256 : u
+	v = (Defined (v) && v < 0) ? v / 256 : v
+
+	mt_lutspa (src, mode=mode,
+\		expr=expr, yexpr=yexpr, uexpr=uexpr, vexpr=vexpr,
+\		relative=relative, biased=biased, y=y, u=u, v=v)
+}
+
+Function Dither_lutspa8_lsb (clip src, string "mode",
+\	string "expr", string "yexpr", string "uexpr", string "vexpr",
+\	bool "relative", bool "biased",
+\	int "y", int "u", int "v")
+{
+	expr  = Default (expr,  "x")
+	yexpr = Default (yexpr, expr)
+	uexpr = Default (uexpr, expr)
+	vexpr = Default (vexpr, expr)
+	part  = Dither_expr_part (false)
+	expr  = expr  + part
+	yexpr = yexpr + part
+	uexpr = uexpr + part
+	vexpr = vexpr + part
+	y = (Defined (y) && y < 0) ? y % 256 : y
+	u = (Defined (u) && u < 0) ? u % 256 : u
+	v = (Defined (v) && v < 0) ? v % 256 : v
+
+	mt_lutspa (src, mode=mode,
+\		expr=expr, yexpr=yexpr, uexpr=uexpr, vexpr=vexpr,
+\		relative=relative, biased=biased, y=y, u=u, v=v)
 }
 
 
