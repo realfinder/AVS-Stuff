@@ -1,6 +1,7 @@
 # base on Dither_add_grain16 but work with HBD
 # soft = noise regen period, in frames (low-pass cutoff period)
 # soft >= 100: static noise.
+# V1.1
 Function sAddGrainCT(clip src, float "var", float "uvar",
 \	float "soft", int "maxts", bool "replace", int "seed")
 {
@@ -40,7 +41,7 @@ Function sAddGrainCT(clip src, float "var", float "uvar",
 
 	(! constant && ts_rad > 0) ? TemporalSoften (ts_rad, 255, 255, mode=2)                 : last
 	(! constant && ts_rad > 0) ? Trim (ts_rad, 0)                                          : last
-	(! constant &&     amp_al) ? sisavs26 ? mt_lut (yexpr=a_str, y=3, u=3, v=3, use_expr=2) : mt_lut (yexpr=a_str, y=3, u=3, v=3) : last
+	(! constant &&     amp_al) ? sisavs26 ? mt_lut (expr=a_str, y=3, u=3, v=3, use_expr=2) : mt_lut (expr=a_str, y=3, u=3, v=3) : last
 
 	(! constant &&  decim > 1) ? SelectEven ()                                             : last
 	(! constant              ) ? ConvertFPS (FrameRate () * rate_mul * decim)              : last
