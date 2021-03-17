@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.143
+# V1.144
 
 ### Functions list:-
 # sh_StrReplace
@@ -208,14 +208,18 @@ sislumaonly ? last : sisphbd ? CombinePlanes(last,oi,planes="YUV",sample_clip=oi
 
 
 # tophf lines mask
-function t_linemask( clip c, int "blur", float "thresh", float "str" )
+function t_linemask( clip clp, int "blur", float "thresh", float "str" )
 {
 	sisavs26 = !(VersionNumber() < 2.6)
+	sisphbd = AvsPlusVersionNumber > 2294
+	sislumaonly = sisphbd ? clp.isy() : sisavs26 ? clp.isy8() : true
+c = sislumaonly ? clp : sisphbd ? clp.converttoy() : clp.converttoy8()
 	blur=default(blur,5)
 	thresh=default(thresh,4)
 	str=default(str,16)
 	!sisavs26 ? mt_lutxy(c,c.binomialblur(blur,u=1,v=1),"x "+string(thresh)+" + y < y x - "+string(str)+" * 0 ?")
-        \                     : mt_lutxy(c,c.binomialblur(blur,u=1,v=1),"x "+string(thresh)+" scalef + y < y x - "+string(str)+" * 0 ?", clamp_float=true, use_expr=2)
+        \                     : mt_lutxy(c,c.FastBlur(sqrt(blur),iterations=2,gamma=false,threads=1),"x "+string(thresh)+" scalef + y < y x - "+string(str)+" * 0 ?", clamp_float=true, use_expr=2)
+sislumaonly ? last : sisphbd ? CombinePlanes(last,clp,planes="YUV",sample_clip=clp) : ytouv(clp.utoy8(),clp.vtoy8(),last)
 }
 
 
