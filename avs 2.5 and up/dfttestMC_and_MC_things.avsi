@@ -1,5 +1,5 @@
 ####################################################
-# script v2.120
+# script v2.121
 ####################################################
 # Motion-compensated dfttest by twc
 # Aka: Really Really Really Slow
@@ -9,7 +9,7 @@
 # Added: Recalculate, (proper) 16 bit input handling, dither_luma_rebuild and some masking to prevent 16 bit data loss from 8 bit Mdegrain and Mcompensate
 #
 #
-# v3.934 by A.SONY
+# v3.935 by A.SONY
 # make it work in normal avs again and some fix, and not that slow if you use it without lsb/lsb_in
 # add slice bool to use it to avoid artifacts with avstp
 # clean up
@@ -40,7 +40,7 @@
 
 function dfttestMC(clip input, clip "pp", int "mc", bool "mdg", bool "Y", bool "U", bool "V", float "sigma", int "sbsize", int "sosize", int "tbsize", int "dither", bool "lsb",bool "lsb_in",bool "pp_lsb_in",int "super_filter",
 	\ string "dfttest_params",float "rStr",float "Amp", int "mdgSAD", int "thSAD", int "thSCD1", int "thSCD2", bool "recalculate", bool "truemotion", int "pel", int "blksize", int "search", int "searchparam", int "overlap",
-		\ int "dct", bool "slices", bool "luma_rebuild", string "nstring", string "sstring", string "ssx", string "ssy", string "sst", bool "mdg_domask", string "mdg_mask", clip "ppsuper", clip "super", clip "exmcclip", bool "hd", clip "input8", int "threads")
+		\ int "dct", bool "slices", bool "luma_rebuild", string "nstring", string "sstring", string "ssx", string "ssy", string "sst", bool "mdg_domask", string "mdg_mask", clip "ppsuper", clip "super", clip "exmcclip", bool "hd", clip "input8", int "threads", string "chrnlocation", string "chrslocation", string "chrssx", string "chrssy", string "chrsst")
 {
 	# Set default options. Most external parameters are passed valueless.
 	
@@ -146,6 +146,8 @@ function dfttestMC(clip input, clip "pp", int "mc", bool "mdg", bool "Y", bool "
 		lsb_enable = false
 		}
 	""")
+	lsbandsep = (lsb_enable || lsb_in || lsb) && (defined(chrnlocation) || defined(chrslocation) || defined(chrssx) || defined(chrssy) || defined(chrsst))
+	Assert(!lsbandsep, "dfttestMC: Cannot use chr* things with lsb things.")
 	!exmc ? eval("""
 	degrained_super = mdg ? MSuper(degrained8, pel=pel, levels=1, chroma=chroma""" + bomts + """) : super
 	b5clip = mc == 5 ? MCompensate(degrained8, degrained_super, b5vec, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2""" + bomts + """) : nop()
@@ -191,7 +193,7 @@ function dfttestMC(clip input, clip "pp", int "mc", bool "mdg", bool "Y", bool "
 		nlocation = defined(alpha) ? sh_StrReplace(nstring,"a:"+salpha+ " ","") : nstring
 		sfi=defined(sstring) ? FindStr(sstring,"$") : 0
 		slocation = sfi != 0 ? sh_StrReplace(sstring,"$" + " ","") : sstring
-		filtered = Eval("sneo_dfttest(mc16 ? lsbNotWorthIt : interleaved, Y=Y ? 3 : 2, U=U ? 3 : 2, V=V ? 3 : 2, sigma=sigma, sbsize=sbsize, sosize=sosize, tbsize=tbsize, dither=dither, nlocation=nlocation, alpha=alpha, slocation=slocation, ssystem=sfi, ssx=ssx, ssy=ssy, sst=sst, threads=threads, fft_threads=threads" + dfttest_params + ")")
+		filtered = Eval("sneo_dfttest(mc16 ? lsbNotWorthIt : interleaved, Y=Y ? 3 : 2, U=U ? 3 : 2, V=V ? 3 : 2, sigma=sigma, sbsize=sbsize, sosize=sosize, tbsize=tbsize, dither=dither, nlocation=nlocation, alpha=alpha, slocation=slocation, ssystem=sfi, ssx=ssx, ssy=ssy, sst=sst, threads=threads, fft_threads=threads, chrnlocation=chrnlocation, chrslocation=chrslocation, chrssx=chrssx, chrssy=chrssy, chrsst=chrsst" + dfttest_params + ")")
 		}
 	""")
 		
