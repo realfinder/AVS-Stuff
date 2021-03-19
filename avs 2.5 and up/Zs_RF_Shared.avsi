@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.145
+# V1.146
 
 ### Functions list:-
 # sh_StrReplace
@@ -1577,7 +1577,7 @@ Vclip   = sisphbd ? ExtractV(input) : sisavs26 ? VToY8(input) : VToY(input)
 
 Yclip   = Yclip.sneo_dfttest(   ftype=ftype,    sigma=sigma,    sigma2=sigma2,    pmin=pmin,    pmax=pmax,    sbsize=sbsize,    smode=smode,    sosize=sosize,    tmode=tmode,    tosize=tosize,    swin=swin,    twin=twin,    sbeta=sbeta,    tbeta=tbeta,    zmean=zmean,    f0beta=f0beta,    nlocation=nlocation,    alpha=alpha,    slocation=slocation,    ssx=ssx,    ssy=ssy,    sst=sst,    ssystem=ssystem, dither=dither, y=y, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads)
 Uclip   = Uclip.sneo_dfttest(ftype=chrftype, sigma=chrsigma, sigma2=chrsigma2, pmin=chrpmin, pmax=chrpmax, sbsize=chrsbsize, smode=chrsmode, sosize=chrsosize, tmode=chrtmode, tosize=chrtosize, swin=chrswin, twin=chrtwin, sbeta=chrsbeta, tbeta=chrtbeta, zmean=chrzmean, f0beta=chrf0beta, nlocation=chrnlocation, alpha=chralpha, slocation=chrslocation, ssx=chrssx, ssy=chrssy, sst=chrsst, ssystem=chrssystem, dither=dither, y=U, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads)
-Uclip   = Vclip.sneo_dfttest(ftype=chrftype, sigma=chrsigma, sigma2=chrsigma2, pmin=chrpmin, pmax=chrpmax, sbsize=chrsbsize, smode=chrsmode, sosize=chrsosize, tmode=chrtmode, tosize=chrtosize, swin=chrswin, twin=chrtwin, sbeta=chrsbeta, tbeta=chrtbeta, zmean=chrzmean, f0beta=chrf0beta, nlocation=chrnlocation, alpha=chralpha, slocation=chrslocation, ssx=chrssx, ssy=chrssy, sst=chrsst, ssystem=chrssystem, dither=dither, y=V, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads)
+Vclip   = Vclip.sneo_dfttest(ftype=chrftype, sigma=chrsigma, sigma2=chrsigma2, pmin=chrpmin, pmax=chrpmax, sbsize=chrsbsize, smode=chrsmode, sosize=chrsosize, tmode=chrtmode, tosize=chrtosize, swin=chrswin, twin=chrtwin, sbeta=chrsbeta, tbeta=chrtbeta, zmean=chrzmean, f0beta=chrf0beta, nlocation=chrnlocation, alpha=chralpha, slocation=chrslocation, ssx=chrssx, ssy=chrssy, sst=chrsst, ssystem=chrssystem, dither=dither, y=V, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads)
 
 	!sisavs26 && isYUY2(input) ? YToUV(uclip.converttoyuy2(),vclip.converttoyuy2(),yclip.converttoyuy2()) : !(isYUY2(input)) && sisphbd ? CombinePlanes(yclip,uclip,vclip,planes="YUV",sample_clip=input) : YToUV(uclip,vclip,yclip)
 	 sisavs26 && isYUY2(input) ? converttoyuy2() : last
