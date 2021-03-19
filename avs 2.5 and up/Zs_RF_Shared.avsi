@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.146
+# V1.147
 
 ### Functions list:-
 # sh_StrReplace
@@ -1566,8 +1566,16 @@ Function sneo_dfttest(clip input, int "ftype", float "sigma", float "sigma2", fl
 {
 sisavs26  = !(VersionNumber() < 2.60)
 sisphbd   = AvsPlusVersionNumber > 2294
+y=Default(y,3)
+u=Default(u,3)
+v=Default(v,3)
+sigma=Default(sigma,16.0)
+sigma2=Default(sigma2,16.0)
+sbsize=Default(sbsize,12)
+sosize=Default(sosize,9)
+tbsize=Default(tbsize,5)
 sislumaonly = sisphbd ? input.isy() : sisavs26 ? input.isy8() : true
-dosep = !sislumaonly && isYUV(input) && (defined(chrsst) || defined(chrssy) || defined(chrssx) || defined(chrslocation) || defined(chrnlocation) || defined(chrf0beta) || defined(chrzmean) || defined(chrtbeta)
+dosep = (u==3 || v==3) && !sislumaonly && isYUV(input) && (defined(chrsst) || defined(chrssy) || defined(chrssx) || defined(chrslocation) || defined(chrnlocation) || defined(chrf0beta) || defined(chrzmean) || defined(chrtbeta)
 \ || defined(chrsbeta) || defined(chrtwin) || defined(chrswin) || defined(chrtosize) || defined(chrtmode) || defined(chrsosize) || defined(chrsmode) || defined(chrsbsize) || defined(chrpmax)
 \ || defined(chrpmin) || defined(chrsigma2) || defined(chrsigma) || defined(chrftype))
 dosep ? eval("""
@@ -1575,9 +1583,33 @@ Yclip   = sisphbd ? converttoY(input) : sisavs26 ? converttoY8(input) : input
 Uclip   = sisphbd ? ExtractU(input) : sisavs26 ? UToY8(input) : UToY(input)
 Vclip   = sisphbd ? ExtractV(input) : sisavs26 ? VToY8(input) : VToY(input)
 
-Yclip   = Yclip.sneo_dfttest(   ftype=ftype,    sigma=sigma,    sigma2=sigma2,    pmin=pmin,    pmax=pmax,    sbsize=sbsize,    smode=smode,    sosize=sosize,    tmode=tmode,    tosize=tosize,    swin=swin,    twin=twin,    sbeta=sbeta,    tbeta=tbeta,    zmean=zmean,    f0beta=f0beta,    nlocation=nlocation,    alpha=alpha,    slocation=slocation,    ssx=ssx,    ssy=ssy,    sst=sst,    ssystem=ssystem, dither=dither, y=y, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads)
-Uclip   = Uclip.sneo_dfttest(ftype=chrftype, sigma=chrsigma, sigma2=chrsigma2, pmin=chrpmin, pmax=chrpmax, sbsize=chrsbsize, smode=chrsmode, sosize=chrsosize, tmode=chrtmode, tosize=chrtosize, swin=chrswin, twin=chrtwin, sbeta=chrsbeta, tbeta=chrtbeta, zmean=chrzmean, f0beta=chrf0beta, nlocation=chrnlocation, alpha=chralpha, slocation=chrslocation, ssx=chrssx, ssy=chrssy, sst=chrsst, ssystem=chrssystem, dither=dither, y=U, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads)
-Vclip   = Vclip.sneo_dfttest(ftype=chrftype, sigma=chrsigma, sigma2=chrsigma2, pmin=chrpmin, pmax=chrpmax, sbsize=chrsbsize, smode=chrsmode, sosize=chrsosize, tmode=chrtmode, tosize=chrtosize, swin=chrswin, twin=chrtwin, sbeta=chrsbeta, tbeta=chrtbeta, zmean=chrzmean, f0beta=chrf0beta, nlocation=chrnlocation, alpha=chralpha, slocation=chrslocation, ssx=chrssx, ssy=chrssy, sst=chrsst, ssystem=chrssystem, dither=dither, y=V, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads)
+chrftype     = defined(chrftype) ? chrftype : ftype
+chrsigma     = defined(chrsigma) ? chrsigma : sigma
+chrsigma2    = defined(chrsigma2) ? chrsigma2 : sigma2
+chrpmin      = defined(chrpmin) ? chrpmin : pmin
+chrpmax      = defined(chrpmax) ? chrpmax : pmax
+chrsbsize    = defined(chrsbsize) ? chrsbsize : sbsize
+chrsmode     = defined(chrsmode) ? chrsmode : smode
+chrsosize    = defined(chrsosize) ? chrsosize : sosize
+chrtmode     = defined(chrtmode) ? chrtmode : tmode
+chrtosize    = defined(chrtosize) ? chrtosize : tosize
+chrswin      = defined(chrswin) ? chrswin : swin
+chrtwin      = defined(chrtwin) ? chrtwin : twin
+chrsbeta     = defined(chrsbeta) ? chrsbeta : sbeta
+chrtbeta     = defined(chrtbeta) ? chrtbeta : tbeta
+chrzmean     = defined(chrzmean) ? chrzmean : zmean
+chrf0beta    = defined(chrf0beta) ? chrf0beta : f0beta
+chrnlocation = defined(chrnlocation) ? chrnlocation : nlocation
+chralpha     = defined(chralpha) ? chralpha : alpha
+chrslocation = defined(chrslocation) ? chrslocation : slocation
+chrssx       = defined(chrssx) ? chrssx : ssx
+chrssy       = defined(chrssy) ? chrssy : ssy
+chrsst       = defined(chrsst) ? chrsst : sst
+chrssystem   = defined(chrssystem) ? chrssystem : ssystem
+
+Yclip   = y==3 ? Yclip.sneo_dfttest(   ftype=ftype,    sigma=sigma,    sigma2=sigma2,    pmin=pmin,    pmax=pmax,    sbsize=sbsize,    smode=smode,    sosize=sosize, tbsize=tbsize,    tmode=tmode,    tosize=tosize,    swin=swin,    twin=twin,    sbeta=sbeta,    tbeta=tbeta,    zmean=zmean,    f0beta=f0beta,    nlocation=nlocation,    alpha=alpha,    slocation=slocation,    ssx=ssx,    ssy=ssy,    sst=sst,    ssystem=ssystem, dither=dither, y=3, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads) : Yclip
+Uclip   = u==3 ? Uclip.sneo_dfttest(ftype=chrftype, sigma=chrsigma, sigma2=chrsigma2, pmin=chrpmin, pmax=chrpmax, sbsize=chrsbsize, smode=chrsmode, sosize=chrsosize, tbsize=tbsize, tmode=chrtmode, tosize=chrtosize, swin=chrswin, twin=chrtwin, sbeta=chrsbeta, tbeta=chrtbeta, zmean=chrzmean, f0beta=chrf0beta, nlocation=chrnlocation, alpha=chralpha, slocation=chrslocation, ssx=chrssx, ssy=chrssy, sst=chrsst, ssystem=chrssystem, dither=dither, y=3, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads) : Uclip
+Vclip   = v==3 ? Vclip.sneo_dfttest(ftype=chrftype, sigma=chrsigma, sigma2=chrsigma2, pmin=chrpmin, pmax=chrpmax, sbsize=chrsbsize, smode=chrsmode, sosize=chrsosize, tbsize=tbsize, tmode=chrtmode, tosize=chrtosize, swin=chrswin, twin=chrtwin, sbeta=chrsbeta, tbeta=chrtbeta, zmean=chrzmean, f0beta=chrf0beta, nlocation=chrnlocation, alpha=chralpha, slocation=chrslocation, ssx=chrssx, ssy=chrssy, sst=chrsst, ssystem=chrssystem, dither=dither, y=3, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads) : Vclip
 
 	!sisavs26 && isYUY2(input) ? YToUV(uclip.converttoyuy2(),vclip.converttoyuy2(),yclip.converttoyuy2()) : !(isYUY2(input)) && sisphbd ? CombinePlanes(yclip,uclip,vclip,planes="YUV",sample_clip=input) : YToUV(uclip,vclip,yclip)
 	 sisavs26 && isYUY2(input) ? converttoyuy2() : last
@@ -1587,9 +1619,9 @@ eval("""
 } catch(error_msg) { 
 nstring = defined(nlocation) && defined(alpha) ? "a:" + string(alpha) + " " + nlocation : nlocation
 sstring = defined(slocation) && defined(ssystem) ? ssystem == 1 ? "$" + " " + slocation : slocation : slocation
-y=defined(y) ? y==3 : undefined
-u=defined(u) ? u==3 : undefined
-v=defined(v) ? v==3 : undefined
+y=y==3
+u=u==3
+v=v==3
 input.dfttest(ftype=ftype, sigma=sigma, sigma2=sigma2, pmin=pmin, pmax=pmax, sbsize=sbsize, smode=smode, sosize=sosize, tbsize=tbsize, tmode=tmode, tosize=tosize, swin=swin, twin=twin, sbeta=sbeta, tbeta=tbeta, zmean=zmean, f0beta=f0beta, nstring=nstring , sstring=sstring, ssx=ssx, ssy=ssy, sst=sst                   , dither=dither, Y=y, U=u, V=v, opt=opt, threads=threads)  }
 """)
 }
