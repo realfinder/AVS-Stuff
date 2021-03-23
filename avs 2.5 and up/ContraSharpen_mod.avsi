@@ -1,4 +1,4 @@
-###### Contra-Sharpen mod 3.71 ###### by mawen1250 ###### 2021.03.22 ######
+###### Contra-Sharpen mod 3.72 ###### by mawen1250 ###### 2021.03.23 ######
 ###### Requirements: masktools v2.0a48, mvtools v2.5.11.3/v2.6.0.5, RemoveGrain + Repair v1.0pre, RemoveGrainHD v0.5    ######
 ###### FluxSmooth v1.1a, nnedi3 v0.9.4, SangNom 2004.01.18(filter_ss="AA"), TEdgeMask v0.9, tcanny v1.0, MSharpen v1.10 ######
 
@@ -245,7 +245,7 @@ edgemask  = IsClip(edgemask) ? edgemask
 \                                         mt_edge(prefinal, "prewitt", 0, 255, 0, 0, V=1, U=1)
 \                             .mt_lut("x " + string(edgethr) + " <= x 1 >> x 1.4 ^ ?", U=1, V=1)
 \                             .RemoveGrain(4, -1).mt_inflate(U=1, V=1)
-\         : edgemask == -4   ? sisavs26 ? vsTEdgeMask(threshY=0,link=2, U=1, V=1)
+\         : edgemask == -4   ? sisavs26 ? vsTEdgeMask(prefinal, threshY=0 ,link=2 , U=1, V=1)
 \                             .mt_lut("x " + string(edgethr/5.0) + " scalef <= x 2 / x 16 * ?",scale_inputs="floatf",clamp_float=true,use_expr=2, U=1, V=1)
 \                             .mt_deflate(U=1, V=1).RemoveGrain(HD ? 20 : 11, nochro ? undefined : -1) :
 \                                         TEdgeMask(prefinal, link=2, preblur=false, valon=-1, U=0, V=0)
