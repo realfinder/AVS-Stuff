@@ -2,10 +2,10 @@
 ###                                                                                                                              ###
 ###                                   Motion-Compensated Temporal Denoise: MCTemporalDenoise()                                   ###
 ###                                                                                                                              ###
-###                                                     v1.4.20 by "LaTo INV."                                                   ###
+###                                                     v1.4.21 by "LaTo INV."                                                   ###
 ###                                                                                                                              ###
 ###                                                           2 July 2010                                                        ###
-###                                                           27 June 2020                                                       ###
+###                                                          22 March 2021                                                       ###
 ###                                                                                                                              ###
 ####################################################################################################################################
 ### 
@@ -320,6 +320,9 @@
 ###
 ### CHANGELOG:
 ### ----------
+###
+### v1.4.21 : support sh_GetUserGlobalIMT (set_plugins_threads) and sh_GetUserGlobalIMTint (set_plugins_threads_int) and sh_GetUserGlobalIMTbool (set_plugins_threads_bool)
+###           others
 ###
 ### v1.4.20 : tweaked some settings
 ###           updated QED_Deblock version
@@ -639,7 +642,7 @@ GPU         = default(GPU,          MCTD_Defaults( i, settings_num, "GPU"       
 dfixband    =            !sischbd ? MCTD_Defaults( i, settings_num, "fixband"     )  : false
 fixband     = default(fixband,      dfixband                                        )
 bt          = default(bt,           MCTD_Defaults( i, settings_num, "bt"          ) )
-ncpu        = default(ncpu,         MCTD_Defaults( i, settings_num, "ncpu"        ) )
+ncpu        = default(ncpu,         defined(sh_GetUserGlobalIMTint) ? sh_GetUserGlobalIMTint : MCTD_Defaults( i, settings_num, "ncpu"        ) )
 precision   = default(precision,    MCTD_Defaults( i, settings_num, "precision"   ) )
 
 thSAD       = default(thSAD,        MCTD_Defaults( i, settings_num, "thSAD"       ) )
@@ -715,40 +718,43 @@ d  = (deblock==false) ? i
 
 
 ### PREPARING
-nullclip = Blankclip()
-
-pMVS = p.MSuper(hpad=0,vpad=0,pel=pel,sharp=MVsharp,chroma=chroma)
+nullclip = undefined
+bomt     = sh_GetUserGlobalIMTbool()
+mvt2mt   = Defined(bomt) ? ",mt=" + string(bomt) : ""
+eval("
+pMVS = p.MSuper(hpad=0,vpad=0,pel=pel,sharp=MVsharp,chroma=chroma"+mvt2mt+")
 
 f1v = (radius<1) ? nullclip
-\   :              pMVS.MAnalyse(isb=false, delta=1, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma)
+\   :              pMVS.MAnalyse(isb=false, delta=1, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma"+mvt2mt+")
 f2v = (radius<2) ? nullclip
-\   :              pMVS.MAnalyse(isb=false, delta=2, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma)
+\   :              pMVS.MAnalyse(isb=false, delta=2, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma"+mvt2mt+")
 f3v = (radius<3) ? nullclip
-\   :              pMVS.MAnalyse(isb=false, delta=3, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma)
+\   :              pMVS.MAnalyse(isb=false, delta=3, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma"+mvt2mt+")
 f4v = (radius<4) ? nullclip
-\   :              pMVS.MAnalyse(isb=false, delta=4, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma)
+\   :              pMVS.MAnalyse(isb=false, delta=4, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma"+mvt2mt+")
 f5v = (radius<5) ? nullclip
-\   :              pMVS.MAnalyse(isb=false, delta=5, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma)
+\   :              pMVS.MAnalyse(isb=false, delta=5, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma"+mvt2mt+")
 f6v = (radius<6) ? nullclip
-\   :              pMVS.MAnalyse(isb=false, delta=6, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma)
+\   :              pMVS.MAnalyse(isb=false, delta=6, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma"+mvt2mt+")
 b1v = (radius<1) ? nullclip
-\   :              pMVS.MAnalyse(isb=true, delta=1, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma)
+\   :              pMVS.MAnalyse(isb=true, delta=1, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma"+mvt2mt+")
 b2v = (radius<2) ? nullclip
-\   :              pMVS.MAnalyse(isb=true, delta=2, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma)
+\   :              pMVS.MAnalyse(isb=true, delta=2, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma"+mvt2mt+")
 b3v = (radius<3) ? nullclip
-\   :              pMVS.MAnalyse(isb=true, delta=3, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma)
+\   :              pMVS.MAnalyse(isb=true, delta=3, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma"+mvt2mt+")
 b4v = (radius<4) ? nullclip
-\   :              pMVS.MAnalyse(isb=true, delta=4, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma)
+\   :              pMVS.MAnalyse(isb=true, delta=4, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma"+mvt2mt+")
 b5v = (radius<5) ? nullclip
-\   :              pMVS.MAnalyse(isb=true, delta=5, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma)
+\   :              pMVS.MAnalyse(isb=true, delta=5, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma"+mvt2mt+")
 b6v = (radius<6) ? nullclip
-\   :              pMVS.MAnalyse(isb=true, delta=6, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma)
+\   :              pMVS.MAnalyse(isb=true, delta=6, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=chroma"+mvt2mt+")
+")
 
    function MCTD_TTSM(clip "i", clip "iMVS", clip "SAD_f1m", clip "SAD_b1m", clip "f1c", clip "b1c",
    \                  clip "f1v", clip "f2v", clip "f3v", clip "f4v", clip "f5v", clip "f6v", clip "b1v", clip "b2v", clip "b3v", clip "b4v", clip "b5v", clip "b6v",
    \                  int "radius", bool "chroma", int "thSAD", int "thSCD1", int "thSCD2")
    {
-   nullclip = BlankClip()
+   nullclip = undefined
 
    SAD_f2m = (radius>=2) ? i.MMask(f2v, kind=1, ml=thSAD, gamma=0.999, Ysc=255) : nullclip
    SAD_f3m = (radius>=3) ? i.MMask(f3v, kind=1, ml=thSAD, gamma=0.999, Ysc=255) : nullclip
@@ -770,16 +776,20 @@ b6v = (radius<6) ? nullclip
    \     : (radius==1) ? interleave(                                             SAD_f1m, b, SAD_b1m                                             )
    \     : nullclip
 
-   b2c = (radius>=2)  ? i.MCompensate(iMVS, b2v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nullclip
-   b3c = (radius>=3)  ? i.MCompensate(iMVS, b3v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nullclip
-   b4c = (radius>=4)  ? i.MCompensate(iMVS, b4v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nullclip
-   b5c = (radius>=5)  ? i.MCompensate(iMVS, b5v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nullclip
-   b6c = (radius>=6)  ? i.MCompensate(iMVS, b6v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nullclip
-   f2c = (radius>=2)  ? i.MCompensate(iMVS, f2v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nullclip
-   f3c = (radius>=3)  ? i.MCompensate(iMVS, f3v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nullclip
-   f4c = (radius>=4)  ? i.MCompensate(iMVS, f4v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nullclip
-   f5c = (radius>=5)  ? i.MCompensate(iMVS, f5v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nullclip
-   f6c = (radius>=6)  ? i.MCompensate(iMVS, f6v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2) : nullclip
+   bomt     = sh_GetUserGlobalIMTbool()
+   mvt2mt   = Defined(bomt) ? ",mt=" + string(bomt) : ""
+   eval("
+   b2c = (radius>=2)  ? i.MCompensate(iMVS, b2v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+") : nullclip
+   b3c = (radius>=3)  ? i.MCompensate(iMVS, b3v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+") : nullclip
+   b4c = (radius>=4)  ? i.MCompensate(iMVS, b4v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+") : nullclip
+   b5c = (radius>=5)  ? i.MCompensate(iMVS, b5v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+") : nullclip
+   b6c = (radius>=6)  ? i.MCompensate(iMVS, b6v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+") : nullclip
+   f2c = (radius>=2)  ? i.MCompensate(iMVS, f2v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+") : nullclip
+   f3c = (radius>=3)  ? i.MCompensate(iMVS, f3v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+") : nullclip
+   f4c = (radius>=4)  ? i.MCompensate(iMVS, f4v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+") : nullclip
+   f5c = (radius>=5)  ? i.MCompensate(iMVS, f5v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+") : nullclip
+   f6c = (radius>=6)  ? i.MCompensate(iMVS, f6v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+") : nullclip
+   ")
    
    c = (radius==6) ? interleave(f6c, f5c, f4c, f3c, f2c, f1c, i, b1c, b2c, b3c, b4c, b5c, b6c)
    \ : (radius==5) ? interleave(     f5c, f4c, f3c, f2c, f1c, i, b1c, b2c, b3c, b4c, b5c     )
@@ -800,29 +810,35 @@ b6v = (radius<6) ? nullclip
    \                 clip "f1v", clip "f2v", clip "f3v", clip "f4v", clip "f5v", clip "f6v", clip "b1v", clip "b2v", clip "b3v", clip "b4v", clip "b5v", clip "b6v",
    \                 int "radius", bool "chroma", int "thSAD", int "thSCD1", int "thSCD2")
    {
-   nullclip = BlankClip()
+   nullclip = undefined
 
-   mv12  = (radius==4) ? i.MDegrain2(iMVS, b1v, f1v, b2v, f2v,           thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0) : nullclip
-   mv34  = (radius==4) ? i.MDegrain2(iMVS, b3v, f3v, b4v, f4v,           thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0) : nullclip
-   mv45  = (radius==5) ? i.MDegrain2(iMVS, b4v, f4v, b5v, f5v,           thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0) : nullclip
-   mv123 = (radius>=5) ? i.MDegrain3(iMVS, b1v, f1v, b2v, f2v, b3v, f3v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0) : nullclip
-   mv456 = (radius==6) ? i.MDegrain3(iMVS, b4v, f4v, b5v, f5v, b6v, f6v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0) : nullclip
+   bomt     = sh_GetUserGlobalIMTbool()
+   mvt2mt   = Defined(bomt) ? ",mt=" + string(bomt) : ""
+   eval("
+   mv12  = (radius==4) ? i.MDegrain2(iMVS, b1v, f1v, b2v, f2v,           thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0"+mvt2mt+") : nullclip
+   mv34  = (radius==4) ? i.MDegrain2(iMVS, b3v, f3v, b4v, f4v,           thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0"+mvt2mt+") : nullclip
+   mv45  = (radius==5) ? i.MDegrain2(iMVS, b4v, f4v, b5v, f5v,           thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0"+mvt2mt+") : nullclip
+   mv123 = (radius>=5) ? i.MDegrain3(iMVS, b1v, f1v, b2v, f2v, b3v, f3v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0"+mvt2mt+") : nullclip
+   mv456 = (radius==6) ? i.MDegrain3(iMVS, b4v, f4v, b5v, f5v, b6v, f6v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0"+mvt2mt+") : nullclip
    
-   sm = (radius==1) ? i.MDegrain1(iMVS, b1v, f1v,                     thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0)
-   \  : (radius==2) ? i.MDegrain2(iMVS, b1v, f1v, b2v, f2v,           thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0)
-   \  : (radius==3) ? i.MDegrain3(iMVS, b1v, f1v, b2v, f2v, b3v, f3v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0)
+   sm = (radius==1) ? i.MDegrain1(iMVS, b1v, f1v,                     thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0"+mvt2mt+")
+   \  : (radius==2) ? i.MDegrain2(iMVS, b1v, f1v, b2v, f2v,           thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0"+mvt2mt+")
+   \  : (radius==3) ? i.MDegrain3(iMVS, b1v, f1v, b2v, f2v, b3v, f3v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=chroma?4:0"+mvt2mt+")
    \  : (radius==4) ? Merge(mv12,  mv34,  0.4444)
    \  : (radius==5) ? Merge(mv123, mv45,  0.4545)
    \  :               Merge(mv123, mv456, 0.4615)
+   ")
    
    return sm
    }
 
-dMVS    = d.MSuper(hpad=0,vpad=0,pel=pel,sharp=MVsharp,chroma=chroma)
+eval("
+dMVS    = d.MSuper(hpad=0,vpad=0,pel=pel,sharp=MVsharp,chroma=chroma"+mvt2mt+")
 SAD_f1m = d.MMask(f1v, kind=1, ml=thSAD, gamma=0.999, Ysc=255)
 SAD_b1m = d.MMask(b1v, kind=1, ml=thSAD, gamma=0.999, Ysc=255)
-f1c     = d.MCompensate(dMVS, f1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2)
-b1c     = d.MCompensate(dMVS, b1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2)
+f1c     = d.MCompensate(dMVS, f1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+")
+b1c     = d.MCompensate(dMVS, b1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+")
+")
 
 
 ### DENOISING: FIRST PASS
@@ -846,7 +862,7 @@ smL = (limit==-1) ? i.mt_makediff(DD,U=chr31,V=chr31) : DD
 
 
 ### DENOISING: SECOND PASS
-smLMVS = (twopass==true) ? smL.MSuper(hpad=0,vpad=0,pel=pel,sharp=MVsharp,chroma=chroma) : nullclip
+smLMVS = (twopass==true) ? eval("smL.MSuper(hpad=0,vpad=0,pel=pel,sharp=MVsharp,chroma=chroma"+mvt2mt+")") : nullclip
 
 sm = (twopass==false)  ? sm
 \  : (useTTmpSm==true) ? MCTD_TTSM(i=smL, iMVS=smLMVS, SAD_f1m=SAD_f1m, SAD_b1m=SAD_b1m, f1c=f1c, b1c=b1c,
@@ -983,21 +999,25 @@ smP = (post==0)        ? smP
    thSCD1      = MCTD_Defaults( denoised, settings_num, "thSCD1"      )
    thSCD2      = MCTD_Defaults( denoised, settings_num, "thSCD2"      )
 
-   denoisedMVS = (internal==true) ? denoised : denoised.MSuper(hpad=0,vpad=0,pel=pel,sharp=MVsharp,chroma=false)
-   f1v         = (internal==true) ? f1v : MAnalyse(denoisedMVS, isb=false, delta=1, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=false)
-   b1v         = (internal==true) ? b1v : MAnalyse(denoisedMVS, isb=true,  delta=1, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=false)
+   bomt     = sh_GetUserGlobalIMTbool()
+   mvt2mt   = Defined(bomt) ? ",mt=" + string(bomt) : ""
+   eval("
+   denoisedMVS = (internal==true) ? denoised : denoised.MSuper(hpad=0,vpad=0,pel=pel,sharp=MVsharp,chroma=false"+mvt2mt+")
+   f1v         = (internal==true) ? f1v : MAnalyse(denoisedMVS, isb=false, delta=1, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=false"+mvt2mt+")
+   b1v         = (internal==true) ? b1v : MAnalyse(denoisedMVS, isb=true,  delta=1, truemotion=truemotion, blksize=blksize, overlap=overlap, pelsearch=pelsearch, search=search, searchparam=searchparam, DCT=DCT, global=MVglobal, chroma=false"+mvt2mt+")
    f1c         = (internal==true) ? f1c
-   \           : defined(source)  ? MCompensate(source  , denoisedMVS, f1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2)
-   \           :                    MCompensate(denoised, denoisedMVS, f1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2)
+   \           : defined(source)  ? MCompensate(source  , denoisedMVS, f1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+")
+   \           :                    MCompensate(denoised, denoisedMVS, f1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+")
    b1c         = (internal==true) ? b1c
-   \           : defined(source)  ? MCompensate(source  , denoisedMVS, b1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2)
-   \           :                    MCompensate(denoised, denoisedMVS, b1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2)
+   \           : defined(source)  ? MCompensate(source  , denoisedMVS, b1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+")
+   \           :                    MCompensate(denoised, denoisedMVS, b1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2"+mvt2mt+")
    SAD_f1m     = (internal==true) ? SAD_f1m 
    \           : defined(source)  ? MMask(source,   f1v, kind=1, ml=thSAD, gamma=0.999, Ysc=255)
    \           :                    MMask(denoised, f1v, kind=1, ml=thSAD, gamma=0.999, Ysc=255)
    SAD_b1m     = (internal==true) ? SAD_b1m 
    \           : defined(source)  ? MMask(source,   b1v, kind=1, ml=thSAD, gamma=0.999, Ysc=255)
    \           :                    MMask(denoised, b1v, kind=1, ml=thSAD, gamma=0.999, Ysc=255)
+   ")
 
    denoised = (internal==true) ? denoised
    \        : (deblock==false) ? denoised
@@ -1006,7 +1026,7 @@ smP = (post==0)        ? smP
 
 
    ### INITIATING
-   nullclip = BlankClip()
+   nullclip = undefined
 
    i   = defined(source) ? source : denoised
    smP = denoised
@@ -1038,10 +1058,12 @@ smP = (post==0)        ? smP
    mA  = (AA==true) ? sisavs26 ? smB.mt_edge("prewitt",0,255,0,0,V=1,U=1).mt_lut("x "+string(AAthr)+" scalef <= 0 x 1.4 ^ ?", clamp_float=true, use_expr=2,U=1,V=1).removegrain(4,-1).mt_inflate(U=1,V=1) : smB.mt_edge("prewitt",0,255,0,0,V=1,U=1).mt_lut("x "+string(AAthr)+" <= 0 x 1.4 ^ ?",U=1,V=1).removegrain(4,-1).mt_inflate(U=1,V=1) : NOP()
    smA = (AA==true) ? mt_merge(smB,cAA,mA,luma=chroma?true:false,U=chr31,V=chr31) : NOP()
 
+   eval("""
    aaD1    = (AA==true&&reduc!=-1) ? mt_makediff(smB, smA, U=1, V=1) : NOP()
-   aaD1MVS = (AA==true&&reduc!=-1) ? aaD1.MSuper(hpad=0,vpad=0,pel=pel,sharp=MVsharp,chroma=false) : NOP()              
-   aaD2    = (AA==true&&reduc!=-1) ? aaD1.MDegrain1(aaD1MVS, b1v, f1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=0) : NOP()
+   aaD1MVS = (AA==true&&reduc!=-1) ? aaD1.MSuper(hpad=0,vpad=0,pel=pel,sharp=MVsharp,chroma=false"""+mvt2mt+""") : NOP()              
+   aaD2    = (AA==true&&reduc!=-1) ? aaD1.MDegrain1(aaD1MVS, b1v, f1v, thSAD=thSAD, thSCD1=thSCD1, thSCD2=thSCD2, plane=0"""+mvt2mt+""") : NOP()
    aaD2    = (AA==true&&reduc!=-1) ? sisavs26 ? mt_lutxy(aaD1, aaD2, "x range_half - abs y range_half - abs < x y ?", use_expr=1, U=1, V=1).mergeluma(aaD2, 1.0-reduc) : mt_lutxy(aaD1, aaD2, "x 128 - abs y 128 - abs < x y ?", U=1, V=1).mergeluma(aaD2, 1.0-reduc) : NOP()
+   """)
 
    smA     = (AA==false) ? smB
    \       : (reduc==-1) ? smA
