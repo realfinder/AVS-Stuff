@@ -1,5 +1,5 @@
 ####################################################
-# script v2.122
+# script v2.123
 ####################################################
 # Motion-compensated dfttest by twc
 # Aka: Really Really Really Slow
@@ -220,7 +220,6 @@ function sMCclips(clip input, clip pp_super, clip super, int "mc",
 	overlap = default(overlap,blksize2)
 	thSAD  = default(thSAD ,   400)
 	chromaMA = default(chromaMA, true)
-	chroma   = default(chroma, true)
 	
 	# Motion vector search.
 	b5vec = mc == 5 ? defined(b5vec) ? b5vec : dbomt ? MAnalyse(pp_super, delta=5, isb=true, chroma=chromaMA, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion, mt=bomt) : MAnalyse(pp_super, delta=5, isb=true, chroma=chroma, search=search, searchparam=searchparam, overlap=overlap, blksize=blksize, dct=dct,truemotion=truemotion) : nop()
