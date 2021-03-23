@@ -1,4 +1,4 @@
-# ASTDR DeRainbow function v1.78
+# ASTDR DeRainbow function v1.79
  
   function ASTDR(clip input, float "strength", int "tempsoftth", int "tempsoftrad", int "tempsoftsc", float "blstr", int "tht", int "FluxStv", int "dcn", bool "edgem", bool "exmc", clip "edgemprefil", bool "nomask")
   {
@@ -43,7 +43,7 @@
   edgem && !nomask ? mt_merge(input, last, edgemclip.mt_expand().mt_inflate(),y=2,u=3,v=3,luma=true) : last
   }
 
-# ASTDRmc DeRainbow function v1.77
+# ASTDRmc DeRainbow function v1.78
 
   function ASTDRmc(clip input, float "strength", int "tempsoftth", int "tempsoftrad", int "tempsoftsc", float "blstr", int "tht", int "FluxStv", int "dcn", bool "edgem", int "thSAD", clip "prefil", bool "chroma", clip "edgemprefil", bool "nomask")
   {
@@ -57,7 +57,7 @@ sisfield = input.IsFieldBased()
   edgem    = default(edgem, sisfield)
   chroma   = default(chroma, false)
 
-derbmask = sisfield || nomask ? nop() : (VersionNumber() < 2.60) ? input.tedgemask(threshY=2,u=0,v=0).mt_inflate() : input.TEMmod(threshY=2,chroma=0).mt_inflate()
+derbmask = sisfield || nomask ? nop() : (VersionNumber() < 2.60) ? input.tedgemask(threshY=2,u=1,v=1).mt_inflate() : input.vsTEdgeMask(threshY=2,u=1,v=1).mt_inflate()
 
 exprefil  = defined(prefil)
 prefil    = exprefil ? prefil : chroma ? sisfield ? input.MinBlur(3).mergeluma(input).Blur(1) : input.MinBlur(3,blurrep=true) : input.Blur(1.5)
