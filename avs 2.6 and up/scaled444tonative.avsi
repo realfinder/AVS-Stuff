@@ -1,5 +1,5 @@
 # base on ChromaReconstructor and fulltonative by feisty2
-# 1.13
+# 1.14
 
 function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mode", int "device_type", int "device_id", int "fast", float "sDev", float "iDev", float "cs", bool "d2", int "kernS", int "kernI", int "resType", bool "onecall", string "CkJMod", string "cplace")
 {
@@ -29,8 +29,8 @@ function scaled444tonative (clip src, int "a", float "h", int "lowpass", int "mo
 	pad             = CkJMod != "none" ? pad.edi_rpow2(sis411 ? 4 : 2,halfchr ? 2 : 1,edi=CkJMod, cshift="bilinearresize",Y=false,cplace=cplace,bordfix=false) : pad
 	srcu            = sisphbd ? ExtractU(pad) : UToY8(pad)
 	srcv            = sisphbd ? ExtractV(pad) : VToY8(pad)
-	srcu            = CkJMod != "none" ? sis411 ? srcu.bilinearresize(width(srcy),height(srcy),src_left=-0.375) : !(halfchr && cplace != "MPEG2") ? srcu.bilinearresize(width(srcy),height(srcy),src_left=-0.25) : srcu : srcu
-	srcv            = CkJMod != "none" ? sis411 ? srcv.bilinearresize(width(srcy),height(srcy),src_left=-0.375) : !(halfchr && cplace != "MPEG2") ? srcv.bilinearresize(width(srcy),height(srcy),src_left=-0.25) : srcv : srcv
+	srcu            = CkJMod != "none" ? sis411 ? srcu.bilinearresize(width(srcy),height(srcy),src_left=0.375 + (a%4)) : srcu.bilinearresize(width(srcy),height(srcy),src_left=(a%2) + ((halfchr && cplace != "MPEG2") ? 0 : 0.25),src_top=halfchr ? a%2 : 0) : srcu
+	srcv            = CkJMod != "none" ? sis411 ? srcv.bilinearresize(width(srcy),height(srcy),src_left=0.375 + (a%4)) : srcv.bilinearresize(width(srcy),height(srcy),src_left=(a%2) + ((halfchr && cplace != "MPEG2") ? 0 : 0.25),src_top=halfchr ? a%2 : 0) : srcv
 	u4x             = CkJMod != "none" ? nop() : abs(fast) < 3 && abs(fast) != 1 ? pad.nnedi3_rpow2(2, nns=4, qual=2, etype=1, nsize=0).nnedi3_rpow2(2, nns=4, qual=2, etype=1, nsize=0) : pad
 	luma            = CkJMod != "none" ? srcy : abs(fast) < 3 && abs(fast) != 1 ? sisphbd ? ExtractY(u4x) : ConvertToY8(u4x) : srcy
 	u               = siscfloat ? expr(CkJMod != "none" ? srcu : ExtractU(u4x), "x 0.5 +") : CkJMod == "none" && abs(fast) < 3 && abs(fast) != 1 ? sisphbd ? ExtractU(u4x) : UToY8(u4x) : srcu
