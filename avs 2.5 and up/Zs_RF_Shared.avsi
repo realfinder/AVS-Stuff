@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.147
+# V1.148
 
 ### Functions list:-
 # sh_StrReplace
@@ -24,6 +24,7 @@
 # sTryFTurnLeft
 # sTryFTurn180
 # slimit_dif
+# slimit_dif2
 # sh_GetCSP
 # sh_Y8_YV411
 # ContraSharpeningHD
@@ -465,8 +466,40 @@ catch(err_msg) {
 }
 
 
+# base on Dither_limit_dif16 and vs LimitFilter
+function slimit_dif(clip "flt", clip "src", clip "ref", float "thr", float "elast", float "brighten_thr", float "thrc", int "Y", int "U", int "V", int "A")
+{
+thr    = default(thr,                 0.25)
+thrc   = default(thrc,                 thr)
+elast  = default(elast,                3.0)
+bthr   = default(brighten_thr,         thr)
+Y  = default(Y,           3)
+U  = default(U,           3)
+V  = default(V,           3)
+celast = U == 3 || V == 3 ? elast * thrc : nop()
+A  = default(A,           2)
+
+dref = defined(ref)
+sisavs26 = !(VersionNumber() < 2.6)
+ 
+Assert(!(elast < 1), "slimit_dif: elast must be more than 1")
+Assert((defined(flt) && defined(src)), "slimit_dif: both flt clip and src clip are needed")
+ 
+output = dref ? !sisavs26 ? mt_lutxyz(src,flt,ref, "y z - abs "+string(thrc)+" <= y y z - abs "+string(celast)+" >= x x y x - "+string(celast)+" y z - abs - * "+string(celast)+" "+string(thrc)+" - / + ? ?", \
+					                               "y z - abs y x - 0 > "+string(bthr)+" "+string(thr)+" ? <= y y z - abs y x - 0 > "+string(bthr)+" "+string(thr)+" ? "+string(elast)+" * >= x x y x - y x - 0 > "+string(bthr)+" "+string(thr)+" ? "+string(elast)+" * y z - abs - * y x - 0 > "+string(bthr)+" "+string(thr)+" ? "+string(elast)+" * y x - 0 > "+string(brighten_thr)+" "+string(thr)+" ? - / + ? ?", Y=Y,U=U,V=V)
+                \         : mt_lutxyz(src,flt,ref, "y z - abs "+string(thrc)+" yscalef <= y y z - abs "+string(celast)+" yscalef >= x x y x - "+string(celast)+" yscalef y z - abs - * "+string(celast)+" yscalef "+string(thrc)+" yscalef - / + ? ?", \
+					                               "y z - abs y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? <= y y z - abs y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? "+string(elast)+" * >= x x y x - y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? "+string(elast)+" * y z - abs - * y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? "+string(elast)+" * y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? - / + ? ?",clamp_float_UV=false,use_expr=1,Y=Y,U=U,V=V,A=A) 
+         \    : nop()
+!dref ? !sisavs26 ? mt_lutxy(src,flt, "y x - abs "+string(thrc)+" <= y y x - abs "+string(celast)+" >= x x y x - "+string(celast)+" y x - abs - * "+string(celast)+" "+string(thrc)+" - / + ? ?", \
+					                  "y x - abs y x - 0 > "+string(bthr)+" "+string(thr)+" ? <= y y x - abs y x - 0 > "+string(bthr)+" "+string(thr)+" ? "+string(elast)+" * >= x x y x - y x - 0 > "+string(bthr)+" "+string(thr)+" ? "+string(elast)+" * y x - abs - * y x - 0 > "+string(bthr)+" "+string(thr)+" ? "+string(elast)+" * y x - 0 > "+string(bthr)+" "+string(thr)+" ? - / + ? ?", Y=Y,U=U,V=V)
+        \         : mt_lutxy(src,flt, "y x - abs "+string(thrc)+" yscalef <= y y x - abs "+string(celast)+" yscalef >= x x y x - "+string(celast)+" yscalef y x - abs - * "+string(celast)+" yscalef "+string(thrc)+" yscalef - / + ? ?", \
+					                  "y x - abs y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? <= y y x - abs y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? "+string(elast)+" * >= x x y x - y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? "+string(elast)+" * y x - abs - * y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? "+string(elast)+" * y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? - / + ? ?",clamp_float_UV=false,use_expr=2,Y=Y,U=U,V=V,A=A)
+  \   : output
+}
+
+
 # base on Dither_limit_dif16 idea (not 100% same output)
-function slimit_dif(clip "flt", clip "src", clip "ref", float "thr", float "elast", int "Y", int "U", int "V", bool "elastinfl", int "A")
+function slimit_dif2(clip "flt", clip "src", clip "ref", float "thr", float "elast", int "Y", int "U", int "V", bool "elastinfl", int "A")
 {
 thr    = default(thr,                 0.25)
 elast  = default(elast,                3.0)
@@ -480,8 +513,8 @@ A  = default(A,           2)
 dref = defined(ref)
 sisavs26 = !(VersionNumber() < 2.6)
  
-Assert(!(elast < 1), "slimit_dif: elast must be more than 1")
-Assert((defined(flt) && defined(src)), "slimit_dif: both flt clip and src clip are needed")
+Assert(!(elast < 1), "slimit_dif2: elast must be more than 1")
+Assert((defined(flt) && defined(src)), "slimit_dif2: both flt clip and src clip are needed")
  
 ldmask = elast!=1 ? !sisavs26 ? mt_lutxy(dref ? ref : src,flt,"x y - abs "+string(thr)+" <= 255 x y - abs "+string(elast2)+" <= ? 255 255 "+string(elast2)+" / x y - abs * - 0 ?", Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V)
                     \         : mt_lutxy(dref ? ref : src,flt,"x y - abs "+string(thr)+" yscalef <= yrange_max x y - abs "+string(elast2)+" yscalef <= ? yrange_max yrange_max "+string(elast2)+" yscalef / x y - abs * - 0 ?",use_expr=2, Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V,A=A==2 ? 1 : A) : 
