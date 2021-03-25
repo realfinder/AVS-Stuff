@@ -1,5 +1,5 @@
 ## mToon Toon v0.82 edit
-## 2020.04.23 HBD mod base on MOmonster edit
+## 2021.03.24 HBD mod base on MOmonster edit
 ###############
 
 # function created by mf
@@ -7,7 +7,7 @@
 # 	ported to masktools v2 and optimized by Didee (0.82)
 # 	added parameters and smaller changes by MOmonster (0.82 edited)
 
-# toon v0.8 is the newest light-weight build of mfÂ´s nice line darken function mf_toon
+# toon v0.8 is the newest light-weight build of mf´s nice line darken function mf_toon
 #
 # needed filters:
 #	- MaskTools v2
@@ -23,7 +23,7 @@
 #		  difference to the default output			false
 
 
-function mtoon(input, float "str", float "l_thr", float "u_thr", int "wdepth", int "wlevel", bool "fast", bool "lite")
+function mtoon(clip input, float "str", float "l_thr", float "u_thr", int "wdepth", int "wlevel", bool "fast", bool "lite")
 {
 sisavs26 = !(VersionNumber() < 2.60)
 sstr	= string(default(str,1.0))
