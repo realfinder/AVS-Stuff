@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.902
+# Advanced Denoising and anime bob v1.903
 # Collections of Functions
 
 ### Functions list:-
@@ -384,7 +384,7 @@ ymaskb && yexpand ? mt_expand(128,mode="horizontal",u=cmaskb ? 2 : 1,v=cmaskb ? 
 
 
 # filtering with some borders by A.SONY
-Function filtering_wsb (clip src, string "filter", int "oneborder", clip "linesm", clip "clip4lines", int "mmy", bool "mmLuma", int "mmuv", bool "minflate", int "bordertype", int "leftborder", int "topborder", int "rightborder", int "bottomborder", int "borderrad")
+Function filtering_wsb (clip src, string "filter", int "oneborder", clip "linesm", clip "clip4lines", int "mmy", bool "mmLuma", int "mmuv", bool "minflate", int "bordertype", int "borderrad", int "leftrad", int "toprad", int "rightrad", int "bottomrad")
 {
 oneborder = Default (oneborder,   2)
 mmLuma    = Default (mmLuma,  false)
@@ -397,15 +397,10 @@ filter    = Default (filter, defined(linesm) ? "yahr3.svsTBilateral(5,5,0.9,0.9,
                                              """FineDehaloanalog(exdehalo="VHSHaloremover(2,2,200,100,0.5).yahr2(32)")""")
 minf = defined(linesm) ? minflate ? linesm.mt_inflate(155,155,u=mmLuma || mmuv!=3 ? 1 : 3 ,v=mmLuma || mmuv!=3 ? 1 : 3) : linesm : nop()
 
-leftborder=defined(leftborder) ? leftborder : oneborder
-topborder=defined(topborder) ? topborder : oneborder
-rightborder=defined(rightborder) ? rightborder : oneborder
-bottomborder=defined(bottomborder) ? bottomborder : oneborder
-
 src
-bordertyp==0 ? sh_Padding(leftborder,topborder,rightborder,bottomborder) : AddBorders(leftborder,topborder,rightborder,bottomborder,bordertyp==1 ? undefined : bordertyp==2 ? color_white : bordertyp)
+bordertyp==0 ? sh_Padding(oneborder,oneborder,oneborder,oneborder) : AddBorders(oneborder,oneborder,oneborder,oneborder,bordertyp==1 ? undefined : bordertyp==2 ? color_white : bordertyp)
 eval(filter)
-Crop(leftborder,topborder,-rightborder,-bottomborder, align=true)
+Crop(oneborder,oneborder,-oneborder,-oneborder, align=true)
  
 sisphbd = AvsPlusVersionNumber > 2294
 sispLBox = sisphbd ? (AvsPlusVersionNumber > 3042) : false
@@ -413,17 +408,22 @@ sispLBox = sisphbd ? (AvsPlusVersionNumber > 3042) : false
 sisavs26=!(VersionNumber() < 2.6)
 sislumaonly = sisphbd ? src.isy() : sisavs26 ? src.isy8() : true
 
+leftrad=defined(leftrad) ? leftrad : borderrad
+toprad=defined(toprad) ? toprad : borderrad
+rightrad=defined(rightrad) ? rightrad : borderrad
+bottomrad=defined(bottomrad) ? bottomrad : borderrad
+
 minf = borderrad != 0 && !(defined(linesm)) ? sislumaonly ? src : sisphbd ? src.converttoy() : src.converttoy8() : minf
-minf = borderrad != 0 && !(defined(linesm)) ? sispLBox ? LetterBox(BlankClip(minf, Color_yuv=$ffffff),borderrad,borderrad,borderrad,borderrad, Color_yuv=$000000) : LetterBox(BlankClip(minf, Color_yuv=$ffffff),borderrad,borderrad,borderrad,borderrad,$000000) : minf
+minf = borderrad != 0 && !(defined(linesm)) ? sispLBox ? LetterBox(BlankClip(minf, Color_yuv=$ffffff), leftrad, toprad, rightrad, bottomrad, Color_yuv=$000000) : LetterBox(BlankClip(minf, Color_yuv=$ffffff), leftrad, toprad, rightrad, bottomrad,$000000) : minf
 minf = borderrad != 0 && !(defined(linesm)) && !sispLBox ? sisphbd ? minf.mt_lut("x range_half > range_max x ?", use_expr=2) : minf.mt_lut("x 128 > 255 x ?") : minf
 borderrad != 0 || defined(linesm) ? mt_Merge(last, defined(clip4lines) ? clip4lines : src, minf,y=mmy,luma=mmLuma,u=mmuv,v=mmuv) : last
 }
 
 
 # filtering with black borders by A.SONY
-Function filtering_wbb (clip src, string "filter", int "oneborder", clip "linesm", clip "clip4lines", int "mmy", bool "mmLuma", int "mmuv", bool "minflate", int "leftborder", int "topborder", int "rightborder", int "bottomborder", int "borderrad")
+Function filtering_wbb (clip src, string "filter", int "oneborder", clip "linesm", clip "clip4lines", int "mmy", bool "mmLuma", int "mmuv", bool "minflate", int "borderrad", int "leftrad", int "toprad", int "rightrad", int "bottomrad")
 {
-filtering_wsb(src,filter,oneborder,linesm,clip4lines,mmy,mmLuma,mmuv,minflate, 1, leftborder, topborder, rightborder, bottomborder, borderrad)
+filtering_wsb(src,filter,oneborder,linesm,clip4lines,mmy,mmLuma,mmuv,minflate, 1, borderrad, leftrad, toprad, rightrad, bottomrad)
 }
 
 
