@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.34 2020-12-19 mod
+# v2.35 2021-03-27 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -564,8 +564,8 @@ finalcfr =  omode==1 ? creds ? spliced : tocfrfinalt : nop()
 tovfrdec1 = omode==2 ? creds ? spliced : chrfix_b ? debprep : hybridfm : nop()
 tovfrdec2 = omode==2 ? rendering ? i : creds ? spliced : chrfix_b ? debprep : fm : nop()
 
-finalvfr = 	omode==2 && pass==1 ? nvfr ? tovfrdec1.TDecimate(4, output="stats.txt",denoise=true,vidThresh=0.8,dupThresh=0.9,vidDetect=vidDetect) : tovfrdec1.TDecimate(4, output="stats.txt",vidDetect=vidDetect) :
-\		omode==2 && pass==2 ? nvfr ? tovfrdec2.TDecimate(5,hybrid=2,tfmin=creds ? "" : "tfm.txt",input="stats.txt",mkvout="timecodes.txt",tcfv1=tcfv1,batch=true,vidThresh=0.4,dupThresh=0.6,vidDetect=vidDetect) : tovfrdec2.TDecimate(5,hybrid=2,tfmin=creds ? "" : "tfm.txt",input="stats.txt",mkvout="timecodes.txt",tcfv1=tcfv1,batch=true,vidDetect=vidDetect) : nop()
+finalvfr = 	omode==2 && pass==1 ? o3025cfr ? tovfrdec1 : nvfr ? tovfrdec1.TDecimate(4, output="stats.txt",denoise=true,vidThresh=0.8,dupThresh=0.9,vidDetect=vidDetect) : tovfrdec1.TDecimate(4, output="stats.txt",vidDetect=vidDetect) :
+\		omode==2 && pass==2 ? o3025cfr ? tovfrdec2 : nvfr ? tovfrdec2.TDecimate(5,hybrid=2,tfmin=creds ? "" : "tfm.txt",input="stats.txt",mkvout="timecodes.txt",tcfv1=tcfv1,batch=true,vidThresh=0.4,dupThresh=0.6,vidDetect=vidDetect) : tovfrdec2.TDecimate(5,hybrid=2,tfmin=creds ? "" : "tfm.txt",input="stats.txt",mkvout="timecodes.txt",tcfv1=tcfv1,batch=true,vidDetect=vidDetect) : nop()
 
 topp = omode==1 ? finalcfr : omode==2 ? finalvfr : nop()
 
