@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.36 2021-03-29 mod
+# v2.37 2021-03-30 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -659,9 +659,8 @@ ntrims = !sishtrim ? nop() : !sishntrim ? nop() : FindStr(ntrimr, ",")
 sntrim = !sishtrim ? nop() : !sishntrim ? nop() : MidStr(ntrimr,findntrimstart,ntrims-1).Value.Int
 istrim = !sishtrim ? nop() : strim !=0 && firstcall ? 0 : etrim + 1
 ietrim = !sishtrim ? nop() : firstcall && istrim == 0 ? strim-1 : sishntrim ? sntrim - 1 : lastframe
-writeline = sishtrim ? (firstcall && ietrim != etrim) || etrim < lastframe : false
-writeline ? RT_WriteFile(output, \
-                 "%d,%d\n", istrim, ietrim, append=!firstcall) : nop()
+writeline = sishtrim ? firstcall || etrim < lastframe : false
+writeline ? firstcall && etrim == lastframe && strim == 0 ? RT_WriteFile(output, "", append=false) : RT_WriteFile(output, "%d,%d\n", istrim, ietrim, append=!firstcall) : nop()
 sishtrim ? intrimloop(i, firstcall && istrim == 0 ? trimline : rightStr(trimline,StrLen(trimline)-trimend), output, lastframe) : i
 }
 intrimloop(abtrim(trimline), TrimFile, lastframe, true)
