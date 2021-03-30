@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.37 2021-03-30 mod
+# v2.38 2021-03-30 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -627,11 +627,22 @@ ntrimline=!sishtrim ? nop() : !domerge ? otrimline : LeftStr(otrimline,(remainde
 remainder = !sishtrim ? nop() : domerge ? remainder : max(0,remainder) + trimend
 !sishtrim ? otrimline : sishntrim ? abtrimloop(ntrimline, remainder) : ntrimline
 }
-abtrimloop(LCase(trimline))
+ntrimline=""
+LineCount = trimline.RT_TxtQueryLines
+sss="""
+for(i=0,LineCount-1) {  # Will Ignore Blank lines and lines where first non-white char is hash '#'.
+    TmpS = trimline.RT_TxtGetLine(i).ChrEatWhite   # Get line of text from multi-line string and remove leading whitespace.
+    if(TmpS.RT_Ord != 35 && TmpS.RT_Ord != 0) {     # NOT '#' or End Of Line
+        ntrimline = (ntrimline=="") ? TmpS : ntrimline + Chr(10) + TmpS
+    }
+}
+"""
+IsAvsPlus ? eval(sss) : GScript(sss)
+abtrimloop(LCase(ntrimline))
 }
 
 
-# make trimIn from avs trims v1.1
+# make trimIn from avs trims v1.11
 function intrim(clip i, string "trimline", string "output") {
 Assert(defined(trimline), "'intrim' trimline is needed")
 i

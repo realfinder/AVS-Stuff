@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.148
+# V1.149
 
 ### Functions list:-
 # sh_StrReplace
@@ -81,6 +81,7 @@
 # sh_GetUserGlobalIMTint
 # sh_GetUserGlobalIMTbool
 # sChromaShift2
+# ChrEatWhite
 # IsAvsNeo
 # IsAvsPlus
 # AvsPlusVersionNumber
@@ -1786,6 +1787,20 @@ V = SPClone ? Eval("V." + ResizeMethod + "Resize(w, h, VX, VY, w+VX, h+VY)") : E
 
 YToUV(U, V, clp)
 sisavs26 && sisyuy2 ? converttoyuy2() : last }
+
+
+#StainlessS helper function ChrEatWhite
+Function ChrEatWhite(String S)
+{
+i=1
+C=RT_Ord(S,i)
+sss="""
+While(C==32||C>=8&&C<=13){
+      i=i+1 C=RT_Ord(S,i)}
+"""
+IsAvsPlus ? eval(sss) : GScript(sss)
+return i>1?MidStr(S,i):S
+}
 
 
 VersionNumber() < 2.60 ? eval("""
