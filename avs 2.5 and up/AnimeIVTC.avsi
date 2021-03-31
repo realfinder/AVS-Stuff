@@ -193,7 +193,7 @@ usecbob = mode==3 || defined(i1) || chrfix_b && blend==false
 ediext= defined(ediext) ? isclip(ediext) ? ediext : Eval("i." + ediext) : undefined()
 edeintn= ((usecbob && cbob < 6) || (usebbob && bbob < 6) || ((usefm || usehfm) && precision < 6)) || autoAssuf ? defined(ediext) ? ediext : ediandnn != 2 || ediandnn != -2 ? ediandnn < 0 ? iforbob.sh_Padding(2,4,2,4,threads=threads).nnedi3(-2,threads=threads).crop(2,4,-2,-4,true) : iforbob.nnedi3(-2,threads=threads) : nop() : nop()
 ediandnn=abs(ediandnn)
-edeint= ((usecbob && cbob < 6) || (usebbob && bbob < 6) || ((usefm || usehfm) && precision < 6)) || autoAssuf ? defined(ediext) ? ediext : ediandnn == 1 ? edeintn : ediandnn == 2 ? iforbob.eedi3(-2,threads=threads) : ediandnn > 6 ? i.eedi3(-2,sclip=edeintn,threads=threads).nonyuy2clipin(nonyuy2).slimit_dif(edeintn,thr=4).nonyuy2clipout(nonyuy2) : ediandnn > 4 ? sisyuy2 ? i.eedi3(-2,sclip=edeintn,threads=threads).Interleaved2Planar().Repair(edeintn,9,Planar=true).Planar2Interleaved() : i.eedi3(-2,sclip=edeintn,threads=threads).Repair(edeintn,9) : i.eedi3(-2,sclip=edeintn,threads=threads) : edeintn
+edeint= ((usecbob && cbob < 6) || (usebbob && bbob < 6) || ((usefm || usehfm) && precision < 6)) || autoAssuf ? defined(ediext) ? ediext : ediandnn == 1 ? edeintn : ediandnn == 2 ? iforbob.eedi3(-2,threads=threads) : ediandnn > 6 ? i.eedi3(-2,sclip=edeintn,threads=threads).nonyuy2clipin(nonyuy2).slimit_dif2(edeintn,thr=4).nonyuy2clipout(nonyuy2) : ediandnn > 4 ? sisyuy2 ? i.eedi3(-2,sclip=edeintn,threads=threads).Interleaved2Planar().Repair(edeintn,9,Planar=true).Planar2Interleaved() : i.eedi3(-2,sclip=edeintn,threads=threads).Repair(edeintn,9) : i.eedi3(-2,sclip=edeintn,threads=threads) : edeintn
 emask = (usebbob && (bbob==2 || ((bbob==3 || bbob==4) && reptdei) || bbob==6)) || (usecbob && (cbob==2 || ((cbob==3 || cbob==4) && reptdei) || cbob==6)) || ((usefm || usehfm) && precision==3) ? iforbob.tmm2_ortmm1(1) : nop()
 
 
@@ -761,7 +761,7 @@ iforbob   = bobpresmbool && !defined(prefiltered_i) ? isyuy2(i) ? iforbob.Separa
 pyi       = i.sh_Padding(0,4,0,4,threads=threads)
 pni       = nnedi3pad ? iforbob.sh_Padding(2,4,2,4,threads=threads).nnedi3(-2, nsize=NNSize, nns=NNeurons, qual=EdiQual,threads=threads).crop(2,4,-2,-4,true) : iforbob.nnedi3(-2, nsize=NNSize, nns=NNeurons, qual=EdiQual,threads=threads)
 pei       = i.eedi3(-2, mdis=EdiMaxD,sclip=pni,threads=threads)
-pei       = nnrep > 0 ? nnrep > 1 ? pei.nonyuy2clipin(nonyuy2).slimit_dif(pni.nonyuy2clipin(nonyuy2),thr=4).nonyuy2clipout(nonyuy2).sh_Padding(0,4,0,4,threads=threads) : isyuy2(i) ? pei.Interleaved2Planar().Repair(pni.Interleaved2Planar(),9,Planar=true).Planar2Interleaved().sh_Padding(0,4,0,4,threads=threads) : pei.Repair(pni,9).sh_Padding(0,4,0,4,threads=threads) : pei.sh_Padding(0,4,0,4,threads=threads)
+pei       = nnrep > 0 ? nnrep > 1 ? pei.nonyuy2clipin(nonyuy2).slimit_dif2(pni.nonyuy2clipin(nonyuy2),thr=4).nonyuy2clipout(nonyuy2).sh_Padding(0,4,0,4,threads=threads) : isyuy2(i) ? pei.Interleaved2Planar().Repair(pni.Interleaved2Planar(),9,Planar=true).Planar2Interleaved().sh_Padding(0,4,0,4,threads=threads) : pei.Repair(pni,9).sh_Padding(0,4,0,4,threads=threads) : pei.sh_Padding(0,4,0,4,threads=threads)
 istff     = GetParity(i)
 
 ymodclip  = useBWDIF ? pyi.nonyuy2clipin(nonyuy2).BWDIF(-2, edeint=pei.nonyuy2clipin(nonyuy2)).crop(0,4,-0,-4) : !sisavs26 ? pyi.yadifmod(mode=3, edeint=pei).crop(0,4,-0,-4) : pyi.nonyuy2clipin(nonyuy2).yadifmod2(mode=3, edeint=pei.nonyuy2clipin(nonyuy2)).crop(0,4,-0,-4)
