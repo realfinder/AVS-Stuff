@@ -1,11 +1,15 @@
-# 2020.03.24
+# 2021.04.05
 # abcxyz with high bit support, need masktools 2.2.17 or up in avs26 and avs+
 
 function abcxyz(clip input, float "rad", float "ss", float "yrad")
 {
-rad  = default(rad,  3.0)   #  radius for halo removal
-yrad = default(yrad, rad)
-ss   = default(ss,   1.5)   #  radius for supersampling / ss=1.0 -> no supersampling
+rad    = default(rad,  3.0)   #  radius for halo removal
+radup  = rad < 0
+rad    = abs(rad)
+yrad   = default(yrad, rad)
+yradup = yrad < 0
+yrad   = abs(yrad)
+ss     = default(ss,   1.5)   #  radius for supersampling / ss=1.0 -> no supersampling
 
 sisavs26 = !(VersionNumber() < 2.6)
 
@@ -18,7 +22,7 @@ clp = sislumaonly ? input : sisphbd ? input.converttoy() : input.converttoy8()
 ox  = clp.width()
 oy  = clp.height()
  
-x      = clp.bicubicresize(m4_sh(ox/rad),m4_sh(oy/yrad)).bicubicresize(ox,oy,1,0)
+x      = radup && !yradup ? clp.bilinearresize(m4_sh(ox*rad),oy).bilinearresize(ox,oy).bicubicresize(ox,m4_sh(oy/yrad)).bicubicresize(ox,oy,1,0) : !radup && yradup ? clp.bilinearresize(ox,m4_sh(oy*yrad)).bilinearresize(ox,oy).bicubicresize(m4_sh(ox/rad),oy).bicubicresize(ox,oy,1,0) : radup && yradup ? clp.bilinearresize(m4_sh(ox*rad),m4_sh(oy*yrad)).bilinearresize(ox,oy) : clp.bicubicresize(m4_sh(ox/rad),m4_sh(oy/yrad)).bicubicresize(ox,oy,1,0)
 y      = !sisavs26 ? mt_lutxy(clp,x,"x 8 + y < x 8 + x 24 - y > x 24 - y ? ? x y - abs * x 32 x y - abs - * + 32 /",U=2,V=2)
          \         : mt_lutxy(clp,x,"x 8 scalef + y < x 8 scalef + x 24 scalef - y > x 24 scalef - y ? ? x y - abs * x 32 scalef x y - abs - * + 32 scalef /",use_expr=2,U=2,V=2)
 z1     = ss==1.0 ? repair(clp,y,1) : nop()

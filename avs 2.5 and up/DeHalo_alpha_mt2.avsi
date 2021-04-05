@@ -20,7 +20,11 @@ DeHalo_alpha_mt(rx, ry, darkstr, brightstr, lowsens, highsens, ss, cs, search_ra
 function DeHalo_alpha_2BD(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi", val "customfix")
 {
 rx        = default( rx,                                2.0 )
+rxup      = rx < 0
+rx        = abs(rx)
 ry        = default( ry,                                2.0 )
+ryup      = ry < 0
+ry        = abs(ry)
 darkstr   = default( darkstr,                           1.0 )
 brightstr = default( brightstr,                         1.0 )
 lowsens   = default( lowsens,                            50 )
@@ -45,7 +49,10 @@ BRT = string(brightstr)
 ox  = clp.width()
 oy  = clp.height()
 
-halos  = cfd ? isclip(customfix) ? customfix : eval(customfix) : clp.bicubicresize(m4_sh(ox/rx),m4_sh(oy/ry)).bicubicresize(ox,oy,1,0)
+halos  = cfd ? isclip(customfix) ? customfix : eval(customfix) : 
+             \ rxup && !ryup ? clp.bilinearresize(m4_sh(ox*rx),oy).bilinearresize(ox,oy).bicubicresize(ox,m4_sh(oy/ry)).bicubicresize(ox,oy,1,0) : 
+             \ !rxup && ryup ? clp.bilinearresize(ox,m4_sh(oy*ry)).bilinearresize(ox,oy).bicubicresize(m4_sh(ox/rx),oy).bicubicresize(ox,oy,1,0) : 
+             \  rxup && ryup ? clp.bilinearresize(m4_sh(ox*rx),m4_sh(oy*ry)).bilinearresize(ox,oy) : clp.bicubicresize(m4_sh(ox/rx),m4_sh(oy/ry)).bicubicresize(ox,oy,1,0)
 are    = sre==1 && sri==1 ? clp .mt_edge(mode="min/max", thY1=0, thY2=255)  : !sisavs26 ? mt_lutxy(clp  .spasses(sre,"mt_expand()"),clp  .spasses(sri,"mt_inpand()"),"x y -",U=1,V=1) : mt_lutxy(clp  .spasses(sre,"mt_expand()"),clp  .spasses(sri,"mt_inpand()"),"x y -",use_expr=3,U=1,V=1)
 ugly   = sre==1 && sri==1 ? halos.mt_edge(mode="min/max", thY1=0, thY2=255) : !sisavs26 ? mt_lutxy(halos.spasses(sre,"mt_expand()"),halos.spasses(sri,"mt_inpand()"),"x y -",U=1,V=1) : mt_lutxy(halos.spasses(sre,"mt_expand()"),halos.spasses(sri,"mt_inpand()"),"x y -",use_expr=3,U=1,V=1)
 so     = !!sisavs26 ? mt_lutxy( ugly, are, "y x - y 0.001 + / 255 * "+LOS+" - y 256 + 512 / "+HIS+" + *" )

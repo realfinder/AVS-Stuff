@@ -1,5 +1,5 @@
 # FineDehalo
-# 1.1 mod8.78
+# 1.1 mod8.79
 #
 # This program is free software. It comes without any warranty, to
 # the extent permitted by applicable law. You can redistribute it
@@ -20,9 +20,6 @@ Function FineDehalo (clip src, float "rx", float "ry", float "thmi", float "thma
 	contra    = Default (contra,    0.0)
 	excl      = Default (excl,     true)
 	edgeproc  = Default (edgeproc,  0.0)
-
-	rx_i = Round (rx)
-	ry_i = Round (ry)
 
 	src
 
@@ -81,8 +78,8 @@ Function FineDehaloedges (clip src, float "rx", float "ry", float "thmi", float 
 	excl      = Default (excl,     true)
 	edgeproc  = Default (edgeproc,  0.0)
 
-	rx_i = Round (rx)
-	ry_i = Round (ry)
+	rx_i = Round (abs(rx))
+	ry_i = Round (abs(ry))
 
 	src
 

@@ -1,10 +1,14 @@
-# 2020.03.24
+# 2021.04.05
 # Masked_DHA with high bit support, need masktools 2.2.17 or up in avs26 and avs+
 
 function Masked_DHA(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "msk_pull", float "msk_push", float "ss", bool "show_msk", bool "cs", int "search_rade", int "search_radi")
 {
 rx        = default( rx,         2.0 )
+rxup      = rx < 0
+rx        = abs(rx)
 ry        = default( ry,         2.0 )
+ryup      = ry < 0
+ry        = abs(ry)
 darkstr   = default( darkstr,    1.0 )
 brightstr = default( brightstr,  1.0 )
 lowsens   = default( lowsens,     50 )
@@ -45,8 +49,8 @@ oy  = clp.height()
 # Parameters that can only be adjusted from within the script
 mbl = 1.58
 
-sm     = clp.bicubicresize(m4_sh(ox/rx),m4_sh(oy/ry))
-lg     = sm.bicubicresize(ox,oy,1,0)
+sm     = rxup && ryup ? clp.bilinearresize(m4_sh(ox*rx),m4_sh(oy*ry)) : rxup && !ryup ? clp.bilinearresize(m4_sh(ox*rx),oy).bicubicresize(ox,m4_sh(oy/ry)) : !rxup && ryup ? clp.bilinearresize(ox,m4_sh(oy*ry)).bicubicresize(m4_sh(ox/rx),oy) : clp.bicubicresize(m4_sh(ox/rx),m4_sh(oy/ry))
+lg     = rxup && ryup ? sm.bilinearresize(ox,oy) : rxup && !ryup ? sm.bilinearresize(ox,m4_sh(oy/ry)).bicubicresize(m4_sh(ox*rx),oy,1,0) : !rxup && ryup ? sm.bilinearresize(m4_sh(ox/rx),oy).bicubicresize(ox,m4_sh(ox*rx),1,0) : sm.bicubicresize(ox,oy,1,0)
 chl    = !sisavs26 ? mt_lutxy(clp.spasses(sre,"mt_expand()"),clp.spasses(sri,"mt_inpand()"),"x y -","x y -","x y -") : mt_lutxy(clp.spasses(sre,"mt_expand()"),clp.spasses(sri,"mt_inpand()"),"x y -", use_expr=3)
 lhl    = !sisavs26 ? mt_lutxy(lg.spasses(sre,"mt_expand()"),lg.spasses(sri,"mt_inpand()"),"x y -","x y -","x y -") : mt_lutxy(lg.spasses(sre,"mt_expand()"),lg.spasses(sri,"mt_inpand()"),"x y -", use_expr=3)
 mask_i = !sisavs26 ? mt_lutxy(lhl,chl,"y x - y 0.001 + / 255 * "+LOS+" - y 256 + 512 / "+HIS+" + *" )
