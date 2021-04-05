@@ -1,7 +1,7 @@
 # DeHalo_alpha with high bit support, need masktools 2.2.20 or up in avs26 and last avs+
-# 2021.04.04
+# 2021.04.05
 
-function DeHalo_alpha_mt(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi", clip "customfix")
+function DeHalo_alpha_mt(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi", val "customfix")
 {
 sre       = default( search_rade,   1 )
 sri       = default( search_radi, sre )
@@ -9,7 +9,7 @@ input
 DeHalo_alpha_2BD(rx, ry, darkstr, brightstr, lowsens, highsens, ss, cs, sre, sri, customfix)
 }
 
-function DeHalo_alpha(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi", clip "customfix")
+function DeHalo_alpha(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi", val "customfix")
 {
 input
 DeHalo_alpha_mt(rx, ry, darkstr, brightstr, lowsens, highsens, ss, cs, search_rade, search_radi, customfix)
@@ -17,7 +17,7 @@ DeHalo_alpha_mt(rx, ry, darkstr, brightstr, lowsens, highsens, ss, cs, search_ra
 
 # modified dehalo_alpha: here with increased search-radius for validation
 
-function DeHalo_alpha_2BD(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi", clip "customfix")
+function DeHalo_alpha_2BD(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi", val "customfix")
 {
 rx        = default( rx,                                2.0 )
 ry        = default( ry,                                2.0 )
@@ -45,7 +45,7 @@ BRT = string(brightstr)
 ox  = clp.width()
 oy  = clp.height()
 
-halos  = cfd ? customfix : clp.bicubicresize(m4_sh(ox/rx),m4_sh(oy/ry)).bicubicresize(ox,oy,1,0)
+halos  = cfd ? isclip(customfix) ? customfix : eval(customfix) : clp.bicubicresize(m4_sh(ox/rx),m4_sh(oy/ry)).bicubicresize(ox,oy,1,0)
 are    = sre==1 && sri==1 ? clp .mt_edge(mode="min/max", thY1=0, thY2=255)  : !sisavs26 ? mt_lutxy(clp  .spasses(sre,"mt_expand()"),clp  .spasses(sri,"mt_inpand()"),"x y -",U=1,V=1) : mt_lutxy(clp  .spasses(sre,"mt_expand()"),clp  .spasses(sri,"mt_inpand()"),"x y -",use_expr=3,U=1,V=1)
 ugly   = sre==1 && sri==1 ? halos.mt_edge(mode="min/max", thY1=0, thY2=255) : !sisavs26 ? mt_lutxy(halos.spasses(sre,"mt_expand()"),halos.spasses(sri,"mt_inpand()"),"x y -",U=1,V=1) : mt_lutxy(halos.spasses(sre,"mt_expand()"),halos.spasses(sri,"mt_inpand()"),"x y -",use_expr=3,U=1,V=1)
 so     = !!sisavs26 ? mt_lutxy( ugly, are, "y x - y 0.001 + / 255 * "+LOS+" - y 256 + 512 / "+HIS+" + *" )
