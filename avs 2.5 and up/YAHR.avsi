@@ -1,4 +1,4 @@
-# YAHR's functions 2020-09-06
+# YAHR's functions 2021-03-16
 
 # Y'et A'nother H'alo R'educing script
 
@@ -61,19 +61,28 @@ mt_Merge(src, DeRinging, RM2, u=2, v=2)
 # YAHRmask, by Tophf
 # With slight modifications (merging both functions into one). Output should be identical.
 
-function YAHRmask(clip input, int "expand", int "warpdepth", int "blur", bool "useawarp4", clip "yahr", int "warpdepthV", int "blurV") {
+function YAHRmask(clip clp, int "expand", int "warpdepth", int "blur", bool "useawarp4", clip "yahrc", int "warpdepthV", int "blurV") {
+sisavs26 = !(VersionNumber() < 2.6)
+sisphbd = AvsPlusVersionNumber > 2294
+sischbd = sisphbd ? clp.BitsPerComponent() > 8 : false
+
+sislumaonly = sisphbd ? clp.isy() : sisavs26 ? clp.isy8() : true
+input = sislumaonly ? clp : sisphbd ? clp.converttoy() : clp.converttoy8()
 
     expand = Default(expand,     5)
     warpde = Default(warpdepth, 32)
     blur   = Default(blur,       2)
     
-    yahr  = defined(yahr) ? yahr : input.YAHR2(warpde, blur, useawarp4, warpdepthV, blurV)
+    yahrc  = defined(yahrc) ? yahrc : input.YAHR2(warpde, blur, useawarp4, warpdepthV, blurV)
+    yahrc  = sisphbd ? yahrc.isy() ? yahrc : yahrc.converttoy() : sisavs26 ? yahrc.isy8() ? yahrc.converttoy8() : yahrc : yahrc
     
     input
-    vEdge = mt_lutxy(last, mt_expand().mt_expand(),"x y - abs 8 - 7 <<")
+    vEdge = sischbd ? mt_lutxy(last, mt_expand().mt_expand(),"x y - abs 8 scalef - 128 *", use_expr=1) : mt_lutxy(last, mt_expand().mt_expand(),"x y - abs 8 - 7 <<")
+    expand = expand*2
+#    hbdex = sischbd ? round(expand*2) : nop()
+#    vmask = sischbd ? vEdge.sh_Padding(hbdex,hbdex,hbdex,hbdex).GBlur(hbdex,sqrt(expand),false,false).crop(hbdex,hbdex,-hbdex,-hbdex).mt_lut("x 16 *", use_expr=2) : vEdge.binomialblur(expand, u=1, v=1).mt_lut("x 4 <<")
+    vmask = sisavs26 ? vEdge.FastBlur(sqrt(expand),iterations=2,gamma=false,threads=1).mt_lut("x 16 *", use_expr=2) : vEdge.binomialblur(expand, u=1, v=1).mt_lut("x 4 <<")
     
-    mt_merge(yahr, vEdge.binomialblur(expand*2, u=1, v=1)
-    \ .mt_lut("x 4 <<")
-    \ .mt_logic(vEdge.removegrain(12, -1)
-    \ .mt_invert(), "min"), true)
+    mt_merge(yahrc, vmask.mt_logic(vEdge.removegrain(12, -1).mt_invert(), "min"), true)
+	sislumaonly ? last : sisphbd ? CombinePlanes(last,clp,planes="YUV",sample_clip=clp) : ytouv(clp.utoy8(),clp.vtoy8(),last)
 }

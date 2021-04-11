@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.34 2020-12-19 mod
+# v2.381 2021-03-30 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -193,7 +193,7 @@ usecbob = mode==3 || defined(i1) || chrfix_b && blend==false
 ediext= defined(ediext) ? isclip(ediext) ? ediext : Eval("i." + ediext) : undefined()
 edeintn= ((usecbob && cbob < 6) || (usebbob && bbob < 6) || ((usefm || usehfm) && precision < 6)) || autoAssuf ? defined(ediext) ? ediext : ediandnn != 2 || ediandnn != -2 ? ediandnn < 0 ? iforbob.sh_Padding(2,4,2,4,threads=threads).nnedi3(-2,threads=threads).crop(2,4,-2,-4,true) : iforbob.nnedi3(-2,threads=threads) : nop() : nop()
 ediandnn=abs(ediandnn)
-edeint= ((usecbob && cbob < 6) || (usebbob && bbob < 6) || ((usefm || usehfm) && precision < 6)) || autoAssuf ? defined(ediext) ? ediext : ediandnn == 1 ? edeintn : ediandnn == 2 ? iforbob.eedi3(-2,threads=threads) : ediandnn > 6 ? i.eedi3(-2,sclip=edeintn,threads=threads).nonyuy2clipin(nonyuy2).slimit_dif(edeintn,thr=4).nonyuy2clipout(nonyuy2) : ediandnn > 4 ? sisyuy2 ? i.eedi3(-2,sclip=edeintn,threads=threads).Interleaved2Planar().Repair(edeintn,9,Planar=true).Planar2Interleaved() : i.eedi3(-2,sclip=edeintn,threads=threads).Repair(edeintn,9) : i.eedi3(-2,sclip=edeintn,threads=threads) : edeintn
+edeint= ((usecbob && cbob < 6) || (usebbob && bbob < 6) || ((usefm || usehfm) && precision < 6)) || autoAssuf ? defined(ediext) ? ediext : ediandnn == 1 ? edeintn : ediandnn == 2 ? iforbob.eedi3(-2,threads=threads) : ediandnn > 6 ? i.eedi3(-2,sclip=edeintn,threads=threads).nonyuy2clipin(nonyuy2).slimit_dif2(edeintn,thr=4).nonyuy2clipout(nonyuy2) : ediandnn > 4 ? sisyuy2 ? i.eedi3(-2,sclip=edeintn,threads=threads).Interleaved2Planar().Repair(edeintn,9,Planar=true).Planar2Interleaved() : i.eedi3(-2,sclip=edeintn,threads=threads).Repair(edeintn,9) : i.eedi3(-2,sclip=edeintn,threads=threads) : edeintn
 emask = (usebbob && (bbob==2 || ((bbob==3 || bbob==4) && reptdei) || bbob==6)) || (usecbob && (cbob==2 || ((cbob==3 || cbob==4) && reptdei) || cbob==6)) || ((usefm || usehfm) && precision==3) ? iforbob.tmm2_ortmm1(1) : nop()
 
 
@@ -564,8 +564,8 @@ finalcfr =  omode==1 ? creds ? spliced : tocfrfinalt : nop()
 tovfrdec1 = omode==2 ? creds ? spliced : chrfix_b ? debprep : hybridfm : nop()
 tovfrdec2 = omode==2 ? rendering ? i : creds ? spliced : chrfix_b ? debprep : fm : nop()
 
-finalvfr = 	omode==2 && pass==1 ? nvfr ? tovfrdec1.TDecimate(4, output="stats.txt",denoise=true,vidThresh=0.8,dupThresh=0.9,vidDetect=vidDetect) : tovfrdec1.TDecimate(4, output="stats.txt",vidDetect=vidDetect) :
-\		omode==2 && pass==2 ? nvfr ? tovfrdec2.TDecimate(5,hybrid=2,tfmin=creds ? "" : "tfm.txt",input="stats.txt",mkvout="timecodes.txt",tcfv1=tcfv1,batch=true,vidThresh=0.4,dupThresh=0.6,vidDetect=vidDetect) : tovfrdec2.TDecimate(5,hybrid=2,tfmin=creds ? "" : "tfm.txt",input="stats.txt",mkvout="timecodes.txt",tcfv1=tcfv1,batch=true,vidDetect=vidDetect) : nop()
+finalvfr = 	omode==2 && pass==1 ? o3025cfr ? tovfrdec1 : nvfr ? tovfrdec1.TDecimate(4, output="stats.txt",denoise=true,vidThresh=0.8,dupThresh=0.9,vidDetect=vidDetect) : tovfrdec1.TDecimate(4, output="stats.txt",vidDetect=vidDetect) :
+\		omode==2 && pass==2 ? o3025cfr ? tovfrdec2 : nvfr ? tovfrdec2.TDecimate(5,hybrid=2,tfmin=creds ? "" : "tfm.txt",input="stats.txt",mkvout="timecodes.txt",tcfv1=tcfv1,batch=true,vidThresh=0.4,dupThresh=0.6,vidDetect=vidDetect) : tovfrdec2.TDecimate(5,hybrid=2,tfmin=creds ? "" : "tfm.txt",input="stats.txt",mkvout="timecodes.txt",tcfv1=tcfv1,batch=true,vidDetect=vidDetect) : nop()
 
 topp = omode==1 ? finalcfr : omode==2 ? finalvfr : nop()
 
@@ -627,11 +627,22 @@ ntrimline=!sishtrim ? nop() : !domerge ? otrimline : LeftStr(otrimline,(remainde
 remainder = !sishtrim ? nop() : domerge ? remainder : max(0,remainder) + trimend
 !sishtrim ? otrimline : sishntrim ? abtrimloop(ntrimline, remainder) : ntrimline
 }
-abtrimloop(LCase(trimline))
+ntrimline=""
+LineCount = trimline.RT_TxtQueryLines
+sss="""
+for(i=0,LineCount-1) {  # Will Ignore Blank lines and lines where first non-white char is hash '#'.
+    TmpS = trimline.RT_TxtGetLine(i).ChrEatWhite   # Get line of text from multi-line string and remove leading whitespace.
+    if(TmpS.RT_Ord != 35 && TmpS.RT_Ord != 0) {     # NOT '#' or End Of Line
+        ntrimline = (ntrimline=="") ? TmpS : ntrimline + Chr(10) + TmpS
+    }
+}
+"""
+IsAvsPlus ? eval(sss) : GScript(sss)
+abtrimloop(LCase(ntrimline))
 }
 
 
-# make trimIn from avs trims v1.1
+# make trimIn from avs trims v1.11
 function intrim(clip i, string "trimline", string "output") {
 Assert(defined(trimline), "'intrim' trimline is needed")
 i
@@ -657,11 +668,10 @@ ntrimstart = !sishtrim ? nop() : sishntrim ? FindStr(ntrimr, "(") : nop()
 findntrimstart = !sishtrim ? nop() : !sishntrim ? nop() : ntrimstart + 1
 ntrims = !sishtrim ? nop() : !sishntrim ? nop() : FindStr(ntrimr, ",")
 sntrim = !sishtrim ? nop() : !sishntrim ? nop() : MidStr(ntrimr,findntrimstart,ntrims-1).Value.Int
-istrim = !sishtrim ? nop() : !sishtrim ? nop() : strim !=0 && firstcall ? 0 : etrim + 1
-ietrim = !sishtrim ? nop() : !sishtrim ? nop() : firstcall && istrim == 0 ? strim-1 : sishntrim ? sntrim - 1 : lastframe
-writeline = sishtrim ? etrim < lastframe : false
-writeline ? RT_WriteFile(output, \
-                 "%d,%d\n", istrim, ietrim, append=!firstcall) : nop()
+istrim = !sishtrim ? nop() : strim !=0 && firstcall ? 0 : etrim + 1
+ietrim = !sishtrim ? nop() : firstcall && istrim == 0 ? strim-1 : sishntrim ? sntrim - 1 : lastframe
+writeline = sishtrim ? firstcall || etrim < lastframe : false
+writeline ? firstcall && etrim == lastframe && strim == 0 ? RT_WriteFile(output, "", append=false) : RT_WriteFile(output, "%d,%d\n", istrim, ietrim, append=!firstcall) : nop()
 sishtrim ? intrimloop(i, firstcall && istrim == 0 ? trimline : rightStr(trimline,StrLen(trimline)-trimend), output, lastframe) : i
 }
 intrimloop(abtrim(trimline), TrimFile, lastframe, true)
@@ -751,7 +761,7 @@ iforbob   = bobpresmbool && !defined(prefiltered_i) ? isyuy2(i) ? iforbob.Separa
 pyi       = i.sh_Padding(0,4,0,4,threads=threads)
 pni       = nnedi3pad ? iforbob.sh_Padding(2,4,2,4,threads=threads).nnedi3(-2, nsize=NNSize, nns=NNeurons, qual=EdiQual,threads=threads).crop(2,4,-2,-4,true) : iforbob.nnedi3(-2, nsize=NNSize, nns=NNeurons, qual=EdiQual,threads=threads)
 pei       = i.eedi3(-2, mdis=EdiMaxD,sclip=pni,threads=threads)
-pei       = nnrep > 0 ? nnrep > 1 ? pei.nonyuy2clipin(nonyuy2).slimit_dif(pni.nonyuy2clipin(nonyuy2),thr=4).nonyuy2clipout(nonyuy2).sh_Padding(0,4,0,4,threads=threads) : isyuy2(i) ? pei.Interleaved2Planar().Repair(pni.Interleaved2Planar(),9,Planar=true).Planar2Interleaved().sh_Padding(0,4,0,4,threads=threads) : pei.Repair(pni,9).sh_Padding(0,4,0,4,threads=threads) : pei.sh_Padding(0,4,0,4,threads=threads)
+pei       = nnrep > 0 ? nnrep > 1 ? pei.nonyuy2clipin(nonyuy2).slimit_dif2(pni.nonyuy2clipin(nonyuy2),thr=4).nonyuy2clipout(nonyuy2).sh_Padding(0,4,0,4,threads=threads) : isyuy2(i) ? pei.Interleaved2Planar().Repair(pni.Interleaved2Planar(),9,Planar=true).Planar2Interleaved().sh_Padding(0,4,0,4,threads=threads) : pei.Repair(pni,9).sh_Padding(0,4,0,4,threads=threads) : pei.sh_Padding(0,4,0,4,threads=threads)
 istff     = GetParity(i)
 
 ymodclip  = useBWDIF ? pyi.nonyuy2clipin(nonyuy2).BWDIF(-2, edeint=pei.nonyuy2clipin(nonyuy2)).crop(0,4,-0,-4) : !sisavs26 ? pyi.yadifmod(mode=3, edeint=pei).crop(0,4,-0,-4) : pyi.nonyuy2clipin(nonyuy2).yadifmod2(mode=3, edeint=pei.nonyuy2clipin(nonyuy2)).crop(0,4,-0,-4)

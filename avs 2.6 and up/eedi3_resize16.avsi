@@ -559,7 +559,7 @@ Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", in
         \       : Eval(" try { fturnright(chroma=U||V, mt=threads!=1) } catch(error_msg) { TurnRight() } ")
         nnec = (nnrep > 0 || nnsclip) ? sh_Padding(2,2,2,2).nnedi3(hfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
         eedi3(hfield, True, Y, U, V, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnsclip ? nnec : undefined, threads)
-        nnrep > 1 ? slimit_dif(last,nnec,thr=4) : nnrep > 1 ? Repair(nnec,9) : last
+        nnrep > 1 ? slimit_dif2(last,nnec,thr=4) : nnrep > 1 ? Repair(nnec,9) : last
         
     	hct    = hct - 1
         honly  = hct >= 1
@@ -573,7 +573,7 @@ Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", in
     Eval("""
         nnec = (nnrep > 0 || nnsclip) ? sh_Padding(2,2,2,2).nnedi3(vfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
         eedi3(vfield, True, Y, U, V, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnsclip ? nnec : undefined, threads)
-        nnrep > 1 ? slimit_dif(last,nnec,thr=4) : nnrep > 1 ? Repair(nnec,9) : last
+        nnrep > 1 ? slimit_dif2(last,nnec,thr=4) : nnrep > 1 ? Repair(nnec,9) : last
         
     	vct    = vct - 1
         vfield = 0

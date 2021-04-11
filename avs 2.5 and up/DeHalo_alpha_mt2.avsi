@@ -1,34 +1,39 @@
 # DeHalo_alpha with high bit support, need masktools 2.2.20 or up in avs26 and last avs+
-# 2020.01.28
+# 2021.04.05
 
-function DeHalo_alpha_mt(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi")
+function DeHalo_alpha_mt(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi", val "customfix")
 {
 sre       = default( search_rade,   1 )
 sri       = default( search_radi, sre )
 input
-DeHalo_alpha_2BD(rx, ry, darkstr, brightstr, lowsens, highsens, ss, cs, sre, sri)
+DeHalo_alpha_2BD(rx, ry, darkstr, brightstr, lowsens, highsens, ss, cs, sre, sri, customfix)
 }
 
-function DeHalo_alpha(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi")
+function DeHalo_alpha(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi", val "customfix")
 {
 input
-DeHalo_alpha_mt(rx, ry, darkstr, brightstr, lowsens, highsens, ss, cs, search_rade, search_radi)
+DeHalo_alpha_mt(rx, ry, darkstr, brightstr, lowsens, highsens, ss, cs, search_rade, search_radi, customfix)
 }
 
 # modified dehalo_alpha: here with increased search-radius for validation
 
-function DeHalo_alpha_2BD(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi")
+function DeHalo_alpha_2BD(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi", val "customfix")
 {
-rx        = default( rx,        2.0 )
-ry        = default( ry,        2.0 )
-darkstr   = default( darkstr,   1.0 )
-brightstr = default( brightstr, 1.0 )
-lowsens   = default( lowsens,    50 )
-highsens  = default( highsens,   50 )
-ss        = default( ss,        1.5 )
-cs        = default( cs,      false )
+rx        = default( rx,                                2.0 )
+rxup      = rx < 0
+rx        = abs(rx)
+ry        = default( ry,                                2.0 )
+ryup      = ry < 0
+ry        = abs(ry)
+darkstr   = default( darkstr,                           1.0 )
+brightstr = default( brightstr,                         1.0 )
+lowsens   = default( lowsens,                            50 )
+highsens  = default( highsens,                           50 )
+cfd       = defined(customfix)
+ss        = default( ss,                    cfd ? 1.0 : 1.5 )
+cs        = default( cs,                              false )
 sre       = default( search_rade,  max(m4_sh(max(rx,ry)),3) )
-sri       = default( search_radi, sre )
+sri       = default( search_radi,                       sre )
 
 sisphbd = AvsPlusVersionNumber > 2294
 
@@ -44,7 +49,10 @@ BRT = string(brightstr)
 ox  = clp.width()
 oy  = clp.height()
 
-halos  = clp.bicubicresize(m4_sh(ox/rx),m4_sh(oy/ry)).bicubicresize(ox,oy,1,0)
+halos  = cfd ? isclip(customfix) ? customfix : eval(customfix) : 
+             \ rxup && !ryup ? clp.bilinearresize(m4_sh(ox*rx),oy).bilinearresize(ox,oy).bicubicresize(ox,m4_sh(oy/ry)).bicubicresize(ox,oy,1,0) : 
+             \ !rxup && ryup ? clp.bilinearresize(ox,m4_sh(oy*ry)).bilinearresize(ox,oy).bicubicresize(m4_sh(ox/rx),oy).bicubicresize(ox,oy,1,0) : 
+             \  rxup && ryup ? clp.bilinearresize(m4_sh(ox*rx),m4_sh(oy*ry)).bilinearresize(ox,oy) : clp.bicubicresize(m4_sh(ox/rx),m4_sh(oy/ry)).bicubicresize(ox,oy,1,0)
 are    = sre==1 && sri==1 ? clp .mt_edge(mode="min/max", thY1=0, thY2=255)  : !sisavs26 ? mt_lutxy(clp  .spasses(sre,"mt_expand()"),clp  .spasses(sri,"mt_inpand()"),"x y -",U=1,V=1) : mt_lutxy(clp  .spasses(sre,"mt_expand()"),clp  .spasses(sri,"mt_inpand()"),"x y -",use_expr=3,U=1,V=1)
 ugly   = sre==1 && sri==1 ? halos.mt_edge(mode="min/max", thY1=0, thY2=255) : !sisavs26 ? mt_lutxy(halos.spasses(sre,"mt_expand()"),halos.spasses(sri,"mt_inpand()"),"x y -",U=1,V=1) : mt_lutxy(halos.spasses(sre,"mt_expand()"),halos.spasses(sri,"mt_inpand()"),"x y -",use_expr=3,U=1,V=1)
 so     = !!sisavs26 ? mt_lutxy( ugly, are, "y x - y 0.001 + / 255 * "+LOS+" - y 256 + 512 / "+HIS+" + *" )

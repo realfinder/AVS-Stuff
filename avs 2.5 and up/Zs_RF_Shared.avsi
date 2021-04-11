@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.143
+# V1.150
 
 ### Functions list:-
 # sh_StrReplace
@@ -24,6 +24,7 @@
 # sTryFTurnLeft
 # sTryFTurn180
 # slimit_dif
+# slimit_dif2
 # sh_GetCSP
 # sh_Y8_YV411
 # ContraSharpeningHD
@@ -80,6 +81,7 @@
 # sh_GetUserGlobalIMTint
 # sh_GetUserGlobalIMTbool
 # sChromaShift2
+# ChrEatWhite
 # IsAvsNeo
 # IsAvsPlus
 # AvsPlusVersionNumber
@@ -208,14 +210,18 @@ sislumaonly ? last : sisphbd ? CombinePlanes(last,oi,planes="YUV",sample_clip=oi
 
 
 # tophf lines mask
-function t_linemask( clip c, int "blur", float "thresh", float "str" )
+function t_linemask( clip clp, int "blur", float "thresh", float "str" )
 {
 	sisavs26 = !(VersionNumber() < 2.6)
+	sisphbd = AvsPlusVersionNumber > 2294
+	sislumaonly = sisphbd ? clp.isy() : sisavs26 ? clp.isy8() : true
+c = sislumaonly ? clp : sisphbd ? clp.converttoy() : clp.converttoy8()
 	blur=default(blur,5)
 	thresh=default(thresh,4)
 	str=default(str,16)
 	!sisavs26 ? mt_lutxy(c,c.binomialblur(blur,u=1,v=1),"x "+string(thresh)+" + y < y x - "+string(str)+" * 0 ?")
-        \                     : mt_lutxy(c,c.binomialblur(blur,u=1,v=1),"x "+string(thresh)+" scalef + y < y x - "+string(str)+" * 0 ?", clamp_float=true, use_expr=2)
+        \                     : mt_lutxy(c,c.FastBlur(sqrt(blur),iterations=2,gamma=false,threads=1),"x "+string(thresh)+" scalef + y < y x - "+string(str)+" * 0 ?", clamp_float=true, use_expr=2)
+sislumaonly ? last : sisphbd ? CombinePlanes(last,clp,planes="YUV",sample_clip=clp) : ytouv(clp.utoy8(),clp.vtoy8(),last)
 }
 
 
@@ -258,9 +264,9 @@ sislumaonly ? last : sisphbd ? CombinePlanes(last,oi,planes="YUV",sample_clip=oi
 
 function GreyCenteredToMask_dhh(clip input) {
 # Levels will convert to lut in avs26 by this "x input_low - input_high input_low - / 1 gamma / ^ output_high output_low - * output_low +"
-VersionNumber() < 2.6 ? input.Levels(128, 1, 255, 0, 255, false) : input.mt_lut("x range_half - range_max range_half - / range_max 0 - * 0 +", use_expr=2)
+VersionNumber() < 2.6 ? input.Levels(128, 1, 255, 0, 255, false) : input.mt_lut("x range_half - range_max range_half - / range_max *", use_expr=2)
 one = last
-VersionNumber() < 2.6 ? input.Levels(0, 1, 128, 255, 0, false) : input.mt_lut("x 0 - range_half 0 - / 0 range_max - * range_max +", use_expr=2)
+VersionNumber() < 2.6 ? input.Levels(0, 1, 128, 255, 0, false) : input.mt_lut("x range_half / 0 range_max - * range_max +", use_expr=2)
 two = last
 Overlay(one, two, mode="lighten")
 }
@@ -286,11 +292,11 @@ Overlay(last, Blur(1,honly ? 0 : 1).Blur(1,honly ? 0 : 1), mode="difference")
 grsc=sislumaonly ? nop() : GreyCenteredToMask_dhh().greyscale()
 sislumaonly ? GreyCenteredToMask_dhh() : sisphbd ? grsc.converttoy() : grsc.converttoy8()
 !sisavs26 ? greyscale() : last
-!sisavs26 ? Levels(0, 1, 115, 0, 255, false) : mt_lut("x 0 - 155 scaleb 0 - / range_max 0 - * 0 +", use_expr=2)
+!sisavs26 ? Levels(0, 1, 115, 0, 255, false) : mt_lut("x 115 scaleb / range_max *", use_expr=2)
 Blur(1,honly ? 0 : 1)
-!sisavs26 ? Levels(0, 0.4, 64, 0, 255, false) : mt_lut("x 0 - 64 scaleb 0 - / 1 0.4 / ^ range_max 0 - * 0 +", use_expr=2)
+!sisavs26 ? Levels(0, 0.4, 64, 0, 255, false) : mt_lut("x 64 scaleb / 1 0.4 / ^ range_max *", use_expr=2)
 Blur(1,honly ? 0 : 1).Blur(1,honly ? 0 : 1)
-!sisavs26 ? Levels(0, 1, 30, 0, 255, false).Blur(1,honly ? 0 : 1) : mt_lut("x 0 - 30 scaleb 0 - / range_max 0 - * 0 +", use_expr=2,u=3,v=3).Blur(1,honly ? 0 : 1)
+!sisavs26 ? Levels(0, 1, 30, 0, 255, false).Blur(1,honly ? 0 : 1) : mt_lut("x 30 scaleb / range_max *", use_expr=2,u=3,v=3).Blur(1,honly ? 0 : 1)
 sislumaonly ? last : sisphbd ? CombinePlanes(last,lumaonly ? input : grsc,planes="YUV",sample_clip=lumaonly ? input : grsc) : YToUV(lumaonly ? input.UToY8() : grsc.UToY8(),lumaonly ? input.VToY8() : grsc.VToY8(),last)
 }
 
@@ -461,8 +467,40 @@ catch(err_msg) {
 }
 
 
+# base on Dither_limit_dif16 and vs LimitFilter
+function slimit_dif(clip "flt", clip "src", clip "ref", float "thr", float "elast", float "brighten_thr", float "thrc", int "Y", int "U", int "V", int "A")
+{
+thr    = default(thr,                 0.25)
+thrc   = default(thrc,                 thr)
+elast  = default(elast,                3.0)
+bthr   = default(brighten_thr,         thr)
+Y  = default(Y,           3)
+U  = default(U,           3)
+V  = default(V,           3)
+celast = U == 3 || V == 3 ? elast * thrc : nop()
+A  = default(A,           2)
+
+dref = defined(ref)
+sisavs26 = !(VersionNumber() < 2.6)
+ 
+Assert(!(elast < 1), "slimit_dif: elast must be more than 1")
+Assert((defined(flt) && defined(src)), "slimit_dif: both flt clip and src clip are needed")
+ 
+output = dref ? !sisavs26 ? mt_lutxyz(src,flt,ref, "y z - abs "+string(thrc)+" <= y y z - abs "+string(celast)+" >= x x y x - "+string(celast)+" y z - abs - * "+string(celast)+" "+string(thrc)+" - / + ? ?", \
+					                               "y z - abs y x - 0 > "+string(bthr)+" "+string(thr)+" ? <= y y z - abs y x - 0 > "+string(bthr)+" "+string(thr)+" ? "+string(elast)+" * >= x x y x - y x - 0 > "+string(bthr)+" "+string(thr)+" ? "+string(elast)+" * y z - abs - * y x - 0 > "+string(bthr)+" "+string(thr)+" ? "+string(elast)+" * y x - 0 > "+string(brighten_thr)+" "+string(thr)+" ? - / + ? ?", Y=Y,U=U,V=V)
+                \         : mt_lutxyz(src,flt,ref, "y z - abs "+string(thrc)+" yscalef <= y y z - abs "+string(celast)+" yscalef >= x x y x - "+string(celast)+" yscalef y z - abs - * "+string(celast)+" yscalef "+string(thrc)+" yscalef - / + ? ?", \
+					                               "y z - abs y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? <= y y z - abs y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? "+string(elast)+" * >= x x y x - y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? "+string(elast)+" * y z - abs - * y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? "+string(elast)+" * y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? - / + ? ?",clamp_float_UV=false,use_expr=1,Y=Y,U=U,V=V,A=A) 
+         \    : nop()
+!dref ? !sisavs26 ? mt_lutxy(src,flt, "y x - abs "+string(thrc)+" <= y y x - abs "+string(celast)+" >= x x y x - "+string(celast)+" y x - abs - * "+string(celast)+" "+string(thrc)+" - / + ? ?", \
+					                  "y x - abs y x - 0 > "+string(bthr)+" "+string(thr)+" ? <= y y x - abs y x - 0 > "+string(bthr)+" "+string(thr)+" ? "+string(elast)+" * >= x x y x - y x - 0 > "+string(bthr)+" "+string(thr)+" ? "+string(elast)+" * y x - abs - * y x - 0 > "+string(bthr)+" "+string(thr)+" ? "+string(elast)+" * y x - 0 > "+string(bthr)+" "+string(thr)+" ? - / + ? ?", Y=Y,U=U,V=V)
+        \         : mt_lutxy(src,flt, "y x - abs "+string(thrc)+" yscalef <= y y x - abs "+string(celast)+" yscalef >= x x y x - "+string(celast)+" yscalef y x - abs - * "+string(celast)+" yscalef "+string(thrc)+" yscalef - / + ? ?", \
+					                  "y x - abs y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? <= y y x - abs y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? "+string(elast)+" * >= x x y x - y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? "+string(elast)+" * y x - abs - * y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? "+string(elast)+" * y x - 0 > "+string(bthr)+" scalef "+string(thr)+" scalef ? - / + ? ?",clamp_float_UV=false,use_expr=2,Y=Y,U=U,V=V,A=A)
+  \   : output
+}
+
+
 # base on Dither_limit_dif16 idea (not 100% same output)
-function slimit_dif(clip "flt", clip "src", clip "ref", float "thr", float "elast", int "Y", int "U", int "V", bool "elastinfl", int "A")
+function slimit_dif2(clip "flt", clip "src", clip "ref", float "thr", float "elast", int "Y", int "U", int "V", bool "elastinfl", int "A")
 {
 thr    = default(thr,                 0.25)
 elast  = default(elast,                3.0)
@@ -476,8 +514,8 @@ A  = default(A,           2)
 dref = defined(ref)
 sisavs26 = !(VersionNumber() < 2.6)
  
-Assert(!(elast < 1), "slimit_dif: elast must be more than 1")
-Assert((defined(flt) && defined(src)), "slimit_dif: both flt clip and src clip are needed")
+Assert(!(elast < 1), "slimit_dif2: elast must be more than 1")
+Assert((defined(flt) && defined(src)), "slimit_dif2: both flt clip and src clip are needed")
  
 ldmask = elast!=1 ? !sisavs26 ? mt_lutxy(dref ? ref : src,flt,"x y - abs "+string(thr)+" <= 255 x y - abs "+string(elast2)+" <= ? 255 255 "+string(elast2)+" / x y - abs * - 0 ?", Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V)
                     \         : mt_lutxy(dref ? ref : src,flt,"x y - abs "+string(thr)+" yscalef <= yrange_max x y - abs "+string(elast2)+" yscalef <= ? yrange_max yrange_max "+string(elast2)+" yscalef / x y - abs * - 0 ?",use_expr=2, Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V,A=A==2 ? 1 : A) : 
@@ -1557,16 +1595,69 @@ input.FFT3DFilter(sigma=sigma, beta=beta, bw=bw, bh=bh, bt=bt, ow=ow, oh=oh, kra
 }
 
 
-Function sneo_dfttest(clip input, int "ftype", float "sigma", float "sigma2", float "pmin", float "pmax", int "sbsize", int "smode", int "sosize", int "tbsize", int "tmode", int "tosize", int "swin", int "twin", float "sbeta", float "tbeta", bool "zmean", float "f0beta", string "nlocation", float "alpha", string "slocation", string "ssx", string "ssy", string "sst", int "ssystem", int "dither", int "y", int "u", int "v", int "opt", int "threads", int "fft_threads")
+Function sneo_dfttest(clip input, int "ftype", float "sigma", float "sigma2", float "pmin", float "pmax", int "sbsize", int "smode", int "sosize", int "tbsize", int "tmode", int "tosize", int "swin", int "twin", float "sbeta", float "tbeta", bool "zmean", float "f0beta", string "nlocation", float "alpha", string "slocation", string "ssx", string "ssy", string "sst", int "ssystem", int "dither", int "y", int "u", int "v", int "opt", int "threads", int "fft_threads", \
+                      int "chrftype", float "chrsigma", float "chrsigma2", float "chrpmin", float "chrpmax", int "chrsbsize", int "chrsmode", int "chrsosize", int "chrtmode", int "chrtosize", int "chrswin", int "chrtwin", float "chrsbeta", float "chrtbeta", bool "chrzmean", float "chrf0beta", string "chrnlocation", float "chralpha", string "chrslocation", string "chrssx", string "chrssy", string "chrsst", int "chrssystem")
 {
+sisavs26  = !(VersionNumber() < 2.60)
+sisphbd   = AvsPlusVersionNumber > 2294
+y=Default(y,3)
+u=Default(u,3)
+v=Default(v,3)
+sigma=Default(sigma,16.0)
+sigma2=Default(sigma2,16.0)
+sbsize=Default(sbsize,12)
+sosize=Default(sosize,9)
+tbsize=Default(tbsize,5)
+sislumaonly = sisphbd ? input.isy() : sisavs26 ? input.isy8() : true
+dosep = (u==3 || v==3) && !sislumaonly && isYUV(input) && (defined(chrsst) || defined(chrssy) || defined(chrssx) || defined(chrslocation) || defined(chrnlocation) || defined(chrf0beta) || defined(chrzmean) || defined(chrtbeta)
+\ || defined(chrsbeta) || defined(chrtwin) || defined(chrswin) || defined(chrtosize) || defined(chrtmode) || defined(chrsosize) || defined(chrsmode) || defined(chrsbsize) || defined(chrpmax)
+\ || defined(chrpmin) || defined(chrsigma2) || defined(chrsigma) || defined(chrftype))
+dosep ? eval("""
+Yclip   = sisphbd ? converttoY(input) : sisavs26 ? converttoY8(input) : input
+Uclip   = sisphbd ? ExtractU(input) : sisavs26 ? UToY8(input) : UToY(input)
+Vclip   = sisphbd ? ExtractV(input) : sisavs26 ? VToY8(input) : VToY(input)
+
+chrftype     = defined(chrftype) ? chrftype : ftype
+chrsigma     = defined(chrsigma) ? chrsigma : sigma
+chrsigma2    = defined(chrsigma2) ? chrsigma2 : sigma2
+chrpmin      = defined(chrpmin) ? chrpmin : pmin
+chrpmax      = defined(chrpmax) ? chrpmax : pmax
+chrsbsize    = defined(chrsbsize) ? chrsbsize : sbsize
+chrsmode     = defined(chrsmode) ? chrsmode : smode
+chrsosize    = defined(chrsosize) ? chrsosize : sosize
+chrtmode     = defined(chrtmode) ? chrtmode : tmode
+chrtosize    = defined(chrtosize) ? chrtosize : tosize
+chrswin      = defined(chrswin) ? chrswin : swin
+chrtwin      = defined(chrtwin) ? chrtwin : twin
+chrsbeta     = defined(chrsbeta) ? chrsbeta : sbeta
+chrtbeta     = defined(chrtbeta) ? chrtbeta : tbeta
+chrzmean     = defined(chrzmean) ? chrzmean : zmean
+chrf0beta    = defined(chrf0beta) ? chrf0beta : f0beta
+chrnlocation = defined(chrnlocation) ? chrnlocation : nlocation
+chralpha     = defined(chralpha) ? chralpha : alpha
+chrslocation = defined(chrslocation) ? chrslocation : slocation
+chrssx       = defined(chrssx) ? chrssx : ssx
+chrssy       = defined(chrssy) ? chrssy : ssy
+chrsst       = defined(chrsst) ? chrsst : sst
+chrssystem   = defined(chrssystem) ? chrssystem : ssystem
+
+Yclip   = y==3 ? Yclip.sneo_dfttest(   ftype=ftype,    sigma=sigma,    sigma2=sigma2,    pmin=pmin,    pmax=pmax,    sbsize=sbsize,    smode=smode,    sosize=sosize, tbsize=tbsize,    tmode=tmode,    tosize=tosize,    swin=swin,    twin=twin,    sbeta=sbeta,    tbeta=tbeta,    zmean=zmean,    f0beta=f0beta,    nlocation=nlocation,    alpha=alpha,    slocation=slocation,    ssx=ssx,    ssy=ssy,    sst=sst,    ssystem=ssystem, dither=dither, y=3, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads) : Yclip
+Uclip   = u==3 ? Uclip.sneo_dfttest(ftype=chrftype, sigma=chrsigma, sigma2=chrsigma2, pmin=chrpmin, pmax=chrpmax, sbsize=chrsbsize, smode=chrsmode, sosize=chrsosize, tbsize=tbsize, tmode=chrtmode, tosize=chrtosize, swin=chrswin, twin=chrtwin, sbeta=chrsbeta, tbeta=chrtbeta, zmean=chrzmean, f0beta=chrf0beta, nlocation=chrnlocation, alpha=chralpha, slocation=chrslocation, ssx=chrssx, ssy=chrssy, sst=chrsst, ssystem=chrssystem, dither=dither, y=3, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads) : Uclip
+Vclip   = v==3 ? Vclip.sneo_dfttest(ftype=chrftype, sigma=chrsigma, sigma2=chrsigma2, pmin=chrpmin, pmax=chrpmax, sbsize=chrsbsize, smode=chrsmode, sosize=chrsosize, tbsize=tbsize, tmode=chrtmode, tosize=chrtosize, swin=chrswin, twin=chrtwin, sbeta=chrsbeta, tbeta=chrtbeta, zmean=chrzmean, f0beta=chrf0beta, nlocation=chrnlocation, alpha=chralpha, slocation=chrslocation, ssx=chrssx, ssy=chrssy, sst=chrsst, ssystem=chrssystem, dither=dither, y=3, u=1, v=1, opt=opt, threads=threads, fft_threads=fft_threads) : Vclip
+
+	!sisavs26 && isYUY2(input) ? YToUV(uclip.converttoyuy2(),vclip.converttoyuy2(),yclip.converttoyuy2()) : !(isYUY2(input)) && sisphbd ? CombinePlanes(yclip,uclip,vclip,planes="YUV",sample_clip=input) : YToUV(uclip,vclip,yclip)
+	 sisavs26 && isYUY2(input) ? converttoyuy2() : last
+""") : \
+eval("""
 	   try { input.neo_dfttest(ftype=ftype, sigma=sigma, sigma2=sigma2, pmin=pmin, pmax=pmax, sbsize=sbsize, smode=smode, sosize=sosize, tbsize=tbsize, tmode=tmode, tosize=tosize, swin=swin, twin=twin, sbeta=sbeta, tbeta=tbeta, zmean=zmean, f0beta=f0beta, nlocation=nlocation, alpha=alpha, slocation=slocation, ssx=ssx, ssy=ssy, sst=sst, ssystem=ssystem, dither=dither, y=y, u=u, v=v, opt=opt, threads=threads, fft_threads=fft_threads)
 } catch(error_msg) { 
 nstring = defined(nlocation) && defined(alpha) ? "a:" + string(alpha) + " " + nlocation : nlocation
 sstring = defined(slocation) && defined(ssystem) ? ssystem == 1 ? "$" + " " + slocation : slocation : slocation
-y=defined(y) ? y==3 : undefined
-u=defined(u) ? u==3 : undefined
-v=defined(v) ? v==3 : undefined
+y=y==3
+u=u==3
+v=v==3
 input.dfttest(ftype=ftype, sigma=sigma, sigma2=sigma2, pmin=pmin, pmax=pmax, sbsize=sbsize, smode=smode, sosize=sosize, tbsize=tbsize, tmode=tmode, tosize=tosize, swin=swin, twin=twin, sbeta=sbeta, tbeta=tbeta, zmean=zmean, f0beta=f0beta, nstring=nstring , sstring=sstring, ssx=ssx, ssy=ssy, sst=sst                   , dither=dither, Y=y, U=u, V=v, opt=opt, threads=threads)  }
+""")
 }
 
 
@@ -1696,6 +1787,20 @@ V = SPClone ? Eval("V." + ResizeMethod + "Resize(w, h, VX, VY, w+VX, h+VY)") : E
 
 YToUV(U, V, clp)
 sisavs26 && sisyuy2 ? converttoyuy2() : last }
+
+
+#StainlessS helper function ChrEatWhite
+Function ChrEatWhite(String S)
+{
+i=1
+C=RT_Ord(S,i)
+sss="""
+While(C==32||C>=8&&C<=13){
+      i=i+1 C=RT_Ord(S,i)}
+"""
+IsAvsPlus ? eval(sss) : GScript(sss)
+return i>1?MidStr(S,i):S
+}
 
 
 VersionNumber() < 2.60 ? eval("""
