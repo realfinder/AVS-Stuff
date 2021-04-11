@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.149
+# V1.150
 
 ### Functions list:-
 # sh_StrReplace
@@ -264,9 +264,9 @@ sislumaonly ? last : sisphbd ? CombinePlanes(last,oi,planes="YUV",sample_clip=oi
 
 function GreyCenteredToMask_dhh(clip input) {
 # Levels will convert to lut in avs26 by this "x input_low - input_high input_low - / 1 gamma / ^ output_high output_low - * output_low +"
-VersionNumber() < 2.6 ? input.Levels(128, 1, 255, 0, 255, false) : input.mt_lut("x range_half - range_max range_half - / range_max 0 - * 0 +", use_expr=2)
+VersionNumber() < 2.6 ? input.Levels(128, 1, 255, 0, 255, false) : input.mt_lut("x range_half - range_max range_half - / range_max *", use_expr=2)
 one = last
-VersionNumber() < 2.6 ? input.Levels(0, 1, 128, 255, 0, false) : input.mt_lut("x 0 - range_half 0 - / 0 range_max - * range_max +", use_expr=2)
+VersionNumber() < 2.6 ? input.Levels(0, 1, 128, 255, 0, false) : input.mt_lut("x range_half / 0 range_max - * range_max +", use_expr=2)
 two = last
 Overlay(one, two, mode="lighten")
 }
@@ -292,11 +292,11 @@ Overlay(last, Blur(1,honly ? 0 : 1).Blur(1,honly ? 0 : 1), mode="difference")
 grsc=sislumaonly ? nop() : GreyCenteredToMask_dhh().greyscale()
 sislumaonly ? GreyCenteredToMask_dhh() : sisphbd ? grsc.converttoy() : grsc.converttoy8()
 !sisavs26 ? greyscale() : last
-!sisavs26 ? Levels(0, 1, 115, 0, 255, false) : mt_lut("x 0 - 155 scaleb 0 - / range_max 0 - * 0 +", use_expr=2)
+!sisavs26 ? Levels(0, 1, 115, 0, 255, false) : mt_lut("x 115 scaleb / range_max *", use_expr=2)
 Blur(1,honly ? 0 : 1)
-!sisavs26 ? Levels(0, 0.4, 64, 0, 255, false) : mt_lut("x 0 - 64 scaleb 0 - / 1 0.4 / ^ range_max 0 - * 0 +", use_expr=2)
+!sisavs26 ? Levels(0, 0.4, 64, 0, 255, false) : mt_lut("x 64 scaleb / 1 0.4 / ^ range_max *", use_expr=2)
 Blur(1,honly ? 0 : 1).Blur(1,honly ? 0 : 1)
-!sisavs26 ? Levels(0, 1, 30, 0, 255, false).Blur(1,honly ? 0 : 1) : mt_lut("x 0 - 30 scaleb 0 - / range_max 0 - * 0 +", use_expr=2,u=3,v=3).Blur(1,honly ? 0 : 1)
+!sisavs26 ? Levels(0, 1, 30, 0, 255, false).Blur(1,honly ? 0 : 1) : mt_lut("x 30 scaleb / range_max *", use_expr=2,u=3,v=3).Blur(1,honly ? 0 : 1)
 sislumaonly ? last : sisphbd ? CombinePlanes(last,lumaonly ? input : grsc,planes="YUV",sample_clip=lumaonly ? input : grsc) : YToUV(lumaonly ? input.UToY8() : grsc.UToY8(),lumaonly ? input.VToY8() : grsc.VToY8(),last)
 }
 
