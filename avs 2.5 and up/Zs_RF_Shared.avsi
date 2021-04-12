@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.150
+# V1.151
 
 ### Functions list:-
 # sh_StrReplace
@@ -1412,7 +1412,7 @@ function smam_mask(clip input, clip "prefilter", int "pel", int "blksize", bool 
     blksize = default(blksize,HD ? sisbob ? 8 : 16 : sisbob ? 4 : 8)
 	threads = sh_GetUserGlobalIMTint()
 	mt = sh_GetUserGlobalIMTbool()
-preclip= defined(prefilter) ? prefilter : (VersionNumber() < 2.60) && isyv12(input) ? input.HQdn3d().FFT3DFilter(ncpu=threads) : input.HQdn3d_2().sneo_FFT3D(ncpu=threads)
+preclip= defined(prefilter) ? prefilter : isyuy2(input) ? input.HQdn3d_2().FFT3DFilter(ncpu=threads) : input.HQdn3d().sneo_FFT3D(ncpu=threads)
 sup    = defined(mt) ? preclip.MSuper(pel=pel,sharp=1,mt=mt) : preclip.MSuper(pel=pel,sharp=1)
 fv1    = defined(mt) ? sup.MAnalyse(isb=false,delta=1,DCT=dct,Truemotion=false,blksize=blksize,chroma=chroma,mt=mt) : sup.MAnalyse(isb=false,delta=1,DCT=dct,Truemotion=false,blksize=blksize,chroma=chroma)
 fv2    = defined(mt) ? sup.MAnalyse(isb=true,delta=1,DCT=dct,Truemotion=true,blksize=blksize,chroma=chroma,mt=mt) : sup.MAnalyse(isb=true,delta=1,DCT=dct,Truemotion=true,blksize=blksize,chroma=chroma)

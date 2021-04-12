@@ -1,4 +1,4 @@
-/* edi_rpow2 v1.0 mod 84
+/* edi_rpow2 v1.0 mod 86
 
 An improved rpow2 function for nnedi3, nnedi3ocl, eedi3, and eedi2.
 
@@ -734,7 +734,7 @@ sclip2 = sclip == ""          ? Undefined()
 mclip1 = mclip.Defined() && rfactorX > 1 ? IsAvsPlus ? mclip.TurnRight() : mclip.sTryFTurnRight(UVbool) : mclip
 dbl    = rfactorX > 1 ? dbl.eedi3(field1,true,Y,U,V,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
 \                                 vcheck,vthresh0,vthresh1,vthresh2,sclip2,threads,mclip1,opt) : dbl
-dbl    = rfactorX > 1 && nnrep > 0 && sclip == "nnedi3" ? nnrep > 1 ? slimit_dif2(dbl,sclip2,thr=4) : dbl.Repair(sclip2,9) : dbl
+dbl    = rfactorX > 1 && nnrep > 0 && sclip == "nnedi3" ? nnrep > 1 ? slimit_dif2(dbl,sclip2,thr=4,U=U?3:2,V=V?3:2) : dbl.Repair(sclip2,9,U?9:0,V?9:0) : dbl
 
 # No need to resize 420 chroma separately here because it's the width being doubled
 mclip  = mclip.Defined() && rfactorX > 1 ? mclip.ResizeX(mclip.Width()*2,mclip.Height(),rshift1,0, luma=Y, chroma=UVbool,mt=mt,mt_params=mt_params)
@@ -764,7 +764,7 @@ sclip2 = sclip == ""          ? Undefined()
                                      \                   : Undefined() """)
 dbl    = rfactorY > 1 ? dbl.eedi3(field2,true,Y,U,V,alpha,beta,gamma,nrad,mdis,hp,ucubic,cost3,
 \                                 vcheck,vthresh0,vthresh1,vthresh2,sclip2,threads,mclip,opt) : dbl
-dbl    = rfactorY > 1 && nnrep > 0 && sclip == "nnedi3" ? nnrep > 1 ? slimit_dif2(dbl,sclip2,thr=4) : dbl.Repair(sclip2,9) : dbl
+dbl    = rfactorY > 1 && nnrep > 0 && sclip == "nnedi3" ? nnrep > 1 ? slimit_dif2(dbl,sclip2,thr=4,U=U?3:2,V=V?3:2) : dbl.Repair(sclip2,9,U?9:0,V?9:0) : dbl
 mclip  = mclip.Defined() && rfactorY > 1 &&
 \        chr420          && UVbool        ? mclip.ResizeX(mclip.Width(),mclip.Height()*2,0,rshift2, luma=Y, chroma=false,mt=mt,mt_params=mt_params)
 \                                                .MergeChroma(mclip.ResizeX(mclip.Width(),mclip.Height()*2,0,rshift2*2.0, luma=false, chroma=true,mt=mt,mt_params=mt_params))
