@@ -1,4 +1,4 @@
-# santiag v1.602
+# santiag v1.603
 # Simple antialiasing
 
 # This program is free software. It comes without any warranty, to
@@ -23,7 +23,7 @@ Function santiag (clip c, int "strh", int "strv", string "type", int "nns", int 
 	aac         = Default (aac,                       48)
 	lumaonly    = Default (lumaonly,               false)
 	aain        = Default (aath,                   false) # make the turn for Horizontal (I think that what any antialiasing should do)
-	nnrep    = Default(nnrep,    0      )
+	nnrep       = Default (nnrep,                      0)
 
 	c
 
@@ -52,11 +52,10 @@ sisphbd = AvsPlusVersionNumber > 2294
 	sislumaonly = sisphbd ? isy() : sisavs26 ? isy8() : false
 	lumaonly=sislumaonly ? false : lumaonly
 	fullchr = sisphbd ? is444() : sisavs26 ? isyv24() : false
-	typeY = type=="nnedi3" || type=="sangnom" || type=="eedi3"
-	doY = !sislumaonly && typeY
+	doY = !sislumaonly
 
-	multi = (!(typeY && sisphbd ? Is420 : IsYV12()) && !(fullchr && typeY)) || lumaonly
-	c_y = (multi                ) ? typeY && sislumaonly ? last : doY ? sisphbd ? ExtractY() : converttoy8() :   ConvertToYV12 () : last
+	multi = (!(sisphbd ? Is420 : IsYV12()) && !(fullchr && typeY)) || lumaonly
+	c_y = (multi                ) ? sislumaonly ? last : doY ? sisphbd ? ExtractY() : converttoy8() :   ConvertToYV12 () : last
 	c_u = (multi && !sislumaonly) ? doY ? sisphbd ? ExtractU() : UToY8() : UToY ().ConvertToYV12 () : nop()
 	c_v = (multi && !sislumaonly) ? doY ? sisphbd ? ExtractV() : VToY8() : VToY ().ConvertToYV12 () : nop()
 	c_y =                           dot ? c_y.sTryFTurnLeft(!multi).santiag_stronger (strength, type, halfres, multi, sisavs26, nns=nns, aa=aa, aac=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep).sTryFTurnRight(!multi) : c_y.santiag_stronger (strength, type, halfres, multi, sisavs26, nns=nns, aa=aa, aac=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep)
@@ -65,7 +64,6 @@ sisphbd = AvsPlusVersionNumber > 2294
 	lumaonly ? c_y : nop()
 	lumaonly ? Eval (scaler_post + " (fw, fh, src_left=(halfres)?0:-0.125, src_top=(halfres)?0:0.125, src_width=Width (), src_height=Height ())") : nop()
 	         (multi && !sislumaonly) ? YToUV (c_u, c_v, lumaonly ? last : c_y)
-\	: multi && sislumaonly && !typeY ? sisphbd ? c_y.ConvertToY () : c_y.ConvertToY8 ()
 \	:                                  c_y
 
 	lumaonly ? last : Eval (scaler_post + " (fw, fh, src_left=(halfres)?0:-0.125, src_top=(halfres)?0:0.125, src_width=Width (), src_height=Height ())")
@@ -127,7 +125,7 @@ Function santiag_sangnom (clip c, bool dh, int field, bool itavs26, int "aa", in
 	itavs26 ? SangNom2 (order=field, aa=aa, aac=aac, dh=dh, luma=luma, chroma=chroma) : SangNom2 (order=field, aa=aa, aac=aac)
 }
 
-Function santiaguv (clip c, int "strh", int "strv", string "type", int "nns", int "aac", int "threads", int "nsize", int "vcheck", int "fw", int "fh", bool "halfres", string "scaler_post", int "maskt", string "typeh", string "typev", bool "aath")
+Function santiaguv (clip c, int "strh", int "strv", string "type", int "nns", int "aac", int "threads", int "nsize", int "vcheck", int "fw", int "fh", bool "halfres", string "scaler_post", int "maskt", string "typeh", string "typev", bool "aath", int "nnrep")
 {
 sisavs26= !(VersionNumber() < 2.60)
 sisphbd = AvsPlusVersionNumber > 2294
@@ -137,8 +135,8 @@ Assert(!sislumaonly, "santiaguv: use santiag for this clip!" )
 	c_y = sisphbd ? ExtractY() : sisavs26 ? converttoy8() : ConvertToYV12 ()
 	c_u = sisphbd ? ExtractU() : sisavs26 ? UToY8() : UToY ().ConvertToYV12 ()
 	c_v = sisphbd ? ExtractV() : sisavs26 ? VToY8() : VToY ().ConvertToYV12 ()
-	c_u = c_u.santiag(strh=strh, strv=strv, type=type, nns=nns, aa=aac, threads=threads, nsize=nsize, vcheck=vcheck, fw=fw, fh=fh, halfres=halfres, scaler_post=scaler_post, maskt=maskt, typeh=typeh, typev=typev, aath=aath, lumaonly=true)
-	c_v = c_v.santiag(strh=strh, strv=strv, type=type, nns=nns, aa=aac, threads=threads, nsize=nsize, vcheck=vcheck, fw=fw, fh=fh, halfres=halfres, scaler_post=scaler_post, maskt=maskt, typeh=typeh, typev=typev, aath=aath, lumaonly=true)
+	c_u = c_u.santiag(strh=strh, strv=strv, type=type, nns=nns, aa=aac, threads=threads, nsize=nsize, vcheck=vcheck, fw=fw, fh=fh, halfres=halfres, scaler_post=scaler_post, maskt=maskt, typeh=typeh, typev=typev, aath=aath, lumaonly=true, nnrep=nnrep)
+	c_v = c_v.santiag(strh=strh, strv=strv, type=type, nns=nns, aa=aac, threads=threads, nsize=nsize, vcheck=vcheck, fw=fw, fh=fh, halfres=halfres, scaler_post=scaler_post, maskt=maskt, typeh=typeh, typev=typev, aath=aath, lumaonly=true, nnrep=nnrep)
 YToUV (c_u, c_v, c_y)
 }
 
