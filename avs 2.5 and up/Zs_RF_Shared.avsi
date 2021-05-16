@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.150
+# V1.152
 
 ### Functions list:-
 # sh_StrReplace
@@ -16,6 +16,7 @@
 # EMask_dhh
 # spasses
 # spasses2
+# sspasses
 # sminideen
 # DarkPreserve_function
 # lightPreserve_function
@@ -345,6 +346,11 @@ Function spasses2(clip i, int "pass", string "filter", clip "fclip2")
 {
 Assert(defined(fclip2), "spasses2: fclip2 clip is needed")
 return pass > 0 ? eval("spasses2(" + filter + ", pass-1, filter, fclip2)") : i
+}
+
+Function sspasses(string i, int "pass", string "add")
+{
+return pass > 0 ? sspasses(i + add, pass-1, add) : i
 }
 
 
@@ -1412,7 +1418,7 @@ function smam_mask(clip input, clip "prefilter", int "pel", int "blksize", bool 
     blksize = default(blksize,HD ? sisbob ? 8 : 16 : sisbob ? 4 : 8)
 	threads = sh_GetUserGlobalIMTint()
 	mt = sh_GetUserGlobalIMTbool()
-preclip= defined(prefilter) ? prefilter : (VersionNumber() < 2.60) && isyv12(input) ? input.HQdn3d().FFT3DFilter(ncpu=threads) : input.HQdn3d_2().sneo_FFT3D(ncpu=threads)
+preclip= defined(prefilter) ? prefilter : isyuy2(input) ? input.HQdn3d_2().FFT3DFilter(ncpu=threads) : input.HQdn3d().sneo_FFT3D(ncpu=threads)
 sup    = defined(mt) ? preclip.MSuper(pel=pel,sharp=1,mt=mt) : preclip.MSuper(pel=pel,sharp=1)
 fv1    = defined(mt) ? sup.MAnalyse(isb=false,delta=1,DCT=dct,Truemotion=false,blksize=blksize,chroma=chroma,mt=mt) : sup.MAnalyse(isb=false,delta=1,DCT=dct,Truemotion=false,blksize=blksize,chroma=chroma)
 fv2    = defined(mt) ? sup.MAnalyse(isb=true,delta=1,DCT=dct,Truemotion=true,blksize=blksize,chroma=chroma,mt=mt) : sup.MAnalyse(isb=true,delta=1,DCT=dct,Truemotion=true,blksize=blksize,chroma=chroma)

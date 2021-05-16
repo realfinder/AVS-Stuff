@@ -1,4 +1,4 @@
-# DeHaloHmod v.2.471
+# DeHaloHmod v.2.472
 
 Function DeHaloHmod(clip input, int "Radius", int "Str", bool "Maska", bool "strong", int "mode", float "thr", val "exdehalo", bool "analog", bool "dirty", bool "smooth", bool "anime", bool "pel2", int "cleanmode", bool "maskpel2", float "thr2", val "extmask", val "extlmask", bool "RadInflate")
 {
@@ -62,7 +62,7 @@ Function DeHaloH(clip input, int "DR_Radius", int "DR_Str", bool "Maska", bool "
 
  EM = mode == 0 ? (strong ? input.Camembert_dhh() : input.Camembert_dhhMod()) : EMask_dhh(input, mode, threshold)
 
- RM=spasses(EM,DR_Radius,"mt_expand()")
+ RM=spasses(EM,DR_Radius+1,"mt_expand()")
  DeRinging  = input.Deen("a2d", 2, DR_Str  , 0, 0, 0, 0, 0)
  DeRinging = Maska ?  DeRinging.Invert() : DeRinging
 return mt_Merge(input, DeRinging, RM)
