@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.904
+# Advanced Denoising and anime bob v1.905
 # Collections of Functions
 
 ### Functions list:-
@@ -310,7 +310,7 @@ clip
 sis422  = avs26 ? isyv16() : false
 Assert((isyv12 || sis422), "sComb: only yv12 and yv16 is supported")
 isexmask = defined(exmask)
-prefil = !isexmask && ntsccombmask ? isyuy2(input) ? last.HQdn3d_2().FFT3DFilter().tweak(sat=1.5) : last.HQdn3d().sneo_FFT3D().tweak(sat=1.5) : nop()
+prefil = !isexmask && ntsccombmask ? isyuy2(clip) ? last.HQdn3d_2().FFT3DFilter().tweak(sat=1.5) : last.HQdn3d().sneo_FFT3D().tweak(sat=1.5) : nop()
 iqchr  = !isexmask && ntsccombmask ? prefil.SwapUV().Tweak(hue=-33) : nop()
 I = !isexmask && ntsccombmask ? sisphbd ? iqchr.ExtractU().sypixsub(2,2) : avs26 ? iqchr.utoy8().sypixsub(2,2) : iqchr.utoy().sypixsub(2,2) : nop()
 Q = !isexmask && ntsccombmask ? sisphbd ? iqchr.ExtractV().sypixsub(2,2) : avs26 ? iqchr.Vtoy8().sypixsub(2,2) : iqchr.Vtoy().sypixsub(2,2) : nop()
