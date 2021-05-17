@@ -8,13 +8,15 @@
 ###                                                                                          ###
 ###                            another Modded Version by A.SONY.                             ###
 ###                                                                                          ###
-###                                v2.192 - 16 October 2020                                  ###
+###                                   v2.193 - 16 May 2021                                   ###
 ###                                                                                          ###
 ################################################################################################
 ###
 ### +-----------+
 ### | CHANGELOG |
 ### +-----------+
+###
+### v2.193 : - replace UnsharpMask of Warpsharp to use UnsharpMask_avsi for HBD
 ###
 ### v2.192 : - added smode=6 (CAS) from vs port
 ###
@@ -92,7 +94,7 @@
 ###
 ### -> Masktools    (v2.2.15 or up)
 ### -> Removegrain  (v1.0pre or up)
-### -> Warpsharp    (2003.11.03 or up) [for Smode=1]
+### -> UnsharpMask_avsi.avsi           [for Smode=1]
 ### -> Variableblur (v0.30 or up)      [for Smode=2]
 ### -> CAS                             [for Smode=6]
 ### -> if you use avs+ then make sure it's the last one
@@ -551,7 +553,7 @@ method = secure==true ? !sisavs26 ? method.mt_lutxy(pre,"x y < x 1 + x y > x 1 -
 
 method = preblur=="OFF" ? method : tmp.mt_makediff(mt_makediff(pre,method,U=1,V=1),U=1,V=1)
 
-normsharp = Smode==1 ? tmp.unsharpmask(strength=int(str*100),radius=round(1.0+((ss_x+ss_y)/2.0)),threshold=0)
+normsharp = Smode==1 ? tmp.unsharpmask_avsi(strength=int(str*100),radius=round(1.0+((ss_x+ss_y)/2.0)),threshold=0)
 \         : Smode==2 ? tmp.unsharp(strength=str,vary=((ss_x+ss_y)/2.0),varc=1,border=3,U=1,V=1)
 \         : Smode==3 ? !sisavs26 ? mt_lutxy(tmp, method, yexpr="x x y - "+string(str)+" * +",U=1,V=1) \
 				 : mt_lutxy(tmp, method, yexpr="x x y - "+string(str)+" * +",use_expr=2,U=1,V=1)
