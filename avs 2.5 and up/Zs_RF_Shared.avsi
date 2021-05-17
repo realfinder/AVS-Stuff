@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.152
+# V1.153
 
 ### Functions list:-
 # sh_StrReplace
@@ -1307,8 +1307,19 @@ return mt_merge(input,aa_clip,mask) }
 
 
 #Developped in the "fine anime antialiasing thread"
-function SharpAAMCmod(clip orig, float "dark", int "thin", int "sharp", int "smooth", bool "stabilize", int "tradius", int "aapel", int "aaov", int "aablk", string "aatype")
+#tunned by Dogway for eedi3,resizer and HQ lsfmod settings
+#another mod by RF for HBD
+
+function SharpAAMCmod(clip orig, float "dark", int "thin", int "sharp", int "smooth", bool "stabilize", int "tradius", int "aapel", int "aaov", int "aablk", string "aatype", int "width", int "height")
 {
+
+sisavs26 = !(VersionNumber() < 2.60)
+dw = defined(width)
+dh = defined(height)
+dmodd = !(!dh && !dw)
+w	= default (width, orig.width)
+h	= default (height, orig.height)
+orig2   = dmodd ? orig.spline36resize(w,h) : orig
 dark	= default ( dark,     0.2 ) # strokes darkening strength
 thin	= default ( thin,      10 ) # Presharpening
 sharp	= default ( sharp,    150 ) # Postsharpening
@@ -1316,23 +1327,25 @@ smooth	= default ( smooth,    -1 ) # Postsmoothing
 stabilize= default ( stabilize,false ) # Use post stabilization with Motion Compensation
 Tradius	= default ( Tradius,    2 ) # 2 = MDegrain2 / 3 = MDegrain3 
 aapel	= default ( aapel,      1 ) # accuracy of the motion estimation (Value can only be 1, 2 or 4. 1 means a precision to the pixel. 2 means a precision to half a pixel, 4 means a precision to quarter a pixel, produced by spatial interpolation (better but slower).)
-aaov	= default ( aaov,       (orig.width>1100) ? 8 : 4 ) # block overlap value (horizontal). Must be even and less than block size. (Higher = more precise & slower)
-aablk	= default ( aablk,      (orig.width>1100) ? 16 : 8 ) # Size of a block (horizontal). It's either 4, 8 or 16 ( default is 8 ). Larger blocks are less sensitive to noise, are faster, but also less accurate.
-aatype	= default ( aatype, "Sangnom2" ) # Use Sangnom() or EEDI2() for anti-aliasing
+aaov	= default ( aaov,       (orig2.width>1100) ? 8 : 4 ) # block overlap value (horizontal). Must be even and less than block size. (Higher = more precise & slower)
+aablk	= default ( aablk,      (orig2.width>1100) ? 16 : 8 ) # Size of a block (horizontal). It's either 4, 8 or 16 ( default is 8 ). Larger blocks are less sensitive to noise, are faster, but also less accurate.
+aatype	= default ( aatype, "Sangnom" ) # Use Sangnom() or EEDI2() or EEDI3() for anti-aliasing
 
-w=width(orig)
-h=height(orig)
-m=mt_logic( orig.DEdgeMask(0,255,0,255,"5 10 5 0 0 0 -5 -10 -5", divisor=4,Y=3,U=3,V=3)
- \       ,orig.DEdgeMask(0,255,0,255,"5 0 -5 10 0 -10 5 0 -5", divisor=4,Y=3,U=3,V=3)
- \       ,"max").mt_lut("x 128 / 0.86 ^ 255 *")
-preaa=(thin==0 && dark==0) ? orig : (thin==0) ? orig.Toon(dark) : (dark==0) ? orig.awarpsharp2(depth=thin) : orig.Toon(dark).awarpsharp2(depth=thin)
-aa= (aatype=="Sangnom2") ? preaa.spline36resize(w*2,h*2).TurnLeft().SangNom2().TurnRight().SangNom2().spline36resize(w,h) : (aatype=="Sangnom") ? preaa.spline36resize(w*2,h*2).TurnLeft().SangNom().TurnRight().SangNom().spline36resize(w,h) : (aatype=="EEDI2") ? preaa.ediaa() : blankclip(pixel_type="YV12").subtitle("Please use Sangnom or EEDI2 for aatype")
-postsh=(sharp==0 && smooth==0) ? aa : aa.lsfmod(edgemode=1,strength=sharp,overshoot=1,soft=smooth)
-merged=mt_merge(orig,postsh,m,Y=3,U=3,V=3)
 
-sD=mt_makediff(orig,merged)
+m=mt_logic( orig.mt_edge("5 10 5 0 0 0 -5 -10 -5 4",0,255,0,255,U=3,V=3)
+ \       ,orig.mt_edge("5 0 -5 10 0 -10 5 0 -5 4",0,255,0,255,U=3,V=3)
+ \       ,"max")
+m=sisavs26 ? m.mt_lut("x 128 / 0.86 ^ 255 *", scale_inputs="allf", use_expr=2) : m.mt_lut("x 128 / 0.86 ^ 255 *")
+m=dmodd ? m.spline36resize(w,h) : m
+preaa=(thin==0 && dark==0) ? orig : (thin==0) ? orig.mToon(dark,10,20) : (dark==0) ? orig.awarpsharp2(depth=thin) : orig.mToon(dark,10,20).awarpsharp2(depth=thin)
+aa= (aatype=="Sangnom") ? preaa.spline36resize(w*2,h*2).TurnLeft().SangNom().TurnRight().SangNom().spline36resize(w,h) : (aatype=="EEDI2") ? preaa.ediaa() : (aatype=="EEDI3") ? preaa.\
+eedi3_rpow2(rfactor=2,hp=false).spline36resize(w,h,-0.5,-0.5) : blankclip(pixel_type="YV12").subtitle("Please use Sangnom or EEDI2 or EEDI3 for aatype")
+postsh=(sharp==0 && smooth==0) ? aa : dmodd ? aa.LSFmod(defaults="slow",strength=sharp,edgemode=0,soothe=true,ss_x=1.0,ss_y=1.0,overshoot=1,soft=smooth) : aa.lsfmod(edgemode=1,strength=sharp,overshoot=1,soft=smooth)
+merged=mt_merge(orig2,postsh,m,Y=3,U=3,V=3)
 
-origsuper= orig.MSuper(pel=aapel)
+sD=mt_makediff(orig2,merged)
+
+origsuper= orig2.MSuper(pel=aapel)
 sDsuper  = sD.  MSuper(pel=aapel, levels=1)
 
 
@@ -1345,9 +1358,9 @@ bv3 = tradius==3 ? origsuper.MAnalyse(isb=true, delta=3,overlap=aaov,blksize=aab
 sDD = tradius==1 ? sD.MDegrain1(sDsuper,bv1,fv1) : tradius==2 ? sD.MDegrain2(sDsuper,bv1,fv1,bv2,fv2) : sD.MDegrain3(sDsuper,bv1,fv1,bv2,fv2,bv3,fv3)
 
 reduc = 0.4
-sDD = mt_lutxy(sD,sDD,"x 128 - abs y 128 - abs < x y ?").mergeluma(sDD,1.0-reduc)
+sDD = sisavs26 ? mt_lutxy(sD,sDD,"x range_half - abs y range_half - abs < x y ?", use_expr=1).mergeluma(sDD,1.0-reduc) : mt_lutxy(sD,sDD,"x 128 - abs y 128 - abs < x y ?").mergeluma(sDD,1.0-reduc)
 
-return stabilize ? orig.mt_makediff(sDD,U=2,V=2) : merged
+return stabilize ? orig2.mt_makediff(sDD,U=2,V=2) : merged
 }
 
 
