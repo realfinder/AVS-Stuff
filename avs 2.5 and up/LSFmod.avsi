@@ -129,7 +129,7 @@
 ### Smode [int: 1,2,3,4,5,6]
 ### ----------------------
 ### Sharpen mode:
-###    =1 : Unsharp masking (from warpsharp)
+###    =1 : Unsharp masking (from UnsharpMask_avsi)
 ###    =2 : Unsharp masking (from variableblur) 
 ###    =3 : Range sharpening
 ###    =4 : Nonlinear sharpening (original  version)
@@ -435,7 +435,7 @@ function LSFmod( clip inclip, float "strength", int "Smode", int "Smethod", int 
 sisphbd = AvsPlusVersionNumber > 2294
 
 ### DEFAULTS
-version  = "v2.189"
+version  = "v2.193"
 defaults = default(defaults,"fast")
 num      = defaults=="old" ? 0 : defaults=="slow" ? 1 : defaults=="fast" ? 2 : 3
 
