@@ -1,7 +1,7 @@
 ###                                                      #
 ###                                                      #
 ### Stabilization Tools Pack 2.1 by Dogway (18-09-2020)  #
-###                 mod 2.536 by A.SONY in (01-06-2021)  #
+###                 mod 2.537 by A.SONY in (01-06-2021)  #
 ###                                                      #
 ##########################################################
 ###
@@ -478,9 +478,9 @@ stabclpa2 = bfix > 1 && u_feed ? stabclip.SCSelect(stabbclp,stabbclp,bfixc).Extr
 stabclip = bfix > 1 && u_feed ? Layer(stabclip.AddAlphaPlane(stabclpa1).FeedbackInput(), clp.AddAlphaPlane(stabclpa1)).FeedbackOutput() : stabclip
 stabclip = bfix > 1 && u_feed ? stabclip.RemoveAlphaPlane() : stabclip
 preclip = mt_merge(stabclip,clp,bfixc,luma=true)
-preclip = bfix > 1 && u_feed ? mt_merge(stabclip,preclip,stabclpa2,luma=true) : preclip
+preclip = bfix > 1 && u_feed ? mt_merge(stabclip,preclip,stabclpa2,luma=true).repair(preclip) : preclip
 bfix > 1 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, FillBordersc=u_ExIn ? preclip.ExInpaint(bfixc.mt_lut(u=-255,v=-255)) : u_InDe ? preclip.InpaintDelogo(mask=bfixc, Loc="0,0,0,0",dPP=0,dPPm=1,diPP=1,diPPm=0,oPP=1,oPPm=0,Inflate=0) : preclip.InpaintLogo(bfixc)) : bfixc
-bfix > 1 && u_feed ? mt_merge(stabclip,last,stabclpa2.sh_Padding(2,2,2,2).mt_expand().crop(2,2,-2,-2),luma=true) : last
+bfix > 1 && u_feed ? mt_merge(stabclip,last,stabclpa2.sh_Padding(2,2,2,2).mt_expand().crop(2,2,-2,-2),luma=true).repair(preclip) : last
 
 UVfix ? eval("""
 lumaf=last
