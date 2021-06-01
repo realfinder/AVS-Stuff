@@ -1,7 +1,7 @@
 ###                                                      #
 ###                                                      #
 ### Stabilization Tools Pack 2.1 by Dogway (18-09-2020)  #
-###                 mod 2.534 by A.SONY in (01-06-2021)  #
+###                 mod 2.535 by A.SONY in (01-06-2021)  #
 ###                                                      #
 ##########################################################
 ###
@@ -473,8 +473,8 @@ subsampl = b3fix ? AvsPlusVersionNumber > 2294 ? !(clp.is444() || clp.isy()) : V
 
 bfixc = bfix > 0 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, maskonly=bfix > 1) : last
 stabclip = bfix > 1 && u_feed ? stabclip.AddAlphaPlane(stabclip.SCSelect(BlankClip(bfixc,color_yuv=$000000),bfixc,bfixc).ExtractY().Invert()) : stabclip
-stabclip = bfix > 1 && u_feed ? Layer(stabclip.FeedbackInput(), stabclip).FeedbackOutput() : stabclip
 stabclipa = bfix > 1 && u_feed ? ExtractA(stabclip) : nop()
+stabclip = bfix > 1 && u_feed ? Layer(stabclip.FeedbackInput(), stabclip).FeedbackOutput() : stabclip
 stabclip = bfix > 1 && u_feed ? stabclip.RemoveAlphaPlane() : stabclip
 preclip = mt_merge(stabclip,clp,bfixc,luma=true)
 preclip = bfix > 1 && !u_feed ? mt_merge(preclip,stabclip,stabclipa,luma=true) : preclip
