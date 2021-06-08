@@ -4,7 +4,7 @@
 ###                                                                                          ###
 ###                       Mod by Dogway - Original idea by Caroliano                         ###
 ###                                                                                          ###
-###          Special Thanks: Sagekilla, Didée, cretindesalpes, Gavino and MVtools people     ###
+###          Special Thanks: Sagekilla, DidÃ©e, cretindesalpes, Gavino and MVtools people     ###
 ###                                                                                          ###
 ###                       v3.1.2d (Dogway's mod) - 21 July 2015                              ###
 ###   v3.1.2.111s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
@@ -618,7 +618,7 @@ bug_wa    = defined(bug_wa) ? bug_wa : interlaced && planar && chroma && !avs26 
 }
 
 
-# Didée MCDegrain, mod
+# DidÃ©e MCDegrain, mod
 
 function MCDegrainMod(clip c, int "frames", clip "srch", bool "soft", int "thSAD", bool "TV_range")
 {
