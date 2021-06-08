@@ -181,7 +181,7 @@ Mfilter = MFilterB ? Mfilter : input8
 bug_wa = interlaced && planar && chroma && !avs26 ? 2 : Chr # bug: crash prevention workaround
 
 pref   = !GlobalR ? preclip ? prefilter                                                                                                                                   : \
-                              input.SMDegrain_prefilters(inputP=inputP,input8=input8,input8y=input8y\
+                              input.NotSMDegrain_prefilters(inputP=inputP,input8=input8,input8y=input8y\
                                                                       ,inputY=inputY,input8h=input8h,prefilter=prefilter,chroma=chroma\
                                                                       ,Chr=Chr,Chr2=Chr2,bug_wa=bug_wa,lsb=lsb,lsb_in=lsb_in,Interlaced=Interlaced\
                                                                       ,if5=if5,pel=pel,device_type="GPU",device_id=device_id,a=1,d=1,h=7.0,slices=slices,planar=planar,cplace="mpeg1")   : \
@@ -512,7 +512,7 @@ Color = sShow ? (blue   ? $00aef0 : \
 varn = "\n\n\n\n\n"
 sp   = !GlobalR && str==1.0 ? "  " : ""
 
-Subtitle("SMDegrain Mod v3.1.2.108s",text_color=red||blue||yellow?Color:$7f7f7f,halo_color=$000000,font="VERDANA",size=s*2,x=w1,y=lsb_in?h/40:(interlaced?h/50:h/20))
+Subtitle("NotSMDegrain Mod v3.1.2.112s",text_color=red||blue||yellow?Color:$7f7f7f,halo_color=$000000,font="VERDANA",size=s*2,x=w1,y=lsb_in?h/40:(interlaced?h/50:h/20))
 
 Subtitle("BASIC"   ,lsp=lsp,text_color=$ffffff,font="COURIER NEW",size=s,x=w1,y=ys)
 Subtitle(            "\n\ntr           = " + string(tr)                                                                              + \
@@ -554,9 +554,9 @@ Subtitle("   Quality" ,lsp=interlaced?19:38,text_color=planar?$ffff00:$7f7f7f,fo
 lsb_out ? StackVertical (last, BlankClip (last, pixel_type=type, color_yuv=0,length=1)) : last""")}
 
 
-# SMDegrain prefilters
+# NotSMDegrain prefilters
 
-function SMDegrain_prefilters (clip input, int "prefilter", bool "chroma", int "Chr", int "Chr2", int "bug_wa", bool "lsb", bool "lsb_in", bool "Interlaced", val "if5", int "pel", String "device_type", int "device_id", int "d", int "a", bool "slices", bool "planar", clip "inputP", clip "input8", clip "input8y", clip "inputY", val "input8h", float "h", String "knlm_params", String "cplace", int "Threads")
+function NotSMDegrain_prefilters (clip input, int "prefilter", bool "chroma", int "Chr", int "Chr2", int "bug_wa", bool "lsb", bool "lsb_in", bool "Interlaced", val "if5", int "pel", String "device_type", int "device_id", int "d", int "a", bool "slices", bool "planar", clip "inputP", clip "input8", clip "input8y", clip "inputY", val "input8h", float "h", String "knlm_params", String "cplace", int "Threads")
 {
 Interlaced   = Default( Interlaced  ,false)
 slices       = default(slices, true)
@@ -635,5 +635,5 @@ rg = soft ? rg : 0
 input = soft ? c.mt_adddiff(mt_makediff(c,c.removegrain(rg)),U=2,V=2)
  \           : c
 (frames<=0) ? c :\
-                     input.SMDegrain(frames,thsad,pel=2,prefilter=srch,mfilter=c.removegrain(rg),TV_range=TV_range,subpixel=1,srfilter=2,Truemotion=true,vpad=8,hpad=8)
+                     input.NotSMDegrain(frames,thsad,pel=2,prefilter=srch,mfilter=c.removegrain(rg),TV_range=TV_range,subpixel=1,srfilter=2,Truemotion=true,vpad=8,hpad=8)
 return(last) }
