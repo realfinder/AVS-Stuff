@@ -1,13 +1,13 @@
 ################################################################################################
 ###                                                                                          ###
-###                           Simple MDegrain Mod - SMDegrain()                              ###
+###                        Simple MDegrain Mod - NotSMDegrain()                              ###
 ###                                                                                          ###
 ###                       Mod by Dogway - Original idea by Caroliano                         ###
 ###                                                                                          ###
 ###          Special Thanks: Sagekilla, Didée, cretindesalpes, Gavino and MVtools people     ###
 ###                                                                                          ###
 ###                       v3.1.2d (Dogway's mod) - 21 July 2015                              ###
-###   v3.1.2.111s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
+###   v3.1.2.114s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
 ###                     and yuy2 support in avs 2.6 with masktools 2.6                       ###
 ### and medianblur2 now will be used in Minblur instead of Quantile RemoveGrainHD in avs 2.6 ###
 ###                                    and add TV_range bool                                 ###
@@ -31,9 +31,9 @@
 ###
 ################################################################################################
 
-function SMDegrain (clip input   , int "tr"      , int "thSAD"    , int  "thSADC" , bool "RefineMotion",  val  "contrasharp", clip "CClip"      , bool "interlaced" ,  int   "plane" ,  int   "Globals",                                  \
+function NotSMDegrain (clip input   , int "tr"      , int "thSAD"    , int  "thSADC" , bool "RefineMotion",  val  "contrasharp", clip "CClip"      , bool "interlaced" ,  int   "plane" ,  int   "Globals",                                  \
                      int "pel"   , int "subpixel", val "prefilter", clip "mfilter", int  "blksize"     , int  "overlap"     ,  int  "search"    , bool "truemotion" , float "limit"  ,  float "limitc" ,  int   "thSCD1" , int "thSCD2",  \
-                    bool "chroma", int "hpad"    , int "vpad"     , bool "lsb"    , bool "lsb_in"      ,  bool "lsb_out"    , int  "mode"       , bool  "slices"    , val  "Show"    ,  float "Str"    ,  float "Amp" , bool "TV_range", int "dct", int "device_id", int "searchparam", int "pelsearch", bool "trymany", bool "always_MDegrainN", bool "n16", bool "n16_out", int "divide", int "srfilter", int "threads"){
+                    bool "chroma", int "hpad"    , int "vpad"     , bool "lsb"    , bool "lsb_in"      ,  bool "lsb_out"    , int  "mode"       , bool  "slices"    , val  "Show"    ,  float "Str"    ,  float "Amp" , bool "TV_range", int "dct", int "device_id", int "searchparam", int "pelsearch", bool "trymany", bool "always_MDegrainN", bool "n16", bool "n16_out", int "divide", int "srfilter", int "threads", bool "nf32", bool "nf32_out"){
 
 
 
@@ -78,6 +78,8 @@ sisphbd = AvsPlusVersionNumber > 2294
 SBitsn  = sisphbd ? input.BitsPerComponent() : 8
 n16_out = default( n16_out,  false)
 n16     = default( n16,  n16_out)
+n32_out = default( nf32_out,  false)
+n32     = default( nf32,  n32_out)
 if3     = alway_grainN ? true : !avs26 ? tr > 3 : tr > 6
 if4     = (w > 1099 ||  h > (lsb_in ? 1199 : 599))
 if5     = interlaced ? (GetParity(input)                            ? true : false) : nop()
@@ -142,7 +144,8 @@ RefineMotion    ? Assert(blksize > 7,                  "For RefineMotion you nee
 lsb_in          ? Assert(lsb,                          "lsb_in  requires: lsb=true")                                : nop()
 lsb_out         ? Assert(lsb,                          "lsb_out requires: lsb=true")                                : nop()
 n16_out         ? Assert(n16,                          "n16_out requires: n16=true")                                : nop()
-                  Assert(!(n16 && lsb),                          "you can't use n16 with lsb") 
+n32_out         ? Assert(n32,                        "nf32_out requires: nf32=true")                                : nop()
+                  Assert(!((n16 || n32) && lsb),                          "you can't use n16/nf32 with lsb") 
 
 
 
@@ -178,7 +181,7 @@ Mfilter = MFilterB ? Mfilter : input8
 bug_wa = interlaced && planar && chroma && !avs26 ? 2 : Chr # bug: crash prevention workaround
 
 pref   = !GlobalR ? preclip ? prefilter                                                                                                                                   : \
-                              input.SMDegrain_prefilters(inputP=inputP,input8=input8,input8y=input8y\
+                              input.NotSMDegrain_prefilters(inputP=inputP,input8=input8,input8y=input8y\
                                                                       ,inputY=inputY,input8h=input8h,prefilter=prefilter,chroma=chroma\
                                                                       ,Chr=Chr,Chr2=Chr2,bug_wa=bug_wa,lsb=lsb,lsb_in=lsb_in,Interlaced=Interlaced\
                                                                       ,if5=if5,pel=pel,device_type="GPU",device_id=device_id,a=1,d=1,h=7.0,slices=slices,planar=planar,cplace="mpeg1")   : \
@@ -203,12 +206,12 @@ pref   = !GlobalR ? (!planar && lsb ? ((!preclip ? ((lsb_in && prefilter==-1) ||
                      pref.Dither_Luma_Rebuild(S0=Str,lsb=lsb,lsb_in=pref16,slice=slices,c=Amp,uv=bug_wa)))                                  : \
                      pref
 
-pref = sisphbd ? n16 && sbitsn != pref.BitsPerComponent() ? pref.ConvertBits(sbitsn,dither=1) : pref : pref
+pref = sisphbd ? (n16 || n32) && sbitsn != pref.BitsPerComponent() ? pref.ConvertBits(sbitsn,dither=1) : pref : pref
 
 
 
 mvt2mt = Defined(threads) ? ",mt=" + string(threads!=1) : ""
-md16str = mvt2mt + (n16 ? ",out16=true" : lsb ? ",lsb=true" : "")
+md16str = mvt2mt + (n32 ? ",out32=true" : n16 ? ",out16=true" : lsb ? ",lsb=true" : "")
 
 (sShow ? false : !Show) ? eval("""
 
@@ -314,7 +317,7 @@ output = lsb_in                      ? inputY.Dither_add16 (Dither_sub16(output,
 # Contrasharp (only sharpens luma)
 
 ifC && if0 && if4 ? eval("
-global Super           = n16 ? super_render.ConvertBits(16) : super_render
+global Super           = n32 ? super_render.ConvertBits(32) : n16 ? super_render.ConvertBits(16) : super_render
 global cb1      = !if3 ? (interlaced ? bv2 : bv1) : vmulti.SelectEvery (tr2, 0)
 global cf1      = !if3 ? (interlaced ? fv2 : fv1) : vmulti.SelectEvery (tr2, 1)") : nop()
 
@@ -334,7 +337,7 @@ CClip = planar ?  (if1 ?  (lsb_in ? (ref8 ? CClip.Interleaved2planar(true) : CCl
                   (if1 ?  (lsb_in ? (ref8 ? CClip : CClip.DitherPost(mode=-1,u=1,v=1))                                                                                                                              : \
                                      (interlaced ? (if5 ? CClip.AssumeTFF().SeparateFields()                          : CClip.AssumeBFF().SeparateFields()) : (ref16 ? CClip.DitherPost(mode=-1,u=1,v=1) : CClip))) : \
                           (lsb_in ?  input.DitherPost(mode=-1,u=1,v=1)                                                                                                                                              : \
-                                     n16 ? inputP.ConvertBits(16) : inputP))")                                                                                                                                  : nop()
+                                     n32 ? inputP.ConvertBits(32) : n16 ? inputP.ConvertBits(16) : inputP))")                                                                                                                                  : nop()
 
 
 !GlobalO && if2   ? eval("
@@ -423,7 +426,7 @@ output = !GlobalO && !lsb && if0 ? ifC ? ContraSharpeningHD(output, CClip, plana
 			               		LSFmod(output,source=CClip,defaults="slow",strength=Contrasharp,soothe=false,Lmode=0,soft=-2,keep=0) \
 			    : output
 
-!GlobalO ? n16_out ? output : n16 ? output.ConvertBits(sbitsn,dither=interlaced ? 1 : mode) : \
+!GlobalO ? n16_out || n32_out ? output : n32 || n16 ? output.ConvertBits(sbitsn,dither=interlaced ? 1 : mode) : \
 	 	  lsb_out ? (if0 ? ctr16 : output)  : \
                       		 if0 && lsb ?  (interlaced ?  ctr16.weave().DitherPost(u=u,v=v,mode=6,slice=slices,interlaced=true)               :  ctr16.DitherPost(mode=mode,slice=slices,ampn=ampn,u=Uin,v=Vin)) : \
                              		 lsb ?             (interlaced ? output.weave().DitherPost(u=u,v=v,mode=6,slice=slices,interlaced=true)              : output.DitherPost(mode=mode,slice=slices,ampn=ampn,u=Uin,v=Vin)) : \
@@ -509,7 +512,7 @@ Color = sShow ? (blue   ? $00aef0 : \
 varn = "\n\n\n\n\n"
 sp   = !GlobalR && str==1.0 ? "  " : ""
 
-Subtitle("SMDegrain Mod v3.1.2.108s",text_color=red||blue||yellow?Color:$7f7f7f,halo_color=$000000,font="VERDANA",size=s*2,x=w1,y=lsb_in?h/40:(interlaced?h/50:h/20))
+Subtitle("NotSMDegrain Mod v3.1.2.112s",text_color=red||blue||yellow?Color:$7f7f7f,halo_color=$000000,font="VERDANA",size=s*2,x=w1,y=lsb_in?h/40:(interlaced?h/50:h/20))
 
 Subtitle("BASIC"   ,lsp=lsp,text_color=$ffffff,font="COURIER NEW",size=s,x=w1,y=ys)
 Subtitle(            "\n\ntr           = " + string(tr)                                                                              + \
@@ -551,9 +554,9 @@ Subtitle("   Quality" ,lsp=interlaced?19:38,text_color=planar?$ffff00:$7f7f7f,fo
 lsb_out ? StackVertical (last, BlankClip (last, pixel_type=type, color_yuv=0,length=1)) : last""")}
 
 
-# SMDegrain prefilters
+# NotSMDegrain prefilters
 
-function SMDegrain_prefilters (clip input, int "prefilter", bool "chroma", int "Chr", int "Chr2", int "bug_wa", bool "lsb", bool "lsb_in", bool "Interlaced", val "if5", int "pel", String "device_type", int "device_id", int "d", int "a", bool "slices", bool "planar", clip "inputP", clip "input8", clip "input8y", clip "inputY", val "input8h", float "h", String "knlm_params", String "cplace", int "Threads")
+function NotSMDegrain_prefilters (clip input, int "prefilter", bool "chroma", int "Chr", int "Chr2", int "bug_wa", bool "lsb", bool "lsb_in", bool "Interlaced", val "if5", int "pel", String "device_type", int "device_id", int "d", int "a", bool "slices", bool "planar", clip "inputP", clip "input8", clip "input8y", clip "inputY", val "input8h", float "h", String "knlm_params", String "cplace", int "Threads")
 {
 Interlaced   = Default( Interlaced  ,false)
 slices       = default(slices, true)
@@ -608,7 +611,7 @@ bug_wa    = defined(bug_wa) ? bug_wa : interlaced && planar && chroma && !avs26 
                                            avs26 && planar ? mt_merge     (        Dfttest(!lsb_in?inputd:input8y,sstring="0.0:4.0 0.2:9.0 1.0:15.0",tbsize=1,u=chroma,v=chroma,dither=1,threads=Threads).ConvertToYV16(),!lsb_in?input8y.Planar2Interleaved(!chroma).ConvertToYV16():input8y.ConvertToYV16(),                                                   \
                                                                           input8.Planar2Interleaved(!chroma).ConvertToYV16().mt_lut(      "x 16 < 255 x 75 > 0 255 x 16 - 4.322033898305085 * - ? ?",u=1,v=1), luma=planar?false:chroma,          u=bug_wa,v=bug_wa).ConvertToYUY2().Interleaved2planar(!chroma)                                                    : \
                                                      avs26 ? mt_merge     (sneo_dfttest(inputd,slocation="0.0:4.0 0.2:9.0 1.0:15.0",tbsize=1,u=chroma?3:2,v=chroma?3:2,dither=1,threads=Threads,fft_threads=Threads),input8,   \
-                                                                          input8.mt_lut("x 16 scalef < range_max x 75 scalef > 0 range_max x 16 scalef - range_max 75 scalef 16 scalef - / * - ? ?",use_expr=2,u=1,v=1), luma=chroma, cplace=cplace, u=chr,v=chr)                                                   : \
+                                                                          input8.mt_lut("x ymin < range_max x 75 scaleb > 0 range_max x ymin - range_max 75 scaleb ymin - / * - ? ?",use_expr=2,u=1,v=1), luma=chroma, cplace=cplace, u=chr,v=chr)                                                   : \
                                                              mt_merge     (planar ? Dfttest(!lsb_in?inputd:input8y,sstring="0.0:4.0 0.2:9.0 1.0:15.0",tbsize=1,u=chroma,v=chroma,dither=1,threads=Threads).Interleaved2planar(!chroma)                          : \
                                                                                     Dfttest(!lsb_in?inputd:input8 ,sstring="0.0:4.0 0.2:9.0 1.0:15.0",tbsize=1,u=chroma,v=chroma,dither=1,threads=Threads),input8,   \
                                                                           input8.mt_lut(      "x 16 < 255 x 75 > 0 255 x 16 - 4.322033898305085 * - ? ?",u=1,v=1), luma=chroma,          u=bug_wa,v=bug_wa))                                                   : \
@@ -632,5 +635,5 @@ rg = soft ? rg : 0
 input = soft ? c.mt_adddiff(mt_makediff(c,c.removegrain(rg)),U=2,V=2)
  \           : c
 (frames<=0) ? c :\
-                     input.SMDegrain(frames,thsad,pel=2,prefilter=srch,mfilter=c.removegrain(rg),TV_range=TV_range,subpixel=1,srfilter=2,Truemotion=true,vpad=8,hpad=8)
+                     input.NotSMDegrain(frames,thsad,pel=2,prefilter=srch,mfilter=c.removegrain(rg),TV_range=TV_range,subpixel=1,srfilter=2,Truemotion=true,vpad=8,hpad=8)
 return(last) }

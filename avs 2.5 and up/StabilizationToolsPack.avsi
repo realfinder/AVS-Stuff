@@ -1,7 +1,7 @@
 ###                                                      #
 ###                                                      #
 ### Stabilization Tools Pack 2.1 by Dogway (18-09-2020)  #
-###                 mod 2.533 by A.SONY in (29-11-2020)  #
+###                 mod 2.537 by A.SONY in (01-06-2021)  #
 ###                                                      #
 ##########################################################
 ###
@@ -420,19 +420,20 @@ DitherPost(stacked=true,prot=false,mode=6)
 ###
 ####################################
 
-function Stab3 (clip clp, int "ts", int "range", int "dxmax", int "dymax", bool "UVfix", bool "FixFalPos", float "zoom", int "mirror", float "PAR", clip "Prefilter", int "Luma_Exp", int "FillBorder", clip "FalPosclip", bool "use_ExInpaint", bool "use_InpaintDelogo") {
+function Stab3 (clip clp, int "ts", int "range", int "dxmax", int "dymax", bool "UVfix", bool "FixFalPos", float "zoom", int "mirror", float "PAR", clip "Prefilter", int "Luma_Exp", int "FillBorder", clip "FalPosclip", bool "use_ExInpaint", bool "use_InpaintDelogo", bool "use_Feedback") {
 
 ts     = default(ts, 7)        #frames to temporal average for better motion estimation (max. 7)
 range  = default(range, 1)     #frames before/after to estimate motion
 dxmax  = default(dxmax, Round(clp.width()/180.0)) #maximum deviation in pixels
 dymax  = default(dymax, dxmax) #x, and y should be the same
 zoom   = default(zoom, 1)      #maximum zoom factor (1 disabled)
-mirror = default(mirror, 0)    #Edge filling. 0 off, 15 everything on
+u_feed = default(use_Feedback, false)
+mirror = default(mirror, u_feed ? 15 : 0)    #Edge filling. 0 off, 15 everything on
 PAR    = default(PAR, 1.0)     #PAR of your source
 UVfix  = default(UVfix, false)  # Fixes the bug of change of HUE in Depan, not need in depan 1.13.1 and up
-bfix   = default(FillBorder, 1) # 1=Fixes borders of 3 or less pixels wide.
+bfix   = default(FillBorder, u_feed ? 2 : 1) # 1=Fixes borders of 3 or less pixels wide.
 u_ExIn = default(use_ExInpaint, false)
-u_InDe = default(use_InpaintDelogo, false)
+u_InDe = default(use_InpaintDelogo, u_feed)
 b3fix  = bfix > 0
 FixFalPos  = default(FixFalPos, true) # Fixes borders of 3 or more pixels wide. Use along crop(2,2,-2,-2)...
 									  # ...after stab2() to get rid of border issues entirely
@@ -471,7 +472,15 @@ crop(width-cropx,0,0,0).conditionalfilter(last,clp,ratiox,">","0")""") : last
 subsampl = b3fix ? AvsPlusVersionNumber > 2294 ? !(clp.is444() || clp.isy()) : VersionNumber() < 2.60 ? clp.isyv12() : !(clp.isyv24() || clp.isy8()) : nop()
 
 bfixc = bfix > 0 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, maskonly=bfix > 1) : last
-bfix > 1 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, FillBordersc=u_ExIn ? mt_merge(stabclip,clp,bfixc,luma=true).ExInpaint(bfixc.mt_lut(u=-255,v=-255)) : u_InDe ? mt_merge(stabclip,clp,bfixc,luma=true).InpaintDelogo(mask=bfixc, Loc="0,0,0,0",dPP=0,dPPm=1,diPP=1,diPPm=0,oPP=1,oPPm=0,Inflate=0) : mt_merge(stabclip,clp,bfixc,luma=true).InpaintLogo(bfixc)) : bfixc
+stabbclp = bfix > 1 && u_feed ? BlankClip(bfixc,color_yuv=$000000) : nop()
+stabclpa1 = bfix > 1 && u_feed ? stabclip.SCSelect(stabbclp,bfixc,bfixc).ExtractY().Invert() : nop()
+stabclpa2 = bfix > 1 && u_feed ? stabclip.SCSelect(stabbclp,stabbclp,bfixc).ExtractY().Invert() : nop()
+stabclip = bfix > 1 && u_feed ? Layer(stabclip.AddAlphaPlane(stabclpa1).FeedbackInput(), clp.AddAlphaPlane(stabclpa1)).FeedbackOutput() : stabclip
+stabclip = bfix > 1 && u_feed ? stabclip.RemoveAlphaPlane() : stabclip
+preclip = mt_merge(stabclip,clp,bfixc,luma=true)
+preclip = bfix > 1 && u_feed ? mt_merge(stabclip,preclip,stabclpa2,luma=true).repair(preclip) : preclip
+bfix > 1 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, FillBordersc=u_ExIn ? preclip.ExInpaint(bfixc.mt_lut(u=-255,v=-255)) : u_InDe ? preclip.InpaintDelogo(mask=bfixc, Loc="0,0,0,0",dPP=0,dPPm=1,diPP=1,diPPm=0,oPP=1,oPPm=0,Inflate=0) : preclip.InpaintLogo(bfixc)) : bfixc
+bfix > 1 && u_feed ? mt_merge(stabclip,last,stabclpa2.sh_Padding(2,2,2,2).mt_expand().crop(2,2,-2,-2),luma=true).repair(preclip) : last
 
 UVfix ? eval("""
 lumaf=last
