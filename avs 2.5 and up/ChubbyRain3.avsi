@@ -22,7 +22,7 @@ sisphbd = AvsPlusVersionNumber > 2294
     
     rainbow = mt_lutxy(uc, vc, "x y + "+string(th)+" scalef > range_max 0 ?", use_expr=1).Blur(1.58)
     
-    YToUV(mt_merge(u, ExtractU(cc), rainbow),mt_merge(v, ExtractV(cc), rainbow),c)
+    YToUV(mt_merge(u, sisphbd ? ExtractU(cc) : sisavs26 ? Utoy8(cc) : Utoy(cc), rainbow),mt_merge(v, sisphbd ? ExtractV(cc) : sisavs26 ? Vtoy8(cc) : Vtoy(cc), rainbow),c)
     show ? rainbow.pointresize(c.width,c.height) : last
     
     return (interlaced) ? f ? AssumeBFF().DoubleWeave().SelectEvery(4,1) : AssumeTFF().DoubleWeave().SelectEvery(4,1) : last
