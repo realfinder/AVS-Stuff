@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------#
 #                                                                   #
 #                     QTGMC 3.33 by Vit, 2012                       #
-#     QTGMC 3.380 2021 mod by A.SONY, based on v3.33d by Dogway     #
+#     QTGMC 3.382 2021 mod by A.SONY, based on v3.33d by Dogway     #
 #                                                                   #
 #   A high quality deinterlacer using motion-compensated temporal   #
 #  smoothing, with a range of features for quality and convenience  #
@@ -12,6 +12,9 @@
 # Full documentation is in the 'QTGMC' html file that may comes with this script, or even better see avisynth wiki
 #
 # --- LATEST CHANGES ---
+#
+# v3.382s
+# - fix for n16 family
 #
 # v3.380s based on v3.34d (mod) by Dogway
 # - Added Refinemotion Option for more accurate denoising.
@@ -213,7 +216,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
     n16d          = default( n16d,      false)
     FastMA        = default( FastMA,    false)
     useEdiExt     = default( useEdiExt, false)
-	EdiExtPre     = default( EdiExtPre, false)
+    EdiExtPre     = default( EdiExtPre, false)
     ESearchP      = default( ESearchP,  false)
     Str           = default( Str,        1.0 )
     Amp           = default( Amp,     0.0625 )
@@ -228,7 +231,8 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
         sisphbd = AvsPlusVersionNumber > 2294
 	sbpc = sisphbd ? Input.BitsPerComponent() : 8
 	sisphbd  ? Assert( !(sbpc > 8 && (lsb || lsbd)), "QTGMC: lsb hack is not Compatible with native high bit depth" ) : nop()
-	Assert(!(lsb && lsbd), "QTGMC: lsbd and n16d can't be used together" )
+	Assert(!(lsbd && n16d), "QTGMC: lsbd and n16d can't be used together" )
+	Assert(!(lsb && n16), "QTGMC: lsb and n16 can't be used together" )
 
 	# Select presets / tuning
 	Preset = default( Preset, "Slower" )
