@@ -1,5 +1,5 @@
 ####################################################
-# script v2.123
+# script v2.124
 ####################################################
 # Motion-compensated dfttest by twc
 # Aka: Really Really Really Slow
@@ -40,7 +40,7 @@
 
 function dfttestMC(clip input, clip "pp", int "mc", bool "mdg", bool "Y", bool "U", bool "V", float "sigma", int "sbsize", int "sosize", int "tbsize", int "dither", bool "lsb",bool "lsb_in",bool "pp_lsb_in",int "super_filter",
 	\ string "dfttest_params",float "rStr",float "Amp", int "mdgSAD", int "thSAD", int "thSCD1", int "thSCD2", bool "recalculate", bool "truemotion", int "pel", int "blksize", int "search", int "searchparam", int "overlap",
-		\ int "dct", bool "slices", bool "luma_rebuild", string "nstring", string "sstring", string "ssx", string "ssy", string "sst", bool "mdg_domask", string "mdg_mask", clip "ppsuper", clip "super", clip "exmcclip", bool "hd", clip "input8", int "threads", string "chrnlocation", string "chrslocation", string "chrssx", string "chrssy", string "chrsst", bool "chromaMA")
+		\ int "dct", bool "slices", bool "luma_rebuild", string "nstring", string "sstring", string "ssx", string "ssy", string "sst", bool "mdg_domask", string "mdg_mask", clip "ppsuper", clip "super", clip "exmcclip", bool "hd", clip "input8", int "threads", string "chrnlocation", string "chrslocation", string "chrssx", string "chrssy", string "chrsst", bool "chromaMA", bool "MCContraSharp")
 {
 	# Set default options. Most external parameters are passed valueless.
 
@@ -83,6 +83,7 @@ function dfttestMC(clip input, clip "pp", int "mc", bool "mdg", bool "Y", bool "
 	slices       = default(slices, true)
 	luma_rebuild = default(luma_rebuild, true)
 	mdg_domask   = default(mdg_domask, mdg)
+	MCContraSharp = default(MCContraSharp, false)
 
 	sisavs26  = VersionNumber() < 2.60 ? false : true
 
@@ -199,6 +200,7 @@ function dfttestMC(clip input, clip "pp", int "mc", bool "mdg", bool "Y", bool "
 	""")
 		
 	return selectEvery(filtered, mc * 2 + 1, mc)
+	MCContraSharp ? last.ContraSharpening(input, MC=true, cb1=b1clip, cf1=f1clip, Super=degrained_super) : last
 }
 
 
