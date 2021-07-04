@@ -2,7 +2,7 @@
 # Levels transforms by Did?e
 # Requires MaskTools v2.0 or greater
 # last revision 2004-12-07; update to MaskTools v2.0 semantics 2008-03-09
-# HBD update 2020.04.26
+# HBD update 2021.07.04
 #
 # PARAMETERS:
 #   "input_low"     : (Default: 0)
@@ -36,10 +36,11 @@ function Ylevels(clip clp,
     invGam  = 1.0 / min(max(0.1,Gamma),10.0)                                                                    # Sane range, avoid div by zero
     divisor = (input_high==input_low) ? 1 : input_high-input_low                                                # Avoid divide by zero
     try { bpc = clp.BitsPerComponent }  catch(msg) { bpc=8 }                                                    # Use scalef only if bpc > 8 (ie Avs+)
+    fclip = (bpc==32) ? "0 1 clip " : ""
     #
     wicked = (bpc>8)
     \  ?     "x " +string(input_low)+" scalef - "+string(divisor)+" scalef / "
-    \     +  "0 1 clip "
+    \     +  fclip
     \     +  string(invGam) + " ^ "
     \     +  string(output_high)+" scalef " +string(output_low)+" scalef - * "+string(output_low)+" scalef +"
     \  :     "x " +string(input_low)+" - "+string(divisor)+" / "
