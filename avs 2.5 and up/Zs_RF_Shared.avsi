@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.153
+# V1.154
 
 ### Functions list:-
 # sh_StrReplace
@@ -28,7 +28,7 @@
 # slimit_dif2
 # sh_GetCSP
 # sh_Y8_YV411
-# ContraSharpeningHD
+# ContraSharpening
 # MinBlur
 # sbr
 # Dither_YUY2toPlanar16
@@ -568,23 +568,24 @@ Function sh_Y8_YV411(clip c) {
  # contra-sharpening: sharpen the denoised clip, but don't add more to any pixel than what was removed previously.
  # script function from Didée, at the VERY GRAINY thread
 
- # In final version 2.0d ContraHD() was merged, to allow proper HD sharpening.
- # In this case global variables of (before denoising) source MSuper and forward and backward
- # compensated motion vectors are necessary as: Super, cb1 and cf1, if used as a stand alone function.
- # Don't know who made (mod) it, so I can't give proper credits, sorry.
+ # ContraSharpeningHD formerly, HD parameter renamed to MC, and function renamed to ContraSharpening
 
-FUNCTION ContraSharpeningHD(clip denoised, clip original, bool "HD", bool "planar", int "overshoot"){
-HD        = default(HD    ,false)
+FUNCTION ContraSharpening(clip denoised, clip original, bool "MC", bool "planar", int "overshoot", clip "cb1", clip "cf1", clip "Super"){
+HD        = default(MC    ,false)
 planar    = default(planar,false)
 overshoot = default(overshoot,0)
 avs26 = VersionNumber() < 2.60 ? false : true
 yuy26 = avs26 && Isyuy2(denoised) && planar
 
 HD ? eval("""
+Super=defined(Super) ? Super : original.MSuper(chroma=false, planar=planar)
+cb1=defined(cb1) ? cb1 : Super.MAnalyse(isb = true,  delta = 1, overlap= 4)
+cf1=defined(cf1) ? cf1 : Super.MAnalyse(isb = false, delta = 1, overlap= 4)
 cb1=original.MCompensate(Super, cb1, planar=planar)
 cf1=original.MCompensate(Super, cf1, planar=planar)
-pmax = yuy26 ? original.Planar2Interleaved().ConvertToYV16().mt_logic(cb1.Planar2Interleaved().ConvertToYV16(), "max").mt_logic(cf1.Planar2Interleaved().ConvertToYV16(), "max") : original.mt_logic(cb1, "max").mt_logic(cf1, "max")
-pmin = yuy26 ? original.Planar2Interleaved().ConvertToYV16().mt_logic(cb1.Planar2Interleaved().ConvertToYV16(), "min").mt_logic(cf1.Planar2Interleaved().ConvertToYV16(), "min") : original.mt_logic(cb1, "min").mt_logic(cf1, "min")""") : nop()
+pmax = !yuy26 ? original.mt_logic(cb1, "max").mt_logic(cf1, "max") : original.Planar2Interleaved().ConvertToYV16().mt_logic(cb1.Planar2Interleaved().ConvertToYV16(), "max").mt_logic(cf1.Planar2Interleaved().ConvertToYV16(), "max")
+pmin = !yuy26 ? original.mt_logic(cb1, "min").mt_logic(cf1, "min") : original.Planar2Interleaved().ConvertToYV16().mt_logic(cb1.Planar2Interleaved().ConvertToYV16(), "min").mt_logic(cf1.Planar2Interleaved().ConvertToYV16(), "min")
+          """) : nop()
 
 s    = denoised.MinBlur(HD?2:1,1,planar=planar)                                   # Damp down remaining spots of the denoised clip.
 s    = yuy26 ? s.Planar2Interleaved().ConvertToYV16() : s

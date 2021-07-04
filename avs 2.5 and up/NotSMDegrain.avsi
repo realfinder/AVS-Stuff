@@ -7,7 +7,7 @@
 ###          Special Thanks: Sagekilla, Didée, cretindesalpes, Gavino and MVtools people     ###
 ###                                                                                          ###
 ###                       v3.1.2d (Dogway's mod) - 21 July 2015                              ###
-###   v3.1.2.114s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
+###   v3.1.2.115s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
 ###                     and yuy2 support in avs 2.6 with masktools 2.6                       ###
 ### and medianblur2 now will be used in Minblur instead of Quantile RemoveGrainHD in avs 2.6 ###
 ###                                    and add TV_range bool                                 ###
@@ -33,7 +33,7 @@
 
 function NotSMDegrain (clip input   , int "tr"      , int "thSAD"    , int  "thSADC" , bool "RefineMotion",  val  "contrasharp", clip "CClip"      , bool "interlaced" ,  int   "plane" ,  int   "Globals",                                  \
                      int "pel"   , int "subpixel", val "prefilter", clip "mfilter", int  "blksize"     , int  "overlap"     ,  int  "search"    , bool "truemotion" , float "limit"  ,  float "limitc" ,  int   "thSCD1" , int "thSCD2",  \
-                    bool "chroma", int "hpad"    , int "vpad"     , bool "lsb"    , bool "lsb_in"      ,  bool "lsb_out"    , int  "mode"       , bool  "slices"    , val  "Show"    ,  float "Str"    ,  float "Amp" , bool "TV_range", int "dct", int "device_id", int "searchparam", int "pelsearch", bool "trymany", bool "always_MDegrainN", bool "n16", bool "n16_out", int "divide", int "srfilter", int "threads", bool "nf32", bool "nf32_out"){
+                    bool "chroma", int "hpad"    , int "vpad"     , bool "lsb"    , bool "lsb_in"      ,  bool "lsb_out"    , int  "mode"       , bool  "slices"    , val  "Show"    ,  float "Str"    ,  float "Amp" , bool "TV_range", int "dct", int "device_id", int "searchparam", int "pelsearch", bool "trymany", bool "always_MDegrainN", bool "n16", bool "n16_out", int "divide", int "srfilter", int "threads", bool "nf32", bool "nf32_out", bool "MCContraSharp"){
 
 
 
@@ -83,6 +83,7 @@ n32     = default( nf32,  n32_out)
 if3     = alway_grainN ? true : !avs26 ? tr > 3 : tr > 6
 if4     = (w > 1099 ||  h > (lsb_in ? 1199 : 599))
 if5     = interlaced ? (GetParity(input)                            ? true : false) : nop()
+MCCS    = default( MCContraSharp, if4)
 
 
 pel          = default( pel, if4 ? 1 : 2 )
@@ -316,10 +317,10 @@ output = lsb_in                      ? inputY.Dither_add16 (Dither_sub16(output,
 
 # Contrasharp (only sharpens luma)
 
-ifC && if0 && if4 ? eval("
-global Super           = n32 ? super_render.ConvertBits(32) : n16 ? super_render.ConvertBits(16) : super_render
-global cb1      = !if3 ? (interlaced ? bv2 : bv1) : vmulti.SelectEvery (tr2, 0)
-global cf1      = !if3 ? (interlaced ? fv2 : fv1) : vmulti.SelectEvery (tr2, 1)") : nop()
+ifC && if0 && MCCS ? eval("
+Super           = n32 ? super_render.ConvertBits(32) : n16 ? super_render.ConvertBits(16) : super_render
+cb1      = !if3 ? (interlaced ? bv2 : bv1) : vmulti.SelectEvery (tr2, 0)
+cf1      = !if3 ? (interlaced ? fv2 : fv1) : vmulti.SelectEvery (tr2, 1)") : nop()
 
 !GlobalO && if0   ? eval("
 
@@ -343,7 +344,7 @@ CClip = planar ?  (if1 ?  (lsb_in ? (ref8 ? CClip.Interleaved2planar(true) : CCl
 !GlobalO && if2   ? eval("
 OutTO8  = output.DitherPost(mode=-1,u=1,v=1)
 OutTO8P = planar  ? OutTO8.Dither_YUY2toInterleaved()                                                                                               : nop()
-ctr16   = ifC     ? ContrasharpeningHD (planar ? OutTO8P.Interleaved2planar(true):OutTO8, CClip, planar=planar, HD=if4)                             : \
+ctr16   = ifC     ? Contrasharpening (planar ? OutTO8P.Interleaved2planar(true):OutTO8, CClip, planar=planar, MC=MCCS, cb1=cb1, cf1=cf1, Super=Super)                             : \
                     LSFmod(planar ? OutTO8P : OutTO8,source=planar ? CClip.planar2Interleaved(true):CClip,defaults="+Chr(34)+"slow"+Chr(34)+",strength=Contrasharp,soothe=false,Lmode=0,soft=-2,keep=0)
 ctr16   = ifC     ? ctr16 : planar ? ctr16.Interleaved2planar(true) : ctr16
 
@@ -421,7 +422,7 @@ global Rtr             = tr")) : nop()
 
 # Output
 
-output = !GlobalO && !lsb && if0 ? ifC ? ContraSharpeningHD(output, CClip, planar=planar, HD=if4) : \
+output = !GlobalO && !lsb && if0 ? ifC ? ContraSharpening(output, CClip, planar=planar, MC=MCCS, cb1=cb1, cf1=cf1, Super=Super) : \
 			               planar ? LSFmod(output.planar2Interleaved(),source=CClip.planar2Interleaved(true),defaults="slow",strength=Contrasharp,soothe=false,Lmode=0,soft=-2,keep=0).Interleaved2planar() : \
 			               		LSFmod(output,source=CClip,defaults="slow",strength=Contrasharp,soothe=false,Lmode=0,soft=-2,keep=0) \
 			    : output
