@@ -4,6 +4,7 @@ Function ChubbyRain3(clip c, int "th", int "radius", bool "show", int "sft", boo
 
 sisavs26 = !(VersionNumber() < 2.60)
 sisphbd = AvsPlusVersionNumber > 2294
+sispngc = AvsPlusVersionNumber >= 2768
 
     interlaced = default(interlaced, false)
     th = default(th,10)
@@ -15,12 +16,12 @@ sisphbd = AvsPlusVersionNumber > 2294
     c = interlaced ? c.TDeint(1,tryWeave=true) : c
     u = sisphbd ? ExtractU(c) : sisavs26 ? Utoy8(c) : Utoy(c)
     v = sisphbd ? ExtractV(c) : sisavs26 ? Vtoy8(c) : Vtoy(c)
-    uc = mt_convolution(u, horizontal="1",vertical="1 -2 1")
-    vc = mt_convolution(v, horizontal="1",vertical="1 -2 1")
-    cc = sisavs26 ? mt_convolution(c, horizontal="1",vertical="1 2 1",Y=2,U=3,V=3).bifrost(interlaced=false).vsCnr2().temporalsoften(radius,0,sft,2,2) : 
+    uc = sispngc ? GeneralConvolution(u, matrix="0 1 0 0 -2 0 0 1 0") : mt_convolution(u, horizontal="1",vertical="1 -2 1")
+    vc = sispngc ? GeneralConvolution(v, matrix="0 1 0 0 -2 0 0 1 0") : mt_convolution(v, horizontal="1",vertical="1 -2 1")
+    cc = sisavs26 ? sispngc ? GeneralConvolution(c, matrix="0 1 0 0 2 0 0 1 0", luma=false, alpha=false).bifrost(interlaced=false).vsCnr2().temporalsoften(radius,0,sft,2,2) : mt_convolution(c, horizontal="1",vertical="1 2 1",Y=2,U=3,V=3).bifrost(interlaced=false).vsCnr2().temporalsoften(radius,0,sft,2,2) : 
                   \ mt_convolution(c, horizontal="1",vertical="1 2 1",Y=2,U=3,V=3).bifrost(interlaced=false).Cnr2().temporalsoften(radius,0,sft,2,2)
     
-    rainbow = mt_lutxy(uc, vc, "x y + "+string(th)+" scalef > range_max 0 ?", use_expr=1).Blur(1.58)
+    rainbow = sisavs26 ? mt_lutxy(uc, vc, "x y + "+string(th)+" scalef > range_max 0 ?", use_expr=1).Blur(1.58) : mt_lutxy(uc, vc, "x y + "+string(th)+" > 255 0 ?").Blur(1.58)
     
     YToUV(mt_merge(u, sisphbd ? ExtractU(cc) : sisavs26 ? Utoy8(cc) : Utoy(cc), rainbow),mt_merge(v, sisphbd ? ExtractV(cc) : sisavs26 ? Vtoy8(cc) : Vtoy(cc), rainbow),c)
     show ? rainbow.pointresize(c.width,c.height) : last
