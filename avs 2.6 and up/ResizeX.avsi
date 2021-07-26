@@ -1,4 +1,4 @@
-/* ResizeX v1.0.1 mod 9.39
+/* ResizeX v1.0.1 mod 9.40
 
 ResizeX is a wrapper function for AviSynth's internal resizers and Dither_resize16
 that corrects for the chroma shift caused by the internal resizers when they're
@@ -39,7 +39,7 @@ The default is 75.
 
 function ResizeX(clip input, int target_width, int target_height, float "src_left", float "src_top",
 \                float "src_width", float "src_height", string "kernel", int "taps", float "a1", float "a2",
-\                string "cplace", bool "luma", bool "chroma", bool "lsb_in", bool "lsb", bool "mt", string "mt_params", string "dither_params", bool "lsb_out", bool "desampling", int "dither_mode") {
+\                string "cplace", bool "luma", bool "chroma", bool "lsb_in", bool "lsb", bool "mt", string "mt_params", string "dither_params", bool "lsb_out", bool "desampling", int "dither_mode", bool "resize8") {
 
 lsb_in     = Default(lsb_in, false)
 lsb_out = Default(lsb_out, false)
@@ -64,6 +64,7 @@ mt_params  = Default(mt_params,      "")
 mt_params  = Defined(sh_GetUserGlobalIMTint) && (mt_params == "" ? true : FindStr(LCase(mt_params),"threads") == 0) ? mt_params + ",threads=" + string(sh_GetUserGlobalIMTint) : mt_params
 dither_params = Default(dither_params ,      "")
 dither_mode   = Default(dither_mode, 6)
+resize8    = Default(resize8, false)
 
 lsbdesampling = lsb && desampling
 desampling = lsbdesampling ? false : desampling
@@ -79,10 +80,10 @@ sisphbd ? Assert(lsb_native, "lsb hack is not Compatible with native high bit de
 sisphbd ? Assert(!(Input.isYUVA() && lsb), "lsb hack is not Compatible with YUVA" ) : nop()
 
 # Set correct src_width and src_height values if the input values are zero or negative
-src_width  = src_width  == 0 ? desampling ? undefined : iw
+src_width  = !desampling && resize8 && src_width<=0 ? iw-src_left+src_width : src_width  == 0 ? desampling ? undefined : iw
 \          : src_width  <  0 ? iw-src_left+src_width
 \                            : src_width
-src_height = src_height == 0 ? desampling ? undefined : ih
+src_height = !desampling && resize8 && src_height<=0 ? ih-src_top+src_height : src_height == 0 ? desampling ? undefined : ih
 \          : src_height <  0 ? ih-src_top+src_height
 \                            : src_height
 
