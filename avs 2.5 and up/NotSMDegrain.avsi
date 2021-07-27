@@ -7,7 +7,7 @@
 ###          Special Thanks: Sagekilla, Didée, cretindesalpes, Gavino and MVtools people     ###
 ###                                                                                          ###
 ###                       v3.1.2d (Dogway's mod) - 21 July 2015                              ###
-###   v3.1.2.115s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
+###   v3.1.2.116s mod for v3.1.2d to fix subpixel=3 and add Prefilter auto 16 (lsb) support  ###
 ###                     and yuy2 support in avs 2.6 with masktools 2.6                       ###
 ### and medianblur2 now will be used in Minblur instead of Quantile RemoveGrainHD in avs 2.6 ###
 ###                                    and add TV_range bool                                 ###
@@ -317,10 +317,10 @@ output = lsb_in                      ? inputY.Dither_add16 (Dither_sub16(output,
 
 # Contrasharp (only sharpens luma)
 
-ifC && if0 && MCCS ? eval("
-Super           = n32 ? super_render.ConvertBits(32) : n16 ? super_render.ConvertBits(16) : super_render
-cb1      = !if3 ? (interlaced ? bv2 : bv1) : vmulti.SelectEvery (tr2, 0)
-cf1      = !if3 ? (interlaced ? fv2 : fv1) : vmulti.SelectEvery (tr2, 1)") : nop()
+domcc = ifC && if0 && MCCS
+Super           = domcc ? n32 ? super_render.ConvertBits(32) : n16 ? super_render.ConvertBits(16) : super_render : undefined
+cb1      = domcc ? !if3 ? (interlaced ? bv2 : bv1) : vmulti.SelectEvery (tr2, 0) : undefined
+cf1      = domcc ? !if3 ? (interlaced ? fv2 : fv1) : vmulti.SelectEvery (tr2, 1) : undefined
 
 !GlobalO && if0   ? eval("
 
