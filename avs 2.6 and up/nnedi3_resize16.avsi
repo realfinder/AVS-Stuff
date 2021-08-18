@@ -1,5 +1,5 @@
 #################################################################################################
-###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2020.10.13      ######
+###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2021.08.17      ######
 #################################################################################################
 ###### from v2.8 on, nnedi3_resize16 only supports AviSynth v2.6+                          ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, nnedi3 v0.9.4.53,                  ######
@@ -31,9 +31,10 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 \                        int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads",
 \                        float "ratiothr", bool "mixed", float "thr", float "elast", float "sharp",
 \                        string "output", bool "tv_range", string "cplace", string "matrix", string "curve", float "gcor",
-\                        int "Y", int "U", int "V", bool "lsb_in", bool "lsb", int "dither", bool "nlsb", bool "padding", bool "FastNnediHBD")
+\                        int "Y", int "U", int "V", bool "lsb_in", bool "lsb", int "dither", bool "nlsb", bool "padding", bool "FastNnediHBD", bool "UseFmtc")
 {
     sisphbd = AvsPlusVersionNumber > 2294
+    sisparr = AvsPlusVersionNumber > 3381
     sbpc    = sisphbd ? input.BitsPerComponent() : 8
     sischbd = sisphbd ? sbpc > 8 : false
 	sisprgb = input.IsRGB() && input.IsPlanar()
@@ -77,6 +78,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     pscrn    = Default(pscrn,    2      )
     threads  = Default(threads,  sh_GetUserGlobalIMTint(true))
     pad      = Default(padding,  false  )
+	UseFmtc  = Default(UseFmtc, sisparr)
     
     ###############################################################################################################################
 	###############################################################################################################################
@@ -97,7 +99,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
                                                 # while it may produce blurring and aliasing when downscaling.
                                                 # You'd better not set it to True unless you know what you are doing.
     resste   = "Dither_resize16"
-    resstf   = sischbd || sisprgb ? noring ? "sResizeXnr" : "ResizeX" : noring ? "Dither_resize16nr" : "Dither_resize16"
+    resstf   = sischbd || sisprgb ? UseFmtc ? "fmtc_resample" : noring ? "sResizeXnr" : "ResizeX" : noring ? "Dither_resize16nr" : "Dither_resize16"
     syext    = sisphbd ? "ConvertToY" : "ConvertToY8"
     suext    = sisphbd ? "ExtractU" : "UToY8"
     svext    = sisphbd ? "ExtractV" : "VToY8"
@@ -521,7 +523,15 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     Eval("""
         flat16  = curve=="linear" ? input16
         \                         : input16.""" + sg2lin + """(tv_range, tv_range, curve, u=U21, v=V21, gcor=gcor)
-        flat16  =                   sischbd || sisprgb ? flat16.      """ + resstf + """
+        flat16  =                   sischbd || sisprgb ? UseFmtc ? flat16.      """ + resstf + """
+		\                                           (ow , oh , src_left                    , src_top            ,
+        \                                            src_width      , src_height      , planes=array(Y32,U32,V32), cplace=cplace,
+        \                                            kernelh=yh?kernel_u:kernel_d, kernelv=yv?kernel_u:kernel_d,
+		\                                            fh=yh?f_u:f_d, fv=yv?f_u:f_d,
+		\                                            invksh=yh?invks_u:invks_d, invksv=yv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ).fmtc_bitdepth(sbpc, planes=array(Y32,U32,V32), fulls=!tv_range) : 
+        \                                            flat16.      """ + resstf + """
 		\                                           (ow , oh , src_left                    , src_top            ,
         \                                            src_width      , src_height      , luma=Y32==3, chroma=U32==3||V32==3, cplace=cplace,
         \                                            kernel=yh||yv?kernel_u:kernel_d,
@@ -543,7 +553,15 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
         flatY   = curve=="linear"        ? input16.""" + syext + """() :
         \         (mixed || !Ynnt) && Yt ? input16.""" + syext + """().""" + sg2lin + """(tv_range, tv_range, curve, u=1  , v=1  , gcor=gcor)
         \                                : input16.""" + syext + """()
-        flatY   = (mixed || !Ynnt) && Yt ? sischbd || sisprgb ? flatY          .""" + resstf + """
+        flatY   = (mixed || !Ynnt) && Yt ? sischbd || sisprgb ? UseFmtc ? flatY          .""" + resstf + """
+		\                                           (ow , oh , src_left                    , src_top            ,
+        \                                            src_width      , src_height      , planes=!sisprgb ? array(Y32,U32,V32) : "all",
+        \                                             kernelh=yh?kernel_u:kernel_d, kernelv=yv?kernel_u:kernel_d,
+		\                                            fh=yh?f_u:f_d, fv=yv?f_u:f_d,
+		\                                            invksh=yh?invks_u:invks_d, invksv=yv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ).fmtc_bitdepth(sbpc, planes=!sisprgb ? array(Y32,U32,V32) : "all", fulls=!tv_range) : 
+		\                                           flatY          .""" + resstf + """
 		\                                           (ow , oh , src_left                    , src_top            ,
         \                                            src_width      , src_height      , luma=Y32==3, chroma=(U32==3||V32==3) && sisprgb,
         \                                            kernel=yv||yh?kernel_u:kernel_d,
@@ -563,7 +581,15 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
         \         (mixed || !Ynnt) && Yt ? flatY                .""" + slin2g + """(tv_range, tv_range, curve, u=1  , v=1  , gcor=gcor)
         \                                : flatY
         
-        flatU   = sisprgb ? nop() : (mixed || !Unnt) && Ut ? sischbd ? input16.""" + suext + """().""" + resstf + """
+        flatU   = sisprgb ? nop() : (mixed || !Unnt) && Ut ? sischbd ? UseFmtc ? input16.""" + suext + """().""" + resstf + """
+		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
+        \                                            src_widthc     , src_heightc     , planes=array(U32,1,1),
+        \                                            kernelh=ch?kernel_u:kernel_d, kernelv=cv?kernel_u:kernel_d,
+		\                                            fh=ch?f_u:f_d, fv=cv?f_u:f_d,
+		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ).fmtc_bitdepth(sbpc, planes=array(U32,1,1), fulls=!tv_range) :
+		\                                           input16.""" + suext + """().""" + resstf + """
 		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
         \                                            src_widthc     , src_heightc     , luma=U32==3, chroma=false,
         \                                            kernel=cv||ch?kernel_u:kernel_d,
@@ -580,7 +606,15 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 		\                                           )
         \                                : input16.BlankClip(width=owc, height=ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
 		
-        flatV   = sisprgb ? nop() : (mixed || !Vnnt) && Vt ? sischbd ? input16.""" + svext + """().""" + resstf + """
+        flatV   = sisprgb ? nop() : (mixed || !Vnnt) && Vt ? sischbd ? UseFmtc ? input16.""" + svext + """().""" + resstf + """
+		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
+        \                                            src_widthc     , src_heightc     , planes=array(V32,1,1),
+		\                                            kernelh=ch?kernel_u:kernel_d, kernelv=cv?kernel_u:kernel_d,
+		\                                            fh=ch?f_u:f_d, fv=cv?f_u:f_d,
+		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ).fmtc_bitdepth(sbpc, planes=array(V32,1,1), fulls=!tv_range) :
+		\                                           input16.""" + svext + """().""" + resstf + """
 		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
         \                                            src_widthc     , src_heightc     , luma=V32==3, chroma=false,
         \                                            kernel=ch||cv?kernel_u:kernel_d,
