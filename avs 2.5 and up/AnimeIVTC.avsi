@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.381 2021-03-30 mod
+# v2.382 2021-09-01 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with QTGMC and add bob4p to change QTGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -728,6 +728,8 @@ function sanimebob(clip i, val "useqtgmc", val "bobpresmooth", float "Str", floa
 sisphbd = AvsPlusVersionNumber > 2294
 qtgmc_lsb = default(qtgmc_lsb, sisphbd ? false : true)
 qtgmc_n16 = default(qtgmc_n16, sisphbd ? i.BitsPerComponent() > 8 ? false : true : false)
+qtgmc_lsb = AvsPlusVersionNumber < 3382 ? qtgmc_lsb : false
+qtgmc_n16 = !qtgmc_n16 && !(AvsPlusVersionNumber < 3382) ? qtgmc_lsb : qtgmc_n16
 threads = sh_GetUserGlobalIMTint()
 
 useq                  = default (useqtgmc,                                                                                                           0)
@@ -770,12 +772,15 @@ yadifclip = sisyuy2 && !sisavs26 ? ymodclip.Interleaved2Planar().Repair(i.TDeint
                                                   ymodclip.Repair(i.TDeint(1,emask=iforbob.tmm2_ortmm1(1)).nonyuy2clipin(nonyuy2)).nonyuy2clipout(nonyuy2)
 
 # for custom qtgmc, don't forget to put the input clip like this:- iforbob.QTGMC(... or yadifclip.QTGMC(... or i.QTGMC(...
+qtglsb = qtgmc_lsb ? ",lsb=true" : ""
+eval("""
 QTGMCclip = isstring(useq) ? eval(useq) : \
                              useq==0 ? yadifclip : \
-       useq==1 || useq==2 || useq==4 ? iforbob.QTGMC(SourceMatch=3, Lossless=2, EdiExt=yadifclip, tr0=1, tr1=1, tr2=tr2, lsb=qtgmc_lsb, n16=qtgmc_n16, rep0=11, rep1=11, rep2=11, Sharpness=0.1, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads) : \
-                  useq==3 || useq==5 ? yadifclip.QTGMC(InputType=1, tr0=1, tr1=1, tr2=tr2, lsb=qtgmc_lsb, n16=qtgmc_n16, rep0=11, rep1=11, rep2=11, Sharpness=0.1, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads) : \
-                  useq==6 || useq==7 ? yadifclip.QTGMC(InputType=1, tr0=0, lsb=qtgmc_lsb, n16=qtgmc_n16, Sharpness=usedaa3mod ? 0.0 : 0.1, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads) : \
-                                       i.QTGMC(SourceMatch=3, Lossless=2, EdiExt=yadifclip, useEdiExt=!(useq==9), tr0=useq==9 ? -1 : undefined(), rep0=useq==9 ? undefined() : 11, tr2=tr2, lsb=qtgmc_lsb, n16=qtgmc_n16, Sharpness=0.0, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads)
+       useq==1 || useq==2 || useq==4 ? iforbob.QTGMC(SourceMatch=3, Lossless=2, EdiExt=yadifclip, tr0=1, tr1=1, tr2=tr2, n16=qtgmc_n16, rep0=11, rep1=11, rep2=11, Sharpness=0.1, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads"""+qtglsb+""") : \
+                  useq==3 || useq==5 ? yadifclip.QTGMC(InputType=1, tr0=1, tr1=1, tr2=tr2, n16=qtgmc_n16, rep0=11, rep1=11, rep2=11, Sharpness=0.1, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads"""+qtglsb+""") : \
+                  useq==6 || useq==7 ? yadifclip.QTGMC(InputType=1, tr0=0, n16=qtgmc_n16, Sharpness=usedaa3mod ? 0.0 : 0.1, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads"""+qtglsb+""") : \
+                                       i.QTGMC(SourceMatch=3, Lossless=2, EdiExt=yadifclip, useEdiExt=!(useq==9), tr0=useq==9 ? -1 : undefined(), rep0=useq==9 ? undefined() : 11, tr2=tr2, n16=qtgmc_n16, Sharpness=0.0, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads"""+qtglsb+""")
+""")
 
 daa3mclip = usedaa3mod ? QTGMCclip.daa3mod(dslow,threads=threads) : QTGMCclip
 
