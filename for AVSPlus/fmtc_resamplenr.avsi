@@ -40,9 +40,7 @@ Function fmtc_resamplenr (clip src, int w, int h,
 \	val "invkstapsv",
 \	string "csp",
 \	string "css",
-\	int    "y",
-\	int    "u",
-\	int    "v",
+\	val "planes",
 \	int "fulls",
 \	int "fulld",
 \	val "center",
@@ -59,7 +57,7 @@ Function fmtc_resamplenr (clip src, int w, int h,
 {
 	noring = Default (noring, true)
 
-	Assert (w > 0 && h > 0, "Dither_resize16nr: width and height must be > 0.")
+	Assert (w > 0 && h > 0, "fmtc_resamplenr: width and height must be > 0.")
 
 	sr_h  = Float (w) / Float (src.width  ())
 	sr_v  = Float (h) / Float (src.height ())
@@ -75,14 +73,6 @@ Function fmtc_resamplenr (clip src, int w, int h,
 	nrf = (sr < thr + 1.0 && noring)
 	nrr = (nrb) ? min (sr - thr, 1.0) : 1.0
 	nrv = (nrb) ? Round ((1.0 - nrr) * 255) * $010101 : 0
-	y   = Default (y, 3)
-	u   = Default (u, 3)
-	v   = Default (v, 3)
-	sisrgb = isrgb(src)
-	y   = sisrgb ? 3 : y
-	u   = sisrgb ? 3 : u
-	v   = sisrgb ? 3 : v
-	planes = string(y) + ", " + string(u) + ", " + string(v)
 
 	main = src.fmtc_resample (w, h,
 \		sx          =sx,
@@ -198,13 +188,7 @@ Function fmtc_resamplenr (clip src, int w, int h,
 
 	nrm = (nrb && nrf) ? main.BlankClip (color_yuv=nrv) : main
 
-	# To do: use a simple frame blending instead of Dither_merge16
-	rgm = 1
-	rgc = (nrb) ? -1 : 0
-	rgy = Defined (y) ? ((y == 3) ? rgm : rgc) : rgm
-	rgu = Defined (u) ? ((u == 3) ? rgm : rgc) : rgm
-	rgv = Defined (v) ? ((v == 3) ? rgm : rgc) : rgm
-	rguv = max (rgu, rgv)
-	(nrf       ) ? main.repair(nrng, rgy, rguv)              : main
-	(nrf && nrb) ? mt_merge (main, last, nrm, y=y, u=u, v=v) : last
+	# To do: use a simple frame blending instead of mt_merge
+	(nrf       ) ? main.repair(nrng, 1, 1)              : main
+	(nrf && nrb) ? mt_merge (main, last, nrm, u=3, v=3) : last
 }
