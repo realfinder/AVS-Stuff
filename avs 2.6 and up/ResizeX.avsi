@@ -397,7 +397,7 @@ Function sResizeXnr (clip src, int width, int height,
 \		chroma    =chroma
 \	) : main
 
-	nrm = (nrb && nrf) ? main.BlankClip (color_yuv=nrv, height=main.Height()) : main
+	nrm = (nrb && nrf) ? main.BlankClip (color_yuv=nrv) : main
 
 	rgm  = 1
 	rgc  = (nrb) ? -1 : 0
