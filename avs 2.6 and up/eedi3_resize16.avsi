@@ -405,10 +405,10 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     Eval("""
         edgeed  = eedi3_resize16_rpow2(nlsb ? input16 : input8, yvct, yhct, 1, 1, Yt, Ut, Vt, nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = nlsb)
     	edgeedY = sharp>0 ? nlsb ? edgeed.CSmod16(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp)
-    	\                        : sischbd ? FastEdi ? edgeed.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).convertbits(sbpc)
+    	\                        : sischbd ? FastEdi ? UseFmtc ? edgeed.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).fmtc_bitdepth(sbpc, planes=planes2, fulls=!tv_range) : edgeed.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).convertbits(sbpc)
 		\                                             : edgeed.CSmod(chroma=false, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
 		\                                                        : edgeed.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).eedi3_resize16_U16(tv_range, Yt, Ut, Vt)
-    	\                 : nlsb || sischbd ? FastEdi ? edgeed.convertbits(sbpc) : edgeed : edgeed.eedi3_resize16_U16(tv_range, Yt, Ut, Vt)
+    	\                 : nlsb || sischbd ? FastEdi ? UseFmtc ? edgeed.fmtc_bitdepth(sbpc, planes=planes2, fulls=!tv_range) : edgeed.convertbits(sbpc) : edgeed : edgeed.eedi3_resize16_U16(tv_range, Yt, Ut, Vt)
     	edgeedU = sisphbd ? edgeedY.ExtractU() : edgeedY.UToY8()
     	edgeedV = sisphbd ? edgeedY.ExtractV() : edgeedY.VToY8()
     	edgeedY = sisphbd ? edgeedY.ConvertToY() : edgeedY.ConvertToY8()
@@ -421,7 +421,10 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
         \                                   : nlsb ? input16.ConvertToY ().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
         \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = true)
         \                                 .CSmod16(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp)
-        \                                   : sischbd && FastEdi ? input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                   : sischbd && FastEdi ? UseFmtc ? input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
+        \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).fmtc_bitdepth(sbpc, planes=planes2, fulls=!tv_range)
+		\                         		    : input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
         \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
         \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).convertbits(sbpc)
 		\                         		    : sischbd ? input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
@@ -433,7 +436,9 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     	\                                 .eedi3_resize16_U16(tv_range, Yt, False, False)
         \                         : sisprgb ? input16.eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, Ut, Vt,
         \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
-        \                                   : nlsb || sischbd ? FastEdi ? input16.ConvertToY ().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                   : nlsb || sischbd ? FastEdi ? UseFmtc ? input16.ConvertToY ().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = !sischbd).fmtc_bitdepth(sbpc, planes=planes2, fulls=!tv_range)
+        \                                : input16.ConvertToY ().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
         \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = !sischbd).convertbits(sbpc)
         \                                : input16.ConvertToY ().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
         \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = !sischbd)
@@ -444,12 +449,12 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     	\               : eedi3_resize16_rpow2(nlsb ? input16.ExtractU() : input8.""" + suext + """(), cvct, chct, 1, 1, Ut, False, False,
         \                                                            nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = nlsb)
     	edgeedU = sisprgb || !Uedt ? NOP()
-    	\               : nlsb || sischbd ? FastEdi ? edgeedU.convertbits(sbpc) : edgeedU : edgeedU.eedi3_resize16_U16(tv_range, Ut, False, False)
+    	\               : nlsb || sischbd ? FastEdi ? UseFmtc ? edgeedU.fmtc_bitdepth(sbpc, planes=planes2, fulls=!tv_range) : edgeedU.convertbits(sbpc) : edgeedU : edgeedU.eedi3_resize16_U16(tv_range, Ut, False, False)
     	edgeedV = sisprgb || !Vedt ? NOP()
     	\               : eedi3_resize16_rpow2(nlsb ? input16.ExtractV() : input8.""" + svext + """(), cvct, chct, 1, 1, Vt, False, False,
         \                                                            nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = nlsb)
     	edgeedV = sisprgb || !Vedt ? NOP()
-    	\               : nlsb || sischbd ? FastEdi ? edgeedV.convertbits(sbpc) : edgeedV : edgeedV.eedi3_resize16_U16(tv_range, Vt, False, False)
+    	\               : nlsb || sischbd ? FastEdi ? UseFmtc ? edgeedV.fmtc_bitdepth(sbpc, planes=planes2, fulls=!tv_range) : edgeedV.convertbits(sbpc) : edgeedV : edgeedV.eedi3_resize16_U16(tv_range, Vt, False, False)
     """)
     
     ###############################################################################################################################
