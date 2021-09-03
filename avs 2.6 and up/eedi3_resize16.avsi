@@ -1,13 +1,13 @@
 #################################################################################################
-###### eedi3_resize16 v3.3.10 ###### by mawen1250 mod by A.SONY ######      2021.04.12      ######
+###### eedi3_resize16 v3.3.11 ###### by mawen1250 mod by A.SONY ######     2021.09.02      ######
 #################################################################################################
-###### from v2.8 on, eedi3_resize16 only supports AviSynth v2.6+                          ######
-###### Requirements: masktools v2.0a48, dither v1.25.1, eedi3 v0.9.2.3,                     ######
+###### from v2.8 on, eedi3_resize16 only supports AviSynth v2.6+                           ######
+###### Requirements: masktools v2.0a48, dither v1.25.1, eedi3 v0.9.2.3,                    ######
 ######               SmoothAdjust v3.00, Contra-Sharpen mod 3.4 (only for sharp>0),        ######
 ######               FTurn v1.4 (not necessarily required but will improve speed)          ######
 ######               nnedi3 v0.9.4.19 (only for nnsclip=true)                              ######
 #################################################################################################
-###### accept Y8, YV12, YV16, YV24 input, use eedi3 and Dither_resize16(nr) for scaling   ######
+###### accept Y8, YV12, YV16, YV24 input, use eedi3 and Dither_resize16(nr) for scaling    ######
 ###### output format can be 8bit/16bit Y8/YV12/YV16/YV24 or RGB32/RGB24/RGB48YV12/RGB48Y   ######
 #################################################################################################
 ###### "lsb_in"/"lsb" defines if input/output clip is stacked-16bit, default is False      ######
@@ -16,11 +16,11 @@
 ###### when horizontal/vertical scale ratio >  "ratiothr", we assume it's upscaling        ######
 ###### when horizontal/vertical scale ratio <= "ratiothr", we assume it's downscaling      ######
 ###### by default ratiothr=1.125                                                           ######
-###### eedi3 is only applied when upscaling                                               ######
-###### Dither_resize16 is used after eedi3 upscaling to fix shift and scale to target res ######
-###### we call the eedi3+Dither_resize16 scaling method "edge area resize"                ######
+###### eedi3 is only applied when upscaling                                                ######
+###### Dither_resize16 is used after eedi3 upscaling to fix shift and scale to target res  ######
+###### we call the eedi3+Dither_resize16 scaling method "edge area resize"                 ######
 ###### for downscaling, Dither_resize16 is applied instead, we call it "flat area resize"  ######
-###### when mixed=True, eedi3 (edge area) is combined with Dither_resize16 (flat area)    ######
+###### when mixed=True, eedi3 (edge area) is combined with Dither_resize16 (flat area)     ######
 #################################################################################################
 
 
@@ -31,10 +31,29 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 \                        int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads",
 \                        float "ratiothr", bool "mixed", float "thr", float "elast", float "sharp",
 \                        string "output", bool "tv_range", string "cplace", string "matrix", string "curve", float "gcor",
-\                        int "Y", int "U", int "V", bool "lsb_in", bool "lsb", int "dither", bool "nnsclip", float "alpha",
+\                        int "Y", int "U", int "V", bool "lsb_in", bool "lsb", int "dither", bool "nlsb",
+\                        bool "FastediHBD", bool "UseFmtc", bool "nnsclip", float "alpha",
 \                        float "beta", float "gamma", int "nrad", int "mdis", bool "hp", bool "ucubic", bool "cost3", 
 \                        int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2", int "nnrep")
 {
+    sisphbd = AvsPlusVersionNumber > 2294
+    sisparr = AvsPlusVersionNumber > 3381
+    sbpc    = sisphbd ? input.BitsPerComponent() : 8
+    sischbd = sisphbd ? sbpc > 8 : false
+	sisprgb = input.IsRGB() && input.IsPlanar()
+	sHAlpha = sisphbd ? input.HasAlpha : false
+	AlphaC  = sHAlpha ? input.ExtractA().eedi3_resize16(target_width, target_height, src_left, src_top,
+\                        src_width, src_height,
+\                        kernel_d, kernel_u, f_d, f_u, taps,
+\                        a1, a2, a3, invks_d, invks_u, invkstaps, noring,
+\                        nsize, nns, qual, etype, pscrn, threads,
+\                        ratiothr, mixed, thr, elast, sharp,
+\                        undefined, false, cplace, matrix, "linear", gcor,
+\                        Y, 1, 1, false, false, dither, false,
+\                        FastediHBD, UseFmtc, nnsclip, alpha,
+\                        beta, gamma, nrad, mdis, hp, ucubic, cost3,
+\                        vcheck, vthresh0, vthresh1, vthresh2, nnrep) : nop()
+	input = sHAlpha ? input.RemoveAlphaPlane() : input
     ###############################################################################################################################
     ###############################################################################################################################
     # Parameters for merging edge&flat upscaled clip
@@ -64,6 +83,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     etype    = Default(etype,    0      )
     pscrn    = Default(pscrn,    2      )
     threads  = Default(threads,  sh_GetUserGlobalIMTint(true))
+	UseFmtc  = Default(UseFmtc, sisparr )
     nnsclip  = Default(nnsclip,  false  )
     
     ###############################################################################################################################
@@ -85,7 +105,13 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
                                                 # while it may produce blurring and aliasing when downscaling.
                                                 # You'd better not set it to True unless you know what you are doing.
     resste   = "Dither_resize16"
-    resstf   = noring ? "Dither_resize16nr" : "Dither_resize16"
+    resstf   = sischbd || sisprgb ? UseFmtc ? noring ? "fmtc_resamplenr" : "fmtc_resample" : noring ? "sResizeXnr" : "ResizeX" : noring ? "Dither_resize16nr" : "Dither_resize16"
+    syext    = sisphbd ? "ConvertToY" : "ConvertToY8"
+    suext    = sisphbd ? "ExtractU" : "UToY8"
+    svext    = sisphbd ? "ExtractV" : "VToY8"
+    sg2lin   = sischbd || sisprgb ? "y_gamma_to_linear" : "Dither_y_gamma_to_linear"
+    slin2g   = sischbd || sisprgb ? "y_linear_to_gamma" : "Dither_y_linear_to_gamma"
+    slimd    = sischbd || sisprgb ? "slimit_dif" : "Dither_limit_dif16"
     
     ###############################################################################################################################
 	###############################################################################################################################
@@ -101,13 +127,23 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     Y        = Default(Y,        3      )
     U        = Default(U,        3      )
     V        = Default(V,        3      )
+    planes   = string(y) + ", " + string(u) + ", " + string(v)
+    planes2  = string(y == 3 ? "0, " : "") + string(u == 3 ? "1, " : "") + string(v == 3 ? "2, " : "")
     lsb_in   = Default(lsb_in,   False  )   # input  clip is 16-bit stacked or not
     lsb      = Default(lsb,      False  )   # output clip is 16-bit stacked or not
     tv_range = Default(tv_range, True   )   # input  clip is TV-range or PC-range
     dither   = tv_range ? Default(dither, 6) : Default(dither, 50)    # dither mode for 16-bit to 8-bit conversion
+    nlsb     = Default(nlsb,     false  )   # avs+ HBD mixed with lsb
+	FastEdi  = Default(FastediHBD, false)
     
-    sCSP     = input.eedi3_resize16_GetCSP()
-    Assert(sCSP=="Y8" || sCSP=="YV12" || sCSP=="YV16" || sCSP=="YV24", """eedi3_resize16: only accept Y8, YV12, YV16, YV24 input""")
+    sCSP     = input.sh_GetCSP()
+    fullchr  = sisprgb ? true : sisphbd ? input.is444() : sCSP=="YV24"
+    chr422   = sisphbd ? input.is422() : sCSP=="YV16"
+    chr420   = sisphbd ? input.is420() : sCSP=="YV12"
+    nochr    = sisphbd ?   input.isy() : sCSP=="Y8"
+    Assert(sisprgb || nochr || chr420 || chr422 || fullchr, """eedi3_resize16: only accept Y8, YV12, YV16, YV24, YUVA, Planar RGB(A), or HBD input""")
+    Assert(!((nlsb || lsb || lsb_in) && (sischbd || sisprgb)), """eedi3_resize16: you can't use lsb hacks with HBD input or RGB""")
+    Assert(!((nlsb || lsb || lsb_in) && (FastEdi)), """eedi3_resize16: you can't use lsb with FastediHBD""")
     
     output   = Default(output,   sCSP   )
     # Output format. Possible values are:
@@ -122,10 +158,10 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     
 	###############################################################################################################################
 	
-    IsY8     = sCSP == "Y8" || output == "Y8"
+    IsY8     = nochr ? true : sCSP == "Y8" || output == "Y8"
     sCSP     = IsY8 ? "YV24" : sCSP
     
-    IsRGB    = LeftStr(output, 3) == "RGB"
+    IsRGB    = (!sischbd || !sisprgb) && LeftStr(output, 3) == "RGB"
     oCSP     = IsRGB || IsY8 ? "YV24" : output
     
     Y        = min(Y, 4)
@@ -150,8 +186,8 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     sw       = input.Width ()
     sh       = input.Height()
     sh       = lsb_in ? sh/2 : sh
-    swc      = sCSP=="YV24" ? sw   : sw/2
-    shc      = sCSP=="YV12" ? sh/2 : sh
+    swc      = fullchr ? sw   : sw/2
+    shc      = chr420  ? sh/2 : sh
     HD       = (sw > 1024 || sh > 576) ? True : False
     
 	###############################################################################################################################
@@ -189,11 +225,11 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 	
     ow       = Default(target_width,  sw)
     oh       = Default(target_height, sh)
-    owc      = oCSP=="YV24" ? ow   : ow/2
-    ohc      = oCSP=="YV12" ? oh/2 : oh
-    Assert(!(output=="YV16" && ow!=owc*2), """eedi3_resize16: width  of YV16 output clip must be MOD2!""")
-    Assert(!(output=="YV12" && ow!=owc*2), """eedi3_resize16: width  of YV12 output clip must be MOD2!""")
-    Assert(!(output=="YV12" && oh!=ohc*2), """eedi3_resize16: height of YV12 output clip must be MOD2!""")
+    owc      = (sischbd ? fullchr : oCSP=="YV24") ? ow   : ow/2
+    ohc      = (sischbd ?  chr420 : oCSP=="YV12") ? oh/2 : oh
+    Assert(!((sischbd ?  chr422 : output=="YV16") && ow!=owc*2), """eedi3_resize16: width  of 422 output clip must be MOD2!""")
+    Assert(!((sischbd ?  chr420 : output=="YV12") && ow!=owc*2), """eedi3_resize16: width  of 420 output clip must be MOD2!""")
+    Assert(!((sischbd ?  chr420 : output=="YV12") && oh!=ohc*2), """eedi3_resize16: height of 420 output clip must be MOD2!""")
     
     src_left    = Default(src_left,   0 )
     src_top     = Default(src_top,    0 )
@@ -202,7 +238,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     
     ###############################################################################################################################
 	###############################################################################################################################
-    # Pre-Cropping/sh_Padding Calculation
+    # Pre-Cropping/Padding Calculation
 	
     prel        = int(src_left/2) * 2
     pret        = int(src_top /2) * 2
@@ -211,7 +247,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     prew        = sw - prel + prer
     preh        = sh - pret + preb
     
-    sCSP=="YV24" ? \
+    fullchr ? \
     Eval("""
         swmod2      = sw  /2*2 == sw
         pwmod2      = prew/2*2 == prew
@@ -231,7 +267,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
         wpre        = prew < sw || !swmod4
     """)
     
-    sCSP=="YV12" ? \
+    chr420 ? \
     Eval("""
         shmod4      = sh  /4*4 == sh
         phmod4      = preh/4*4 == preh
@@ -256,10 +292,10 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     src_left    = wpre ? src_left-prel : src_left
     src_top     = hpre ? src_top -pret : src_top
     
-    src_leftc   = sCSP=="YV24" ? src_left      : src_left  /2.
-    src_topc    = sCSP=="YV12" ? src_top   /2. : src_top
-    src_widthc  = sCSP=="YV24" ? src_width     : src_width /2.
-    src_heightc = sCSP=="YV12" ? src_height/2. : src_height
+    src_leftc   = fullchr ? src_left      : src_left  /2.
+    src_topc    = chr420 ? src_top   /2. : src_top
+    src_widthc  = fullchr ? src_width     : src_width /2.
+    src_heightc = chr420 ? src_height/2. : src_height
     
     ###############################################################################################################################
 	###############################################################################################################################
@@ -294,22 +330,22 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     cvrf     = int(Pow(2, cvct))
     crvratio = cvratio/cvrf
     
-    nonenny  = yhct<=0 && yvct<=0
-    nonennc  = chct<=0 && cvct<=0
-    nonenn   = nonenny || nonennc
+    noneedy  = yhct<=0 && yvct<=0
+    noneedc  = chct<=0 && cvct<=0
+    noneed   = noneedy || noneedc
     
-    Ynnt     = Yt&&!nonenny
-    Unnt     = Ut&&!nonennc
-    Vnnt     = Vt&&!nonennc
-    Ynn31    = Ynnt ? 3 : 1
-    Unn31    = Unnt ? 3 : 1
-    Vnn31    = Vnnt ? 3 : 1
-    Ynn      = Yt&&nonenny ? 2 : Y
-    Unn      = Ut&&nonennc ? 2 : U
-    Vnn      = Vt&&nonennc ? 2 : V
+    Yedt     = Yt&&!noneedy
+    Uedt     = Ut&&!noneedc
+    Vedt     = Vt&&!noneedc
+    Yed31    = Yedt ? 3 : 1
+    Ued31    = Uedt ? 3 : 1
+    Ved31    = Vedt ? 3 : 1
+    Yed      = Yt&&noneedy ? 2 : Y
+    Ued      = Ut&&noneedc ? 2 : U
+    Ved      = Vt&&noneedc ? 2 : V
     
-    nnt      = Ynnt || Unnt || Vnnt
-    mixed    = !nnt || !enable ? False : mixed
+    edt      = Yedt || Uedt || Vedt
+    mixed    = !edt || !enable ? False : mixed
     
     ###############################################################################################################################
     ###############################################################################################################################
@@ -320,10 +356,10 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     yhfix    = -yhshift                # value to fix luma   horizontal shift introduced by eedi3_resize16_rpow2 (edge area resize)
     yvfix    = -yvshift                # value to fix luma     vertical shift introduced by eedi3_resize16_rpow2 (edge area resize)
     
-    chshift  = oCSP=="YV24" ? sCSP=="YV24" ?                   chrf>=2 ? 0.50         :  0
+    chshift  = (sischbd ? fullchr : oCSP=="YV24") ? fullchr ?                   chrf>=2 ? 0.50         :  0
     \                                      : cplace=="MPEG1" ? chrf>=2 ? 0.50         :  0
     \                                                        : chrf>=2 ? 0.50-chrf/4. : -0.25
-    \                       : sCSP=="YV24" ? cplace=="MPEG1" ? chrf>=2 ? 0.50         :  0
+    \                       : fullchr ? cplace=="MPEG1" ? chrf>=2 ? 0.50         :  0
     \                                                        : chrf>=2 ? 0.75         :  0.25
     \                                      : cplace=="MPEG1" ? chrf>=2 ? 0.50         :  0
     \                                                        : chrf>=2 ? 0.75-chrf/4. :  0
@@ -333,15 +369,15 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     chfix    = -chshift                # value to fix chroma horizontal shift introduced by eedi3_resize16_rpow2 (edge area resize)
     cvfix    = -cvshift                # value to fix chroma   vertical shift introduced by eedi3_resize16_rpow2 (edge area resize)
     
-    cphfixe  = oCSP=="YV24" ?                   0
+    cphfixe  = (sischbd ? fullchr : oCSP=="YV24") ?                   0
     \                       : cplace=="MPEG1" ? 0
     \                                         : 0.25-0.25/crhratio
 	# value to fix chroma horizontal shift introduced by Dither_resize16 after eedi3_resize16_rpow2 processing   (edge area resize)
     
-    cphfix   = oCSP=="YV24" ? sCSP=="YV24" ?                   0
+    cphfix   = (sischbd ? fullchr : oCSP=="YV24") ? fullchr ?                   0
     \                                      : cplace=="MPEG1" ? 0
     \                                                        : 0.25
-    \                       : sCSP=="YV24" ? cplace=="MPEG1" ? 0
+    \                       : fullchr ? cplace=="MPEG1" ? 0
     \                                                        : -0.5
     \                                      : cplace=="MPEG1" ? 0
     \                                                        : 0.25-0.25/chratio
@@ -357,41 +393,63 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     \                                                        wpre?prew:sw, hpre?preh:sh, kernel="point")
     \                                : input.PointResize(wpre?prew:sw, hpre?preh:sh, wpre?prel:0, hpre?pret:0, wpre?prew:sw, hpre?preh:sh)
     \                       : input
-    input8   = lsb_in ? input.eedi3_resize16_Down8(tv_range, Yt, Ut, Vt, mixed ? -1 : dither) : input
-    input16  = lsb_in ? input : input.eedi3_resize16_U16(tv_range, True, True, True)
+    input8   = lsb_in ? input.eedi3_resize16_Down8(tv_range, Yt, Ut, Vt, mixed ? -1 : dither) : FastEdi && sischbd ? UseFmtc ? input.fmtc_bitdepth(8, planes=planes2, fulls=!tv_range) : input.convertbits(8,dither=1) : input
+    input16  = lsb_in || sischbd || sisprgb ? input : input.eedi3_resize16_U16(tv_range, True, True, True)
     
     ###############################################################################################################################
 	###############################################################################################################################
     # eedi3 upscale for edge area
 	
-    !(enable && nnt) ? NOP() : \
-    yhct==chct && yvct==cvct && sCSP=="YV12" ? \
+    !(enable && edt) ? NOP() : \
+    yhct==chct && yvct==cvct && chr420 ? \
     Eval("""
-        edgenn  = input8.eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, Ut, Vt, nsize, nns, qual, etype, pscrn, threads, false, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep)
-    	edgennY = sharp>0 ? edgenn.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
-        \                         .eedi3_resize16_U16(tv_range, Yt, Ut, Vt)
-    	\                 : edgenn.eedi3_resize16_U16(tv_range, Yt, Ut, Vt)
-    	edgennU = edgennY.UToY8()
-    	edgennV = edgennY.VToY8()
-    	edgennY = edgennY.ConvertToY8()
+        edgeed  = eedi3_resize16_rpow2(nlsb ? input16 : input8, yvct, yhct, 1, 1, Yt, Ut, Vt, nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = nlsb)
+    	edgeedY = sharp>0 ? nlsb ? edgeed.CSmod16(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp)
+    	\                        : sischbd ? FastEdi ? edgeed.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).convertbits(sbpc)
+		\                                             : edgeed.CSmod(chroma=false, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
+		\                                                        : edgeed.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).eedi3_resize16_U16(tv_range, Yt, Ut, Vt)
+    	\                 : nlsb || sischbd ? FastEdi ? edgeed.convertbits(sbpc) : edgeed : edgeed.eedi3_resize16_U16(tv_range, Yt, Ut, Vt)
+    	edgeedU = sisphbd ? edgeedY.ExtractU() : edgeedY.UToY8()
+    	edgeedV = sisphbd ? edgeedY.ExtractV() : edgeedY.VToY8()
+    	edgeedY = sisphbd ? edgeedY.ConvertToY() : edgeedY.ConvertToY8()
     """) : \
     Eval("""
-        edgennY = !Ynnt ? NOP()
-    	\               : sharp>0 ? input8.ConvertToY8().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, false, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep)
+        edgeedY = !Yedt ? NOP()
+    	\               : sharp>0 ? sisprgb ? input16.eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, Ut, Vt,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
+        \                                 .CSmod(chroma=U32==3||V32==3, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
+        \                                   : nlsb ? input16.ConvertToY ().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = true)
+        \                                 .CSmod16(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp)
+        \                                   : sischbd && FastEdi ? input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
+        \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).convertbits(sbpc)
+		\                         		    : sischbd ? input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
+        \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
+		\                         		    : input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
         \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
     	\                                 .eedi3_resize16_U16(tv_range, Yt, False, False)
-        \                         : input8.ConvertToY8().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, false, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep)
+        \                         : sisprgb ? input16.eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, Ut, Vt,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
+        \                                   : nlsb || sischbd ? FastEdi ? input16.ConvertToY ().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = !sischbd).convertbits(sbpc)
+        \                                : input16.ConvertToY ().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = !sischbd)
+        \                                : input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
     	\                                 .eedi3_resize16_U16(tv_range, Yt, False, False)
-    	edgennU = !Unnt ? NOP()
-    	\               : input8.UToY8().eedi3_resize16_rpow2(cvct, chct, 1, 1, Ut, False, False,
-        \                                                            nsize, nns, qual, etype, pscrn, threads, false, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep)
-    	\                       .eedi3_resize16_U16(tv_range, Ut, False, False)
-    	edgennV = !Vnnt ? NOP()
-    	\               : input8.VToY8().eedi3_resize16_rpow2(cvct, chct, 1, 1, Vt, False, False,
-        \                                                            nsize, nns, qual, etype, pscrn, threads, false, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep)
-    	\                       .eedi3_resize16_U16(tv_range, Vt, False, False)
+    	edgeedU = sisprgb || !Uedt ? NOP()
+    	\               : eedi3_resize16_rpow2(nlsb ? input16.ExtractU() : input8.""" + suext + """(), cvct, chct, 1, 1, Ut, False, False,
+        \                                                            nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = nlsb)
+    	edgeedU = sisprgb || !Uedt ? NOP()
+    	\               : nlsb || sischbd ? FastEdi ? edgeedU.convertbits(sbpc) : edgeedU : edgeedU.eedi3_resize16_U16(tv_range, Ut, False, False)
+    	edgeedV = sisprgb || !Vedt ? NOP()
+    	\               : eedi3_resize16_rpow2(nlsb ? input16.ExtractV() : input8.""" + svext + """(), cvct, chct, 1, 1, Vt, False, False,
+        \                                                            nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = nlsb)
+    	edgeedV = sisprgb || !Vedt ? NOP()
+    	\               : nlsb || sischbd ? FastEdi ? edgeedV.convertbits(sbpc) : edgeedV : edgeedV.eedi3_resize16_U16(tv_range, Vt, False, False)
     """)
     
     ###############################################################################################################################
@@ -403,25 +461,37 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 	crh      = crhratio>ratiothr
 	crv      = crvratio>ratiothr
 	
-    !(enable && nnt) ? NOP() : \
+    !(enable && edt) ? NOP() : \
     Eval("""
-        edgennY = !Ynnt ? NOP()
-        \               : curve=="linear" ? edgennY
-        \                                 : edgennY.Dither_y_gamma_to_linear(tv_range, tv_range, curve, u=1, v=1, gcor=gcor)
-        edgeY   = !Ynnt ? input16.BlankClip(width=ow , height=oh *2, pixel_type="Y8", color_yuv=$008080)
-    	\               : edgennY.""" + resste + """(ow , oh , src_left *yhrf+yhfix        , src_top *yvrf+yvfix,
+        edgeedY = !Yedt ? NOP()
+        \               : curve=="linear" ? edgeedY
+        \                                 : edgeedY.""" + sg2lin + """(tv_range, tv_range, curve, u=1, v=1, gcor=gcor)
+        edgeY   = !Yedt ? input16.BlankClip(width=ow , height=oh *2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
+    	\               : sischbd || sisprgb ? edgeedY.ResizeX(ow , oh , src_left *yhrf+yhfix        , src_top *yvrf+yvfix,
+        \                                            src_width *yhrf, src_height *yvrf, luma=!(Y31!=3), chroma=sisprgb && (U32==3||V32==3),
+        \                                            kernel=yrh||yrv?kernel_u:kernel_d,
+		\                                            desampling=yrh||yrv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2
+		\                                           ) :
+		\                           edgeedY.""" + resste + """(ow , oh , src_left *yhrf+yhfix        , src_top *yvrf+yvfix,
         \                                            src_width *yhrf, src_height *yvrf, y=Y31, u=1  , v=1  ,
         \                                            kernelh=yrh?kernel_u:kernel_d, kernelv=yrv?kernel_u:kernel_d,
 		\                                            fh=yrh?f_u:f_d, fv=yrv?f_u:f_d,
 		\                                            invksh=yrh?invks_u:invks_d, invksv=yrv?invks_u:invks_d,
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
 		\                                           )
-        edgeY   = !Ynnt ? edgeY
+        edgeY   = !Yedt ? edgeY
         \               : curve=="linear" ? edgeY
-        \                                 : edgeY  .Dither_y_linear_to_gamma(tv_range, tv_range, curve, u=1, v=1, gcor=gcor)
+        \                                 : edgeY  .""" + slin2g + """(tv_range, tv_range, curve, u=1, v=1, gcor=gcor)
         
-    	edgeU   = !Unnt ? input16.BlankClip(width=owc, height=ohc*2, pixel_type="Y8", color_yuv=$008080)
-    	\               : edgennU.""" + resste + """(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+    	edgeU   = sisprgb ? nop() : !Uedt ? input16.BlankClip(width=owc, height=ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
+    	\               : sischbd ? edgeedU.ResizeX(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+        \                                            src_widthc*chrf, src_heightc*cvrf, luma=!(U31!=3), chroma=false,
+        \                                            kernel=crh||crv?kernel_u:kernel_d,
+		\                                            desampling=crh||crv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2
+		\                                           ) :
+		\                           edgeedU.""" + resste + """(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
         \                                            src_widthc*chrf, src_heightc*cvrf, y=U31, u=1  , v=1  ,
         \                                            kernelh=crh?kernel_u:kernel_d, kernelv=crv?kernel_u:kernel_d,
 		\                                            fh=crh?f_u:f_d, fv=crv?f_u:f_d,
@@ -429,8 +499,14 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
 		\                                           )
 		
-    	edgeV   = !Vnnt ? input16.BlankClip(width=owc, height=ohc*2, pixel_type="Y8", color_yuv=$008080)
-    	\               : edgennV.""" + resste + """(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+    	edgeV   = sisprgb ? nop() : !Vedt ? input16.BlankClip(width=owc, height=ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
+    	\               : sischbd ? edgeedV.ResizeX(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+        \                                            src_widthc*chrf, src_heightc*cvrf, luma=!(V31!=3), chroma=false,
+        \                                            kernel=crh||crv?kernel_u:kernel_d,
+		\                                            desampling=crh||crv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2
+		\                                           ) :
+		\                           edgeedV.""" + resste + """(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
         \                                            src_widthc*chrf, src_heightc*cvrf, y=V31, u=1  , v=1  ,
         \                                            kernelh=crh?kernel_u:kernel_d, kernelv=crv?kernel_u:kernel_d,
 		\                                            fh=crh?f_u:f_d, fv=crv?f_u:f_d,
@@ -438,7 +514,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
 		\                                           )
 		
-    	edge16  = IsY8 ? edgeY : YToUV(edgeU, edgeV, edgeY)
+    	edge16  = IsY8 || sisprgb ? edgeY : YToUV(edgeU, edgeV, edgeY)
     """)
     
     ###############################################################################################################################
@@ -450,12 +526,27 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 	ch       = chratio>ratiothr
 	cv       = cvratio>ratiothr
 	
-    !(enable && (mixed || !(Ynnt && Unnt && Vnnt))) ? NOP() : \
-    yhratio==chratio && yvratio==cvratio && (!mixed || (Ynnt && Unnt && Vnnt)) ? \
+    !(enable && (mixed || !(Yedt && Uedt && Vedt))) ? NOP() : \
+    yhratio==chratio && yvratio==cvratio && (!mixed || (Yedt && Uedt && Vedt)) ? \
     Eval("""
         flat16  = curve=="linear" ? input16
-        \                         : input16.Dither_y_gamma_to_linear(tv_range, tv_range, curve, u=U21, v=V21, gcor=gcor)
-        flat16  =                   flat16.      """ + resstf + """
+        \                         : input16.""" + sg2lin + """(tv_range, tv_range, curve, u=U21, v=V21, gcor=gcor)
+        flat16  =                   sischbd || sisprgb ? UseFmtc ? flat16.      """ + resstf + """
+		\                                           (ow , oh , src_left                    , src_top            ,
+        \                                            src_width      , src_height      , planes=planes, cplace=cplace,
+        \                                            kernelh=yh?kernel_u:kernel_d, kernelv=yv?kernel_u:kernel_d,
+		\                                            fh=yh?f_u:f_d, fv=yv?f_u:f_d,
+		\                                            invksh=yh?invks_u:invks_d, invksv=yv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ).fmtc_bitdepth(sbpc, planes=planes2, fulls=!tv_range) : 
+        \                                            flat16.      """ + resstf + """
+		\                                           (ow , oh , src_left                    , src_top            ,
+        \                                            src_width      , src_height      , luma=Y32==3, chroma=U32==3||V32==3, cplace=cplace,
+        \                                            kernel=yh||yv?kernel_u:kernel_d,
+		\                                            desampling=yh||yv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2
+		\                                           ) :
+		\                           flat16.      """ + resstf + """
 		\                                           (ow , oh , src_left                    , src_top            ,
         \                                            src_width      , src_height      , y=Y32, u=U32, v=V32, cplace=cplace,
         \                                            kernelh=yh?kernel_u:kernel_d, kernelv=yv?kernel_u:kernel_d,
@@ -464,13 +555,28 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
 		\                                           )
         flat16  = curve=="linear" ? flat16
-        \                         : flat16 .Dither_y_linear_to_gamma(tv_range, tv_range, curve, u=U21, v=V21, gcor=gcor)
+        \                         : flat16 .""" + slin2g + """(tv_range, tv_range, curve, u=U21, v=V21, gcor=gcor)
     """) : \
     Eval("""
-        flatY   = curve=="linear"        ? input16.ConvertToY8() :
-        \         (mixed || !Ynnt) && Yt ? input16.ConvertToY8().Dither_y_gamma_to_linear(tv_range, tv_range, curve, u=1  , v=1  , gcor=gcor)
-        \                                : input16.ConvertToY8()
-        flatY   = (mixed || !Ynnt) && Yt ? flatY          .""" + resstf + """
+        flatY   = curve=="linear"        ? input16.""" + syext + """() :
+        \         (mixed || !Yedt) && Yt ? input16.""" + syext + """().""" + sg2lin + """(tv_range, tv_range, curve, u=1  , v=1  , gcor=gcor)
+        \                                : input16.""" + syext + """()
+        flatY   = (mixed || !Yedt) && Yt ? sischbd || sisprgb ? UseFmtc ? flatY          .""" + resstf + """
+		\                                           (ow , oh , src_left                    , src_top            ,
+        \                                            src_width      , src_height      , planes=!sisprgb ? planes : "all",
+        \                                             kernelh=yh?kernel_u:kernel_d, kernelv=yv?kernel_u:kernel_d,
+		\                                            fh=yh?f_u:f_d, fv=yv?f_u:f_d,
+		\                                            invksh=yh?invks_u:invks_d, invksv=yv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ).fmtc_bitdepth(sbpc, planes=!sisprgb ? planes2 : "all", fulls=!tv_range) : 
+		\                                           flatY          .""" + resstf + """
+		\                                           (ow , oh , src_left                    , src_top            ,
+        \                                            src_width      , src_height      , luma=Y32==3, chroma=(U32==3||V32==3) && sisprgb,
+        \                                            kernel=yv||yh?kernel_u:kernel_d,
+		\                                            desampling=yh||yv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2
+		\                                           ) : 
+		\                                           flatY          .""" + resstf + """
 		\                                           (ow , oh , src_left                    , src_top            ,
         \                                            src_width      , src_height      , y=Y32, u=1  , v=1  ,
         \                                            kernelh=yh?kernel_u:kernel_d, kernelv=yv?kernel_u:kernel_d,
@@ -478,12 +584,27 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 		\                                            invksh=yh?invks_u:invks_d, invksv=yv?invks_u:invks_d,
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
 		\                                           )
-        \                                : input16.BlankClip(width=ow , height=oh *2, pixel_type="Y8", color_yuv=$008080)
+        \                                : input16.BlankClip(width=ow , height=oh *2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
         flatY   = curve=="linear"        ? flatY                 :
-        \         (mixed || !Ynnt) && Yt ? flatY                .Dither_y_linear_to_gamma(tv_range, tv_range, curve, u=1  , v=1  , gcor=gcor)
+        \         (mixed || !Yedt) && Yt ? flatY                .""" + slin2g + """(tv_range, tv_range, curve, u=1  , v=1  , gcor=gcor)
         \                                : flatY
         
-        flatU   = (mixed || !Unnt) && Ut ? input16.UToY8().""" + resstf + """
+        flatU   = sisprgb ? nop() : (mixed || !Uedt) && Ut ? sischbd ? UseFmtc ? input16.""" + suext + """().""" + resstf + """
+		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
+        \                                            src_widthc     , src_heightc     , planes=U32,
+        \                                            kernelh=ch?kernel_u:kernel_d, kernelv=cv?kernel_u:kernel_d,
+		\                                            fh=ch?f_u:f_d, fv=cv?f_u:f_d,
+		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ).fmtc_bitdepth(sbpc, planes=string(U32==3 ? "u" : ""), fulls=!tv_range) :
+		\                                           input16.""" + suext + """().""" + resstf + """
+		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
+        \                                            src_widthc     , src_heightc     , luma=U32==3, chroma=false,
+        \                                            kernel=cv||ch?kernel_u:kernel_d,
+		\                                            desampling=ch||cv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2
+		\                                           ) :
+		\                                           input16.UToY8().""" + resstf + """
 		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
         \                                            src_widthc     , src_heightc     , y=U32, u=1  , v=1  ,
         \                                            kernelh=ch?kernel_u:kernel_d, kernelv=cv?kernel_u:kernel_d,
@@ -491,9 +612,24 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
 		\                                           )
-        \                                : input16.BlankClip(width=owc, height=ohc*2, pixel_type="Y8", color_yuv=$008080)
+        \                                : input16.BlankClip(width=owc, height=ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
 		
-        flatV   = (mixed || !Vnnt) && Vt ? input16.VToY8().""" + resstf + """
+        flatV   = sisprgb ? nop() : (mixed || !Vedt) && Vt ? sischbd ? UseFmtc ? input16.""" + svext + """().""" + resstf + """
+		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
+        \                                            src_widthc     , src_heightc     , planes=V32,
+		\                                            kernelh=ch?kernel_u:kernel_d, kernelv=cv?kernel_u:kernel_d,
+		\                                            fh=ch?f_u:f_d, fv=cv?f_u:f_d,
+		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ).fmtc_bitdepth(sbpc, planes=string(V32==3 ? "v" : ""), fulls=!tv_range) :
+		\                                           input16.""" + svext + """().""" + resstf + """
+		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
+        \                                            src_widthc     , src_heightc     , luma=V32==3, chroma=false,
+        \                                            kernel=ch||cv?kernel_u:kernel_d,
+		\                                            desampling=ch||cv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2
+		\                                           ) :
+		\                                           input16.VToY8().""" + resstf + """
 		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
         \                                            src_widthc     , src_heightc     , y=V32, u=1  , v=1  ,
         \                                            kernelh=ch?kernel_u:kernel_d, kernelv=cv?kernel_u:kernel_d,
@@ -501,9 +637,9 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
 		\                                           )
-        \                                : input16.BlankClip(width=owc, height=ohc*2, pixel_type="Y8", color_yuv=$008080)
+        \                                : input16.BlankClip(width=owc, height=ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
 		
-    	flat16  = IsY8 ? flatY : YToUV(flatU, flatV, flatY)
+    	flat16  = IsY8 || sisprgb ? flatY : YToUV(flatU, flatV, flatY)
     """)
     
     ###############################################################################################################################
@@ -512,32 +648,32 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 	
     enable ? \
     Eval("""
-        merge16  = !nnt ? flat16
-        \               : mixed ? Dither_limit_dif16(flat16, edge16, thr=thr, elast=elast, y=Ynn, u=Unn, v=Vnn)
-        \                       : Ynnt==Unnt && Unnt==Vnnt || IsY8 ? edge16
-        \                                                          : mt_lutxy(edge16, flat16, Y=Yt?Ynnt?2:4:1, U=Ut?Unnt?2:4:1, V=Vt?Vnnt?2:4:1)
-        merge16  = IsY8 ? output=="Y8" ? merge16.ConvertToY8() : Eval("merge16.ConvertTo"+oCSP).Dither_lut16(Y=2, U=-32768, V=-32768) : merge16
+        merge16  = !edt ? flat16
+        \               : mixed ? """ + slimd + """(flat16, edge16, thr=thr, elast=elast, y=Yed, u=Ued, v=Ved)
+        \                       : Yedt==Uedt && Uedt==Vedt || IsY8 ? edge16
+        \                                                          : mt_lutxy(edge16, flat16, Y=Yt?Yedt?2:4:1, U=Ut?Uedt?2:4:1, V=Vt?Vedt?2:4:1)
+        merge16  = sischbd || sisprgb ? merge16 : IsY8 ? output=="Y8" ? merge16.""" + syext + """() : Eval("merge16.ConvertTo"+oCSP).Dither_lut16(Y=2, U=-32768, V=-32768) : merge16
         
-        final    = IsRGB ? merge16.Dither_convert_yuv_to_rgb(matrix=matrix, tv_range=tv_range, lsb_in=True, mode=dither, output=output)
+        final    = sisprgb ? merge16 : !sischbd ? IsRGB ? merge16.Dither_convert_yuv_to_rgb(matrix=matrix, tv_range=tv_range, lsb_in=True, mode=dither, output=output)
         \                : lsb ? merge16
-        \                      : merge16.eedi3_resize16_Down8(tv_range, True, !IsY8, !IsY8, dither)
+        \                      : merge16.eedi3_resize16_Down8(tv_range, True, !IsY8, !IsY8, dither) : merge16
     """) : \
     Eval("""
-        shift16  = input16.Dither_resize16(ow, oh, src_left, src_top, src_width, src_height, kernel="point", y=Y, u=U, v=V)
-        shift16  = IsY8 ? output=="Y8" ? shift16.ConvertToY8() : Eval("shift16.ConvertTo"+oCSP).Dither_lut16(Y=2, U=-32768, V=-32768) : shift16
+        shift16  = sischbd || sisprgb ? input16.ResizeX(ow, oh, src_left, src_top, src_width, src_height, kernel="point", luma=Y!=1, chroma=u!=1 && V!=1) : input16.Dither_resize16(ow, oh, src_left, src_top, src_width, src_height, kernel="point", y=Y, u=U, v=V)
+        shift16  = sischbd || sisprgb ? shift16 : IsY8 ? output=="Y8" ? shift16.""" + syext + """() : Eval("shift16.ConvertTo"+oCSP).Dither_lut16(Y=2, U=-32768, V=-32768) : shift16
         
-        final    = IsRGB ? shift16.Dither_convert_yuv_to_rgb(matrix=matrix, tv_range=tv_range, lsb_in=True, mode=dither, output=output)
+        final    = sisprgb ? shift16 : !sischbd ? IsRGB ? shift16.Dither_convert_yuv_to_rgb(matrix=matrix, tv_range=tv_range, lsb_in=True, mode=dither, output=output)
         \                : lsb ? shift16
-        \                      : shift16.eedi3_resize16_Down8(tv_range, True, !IsY8, !IsY8, dither)
+        \                      : shift16.eedi3_resize16_Down8(tv_range, True, !IsY8, !IsY8, dither) : shift16
     """)
     
     
-    return final
+    return sHAlpha ? final.AddAlphaPlane(AlphaC) : final
 }
 
 
 Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", int "hfield", bool "Y", bool "U", bool "V",
-\                              int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads", bool "honly", bool "nnsclip", float "alpha", float "beta", float "gamma", int "nrad", int "mdis", bool "hp", bool "ucubic", bool "cost3", int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2", int "nnrep")
+\                              int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads", bool "nnsclip", float "alpha", float "beta", float "gamma", int "nrad", int "mdis", bool "hp", bool "ucubic", bool "cost3", int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2", int "nnrep", bool "honly", bool "nlsb")
 {
     vct      = Default(vct,      1      )
     hct      = Default(hct,      1      )
@@ -547,17 +683,19 @@ Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", in
     U        = Default(U,        False  )
     V        = Default(V,        False  )
     honly    = Default(honly,    False  )
+    nlsb     = Default(nlsb,     False  )
     nnsclip  = Default(nnsclip,  false  )
     nnrep    = Default(nnrep,    0      )
     
+    sisphbd = AvsPlusVersionNumber > 2294
     
-    input
+    nlsb && (Y||U||V) ? input.ConvertFromStacked() : input
     
     hct >= 1 ? \
     Eval("""
         (honly) ? last
-        \       : Eval(" try { fturnright(chroma=U||V, mt=threads!=1) } catch(error_msg) { TurnRight() } ")
-        nnec = (nnrep > 0 || nnsclip) ? sh_Padding(2,2,2,2).nnedi3(hfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
+        \       : Eval(" try { sisphbd ? dontdoft : fturnright(chroma=U||V, mt=threads!=1) } catch(error_msg) { TurnRight() } ")
+        nnec = (nnrep > 0 || nnsclip) ? sh_Padding(2,2,2,2,threads).nnedi3(hfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
         eedi3(hfield, True, Y, U, V, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnsclip ? nnec : undefined, threads)
         nnrep > 1 ? slimit_dif2(last,nnec,thr=4,U=U?3:2,V=V?3:2) : nnrep > 1 ? Repair(nnec,9,U?9:0,V?9:0) : last
         
@@ -566,12 +704,12 @@ Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", in
         hfield = 0
         
     	(honly) ? last
-        \       : Eval(" try { fturnleft (chroma=U||V, mt=threads!=1) } catch(error_msg) { TurnLeft () } ")
+        \       : Eval(" try { sisphbd ? dontdoft : fturnleft (chroma=U||V, mt=threads!=1) } catch(error_msg) { TurnLeft () } ")
     """) : NOP()
     
     vct >= 1 && !honly ? \
     Eval("""
-        nnec = (nnrep > 0 || nnsclip) ? sh_Padding(2,2,2,2).nnedi3(vfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
+        nnec = (nnrep > 0 || nnsclip) ? sh_Padding(2,2,2,2,threads).nnedi3(vfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
         eedi3(vfield, True, Y, U, V, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnsclip ? nnec : undefined, threads)
         nnrep > 1 ? slimit_dif2(last,nnec,thr=4,U=U?3:2,V=V?3:2) : nnrep > 1 ? Repair(nnec,9,U?9:0,V?9:0) : last
         
@@ -579,66 +717,13 @@ Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", in
         vfield = 0
     """) : NOP()
     
+    nlsb && (Y||U||V) ? last.ConvertToStacked() : last
     
     return Y||U||V ? vct <= 0 && hct <= 0 ? last
-    \                                     : last.eedi3_resize16_rpow2(vct, hct, vfield, hfield, Y, U, V, nsize, nns, qual, etype, pscrn, threads, honly, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep)
+    \                                     : last.eedi3_resize16_rpow2(vct, hct, vfield, hfield, Y, U, V, nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, honly, nlsb)
     \              : input
 }
 
-
-Function eedi3_resize16_GetCSP(clip c)
-{
-    return c.IsPlanar ? c.IsYV12 ? "YV12" :
-    \                   c.IsYV16 ? "YV16" :
-    \                   c.IsYV24 ? "YV24" : c.GetCSP_Y8_YV411fed :
-    \      c.IsYUY2   ? "YUY2"   :
-    \      c.IsRGB32  ? "RGB32"  :
-    \      c.IsRGB24  ? "RGB24"  : "Unknown"
-    
-    
-    Function GetCSP_Y8_YV411fed(clip c) {
-        try {
-            c.UtoY
-            csp = "YV411"
-        } catch ( error_msg ) {
-        csp = "Y8"
-        }
-        return csp
-    }
-}
-
-/*
-Function eedi3_resize16_RemoveGrain(clip input, int "mode", int "modeU", int "modeV")
-{
-    mode     = Default(mode,     1      )
-    modeU    = Default(modeU,    mode   )
-    modeV    = Default(modeV,    modeU  )
-    
-    
-    iCSP     = input.eedi3_resize16_GetCSP()
-    isYV12   = iCSP == "YV12"
-    isY8     = iCSP == "Y8"
-    
-    sw       = input.Width ()
-    sh       = input.Height()
-    wmod4    = sw/4*4 == sw
-    hmod4    = sh/4*4 == sh
-    mod4     = wmod4 && hmod4
-    padw     = wmod4 ? sw : (sw/4+1)*4
-    padh     = hmod4 ? sh : (sh/4+1)*4
-    
-    
-    input_m4 = mod4 ? input : input.PointResize(padw, padh, 0, 0, padw, padh)
-    
-    return isYV12 ? input.RemoveGrain(mode, modeU, modeV)
-    \             : isY8 ? input_m4                      .RemoveGrain(mode , -1, -1)
-    \                              .Crop(0, 0, sw, sh)
-    \                    : YToUV(input_m4.UToY8()        .RemoveGrain(modeU, -1, -1),
-    \                            input_m4.VToY8()        .RemoveGrain(modeV, -1, -1),
-    \                            input_m4.ConvertToY8()  .RemoveGrain(mode , -1, -1))
-    \                     .Crop(0, 0, sw, sh)
-}
-*/
 
 Function eedi3_resize16_U16(clip input, bool "tv_range", bool "Y", bool "U", bool "V", int "dither", int "interp", bool "HQ")
 { 

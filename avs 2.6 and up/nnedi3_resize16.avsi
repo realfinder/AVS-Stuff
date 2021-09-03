@@ -1,5 +1,5 @@
 #################################################################################################
-###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2021.09.02      ######
+###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2021.09.03      ######
 #################################################################################################
 ###### from v2.8 on, nnedi3_resize16 only supports AviSynth v2.6+                          ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, nnedi3 v0.9.4.53,                  ######
@@ -46,7 +46,8 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 \                        nsize, nns, qual, etype, pscrn, threads,
 \                        ratiothr, mixed, thr, elast, sharp,
 \                        undefined, false, cplace, matrix, "linear", gcor,
-\                        Y, 1, 1, false, false, dither, false) : nop()
+\                        Y, 1, 1, false, false, dither, false,
+\                        FastNnediHBD, UseFmtc) : nop()
 	input = sHAlpha ? input.RemoveAlphaPlane() : input
     ###############################################################################################################################
     ###############################################################################################################################
@@ -122,6 +123,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     U        = Default(U,        3      )
     V        = Default(V,        3      )
     planes   = string(y) + ", " + string(u) + ", " + string(v)
+    planes2  = string(y == 3 ? "0, " : "") + string(u == 3 ? "1, " : "") + string(v == 3 ? "2, " : "")
     lsb_in   = Default(lsb_in,   False  )   # input  clip is 16-bit stacked or not
     lsb      = Default(lsb,      False  )   # output clip is 16-bit stacked or not
     tv_range = Default(tv_range, True   )   # input  clip is TV-range or PC-range
@@ -386,7 +388,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
     \                                                        wpre?prew:sw, hpre?preh:sh, kernel="point")
     \                                : input.PointResize(wpre?prew:sw, hpre?preh:sh, wpre?prel:0, hpre?pret:0, wpre?prew:sw, hpre?preh:sh)
     \                       : input
-    input8   = lsb_in ? input.nnedi3_resize16_Down8(tv_range, Yt, Ut, Vt, mixed ? -1 : dither) : FastNned && sischbd ? input.convertbits(8,dither=1) : input
+    input8   = lsb_in ? input.nnedi3_resize16_Down8(tv_range, Yt, Ut, Vt, mixed ? -1 : dither) : FastNned && sischbd ? UseFmtc ? input.fmtc_bitdepth(8, planes=planes2, fulls=!tv_range) : input.convertbits(8,dither=1) : input
     input16  = lsb_in || sischbd || sisprgb ? input : input.nnedi3_resize16_U16(tv_range, True, True, True)
     
     ###############################################################################################################################
@@ -531,7 +533,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 		\                                            fh=yh?f_u:f_d, fv=yv?f_u:f_d,
 		\                                            invksh=yh?invks_u:invks_d, invksv=yv?invks_u:invks_d,
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
-		\                                           ).fmtc_bitdepth(sbpc, planes=planes, fulls=!tv_range) : 
+		\                                           ).fmtc_bitdepth(sbpc, planes=planes2, fulls=!tv_range) : 
         \                                            flat16.      """ + resstf + """
 		\                                           (ow , oh , src_left                    , src_top            ,
         \                                            src_width      , src_height      , luma=Y32==3, chroma=U32==3||V32==3, cplace=cplace,
@@ -561,7 +563,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 		\                                            fh=yh?f_u:f_d, fv=yv?f_u:f_d,
 		\                                            invksh=yh?invks_u:invks_d, invksv=yv?invks_u:invks_d,
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
-		\                                           ).fmtc_bitdepth(sbpc, planes=!sisprgb ? planes : "all", fulls=!tv_range) : 
+		\                                           ).fmtc_bitdepth(sbpc, planes=!sisprgb ? planes2 : "all", fulls=!tv_range) : 
 		\                                           flatY          .""" + resstf + """
 		\                                           (ow , oh , src_left                    , src_top            ,
         \                                            src_width      , src_height      , luma=Y32==3, chroma=(U32==3||V32==3) && sisprgb,
@@ -589,7 +591,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 		\                                            fh=ch?f_u:f_d, fv=cv?f_u:f_d,
 		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
-		\                                           ).fmtc_bitdepth(sbpc, planes=string(U32), fulls=!tv_range) :
+		\                                           ).fmtc_bitdepth(sbpc, planes=string(U32==3 ? "u" : ""), fulls=!tv_range) :
 		\                                           input16.""" + suext + """().""" + resstf + """
 		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
         \                                            src_widthc     , src_heightc     , luma=U32==3, chroma=false,
@@ -614,7 +616,7 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 		\                                            fh=ch?f_u:f_d, fv=cv?f_u:f_d,
 		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
-		\                                           ).fmtc_bitdepth(sbpc, planes=string(V32), fulls=!tv_range) :
+		\                                           ).fmtc_bitdepth(sbpc, planes=string(V32==3 ? "v" : ""), fulls=!tv_range) :
 		\                                           input16.""" + svext + """().""" + resstf + """
 		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
         \                                            src_widthc     , src_heightc     , luma=V32==3, chroma=false,
