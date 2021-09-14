@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------#
 #                                                                   #
 #                           STGMC 3.383                             #
-#           STGMC 3.383 2021 mod based on QTGMC 3.382               #
+#           STGMC 3.384 2021 mod based on QTGMC 3.382               #
 #                                                                   #
 #-------------------------------------------------------------------#
 
@@ -49,6 +49,7 @@ function STGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	Assert(!(lsbd && n16d), "STGMC: lsbd and n16d can't be used together" )
 	Assert(!(lsb && n16), "STGMC: lsb and n16 can't be used together" )
 	Assert(!(!Defined(EdiExt) && UseEdiExt > 0), "STGMC: UseEdiExt need EdiExt to work")
+	Assert(!(n16d && sbpc >= 16), "STGMC: n16d should not be used with 16bit or better clip")
 
 	# Select presets / tuning
 	Preset = default( Preset, "Slower" )
