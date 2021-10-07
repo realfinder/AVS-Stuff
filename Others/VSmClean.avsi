@@ -1,11 +1,11 @@
 # backport of vs mClean that originally a rip-off of buggy avs mClean
 # aside from usual differences that come with vs rip-off of avs this one is indeed act differently from the original avs mClean
 # since original one has bug in mt_lut line that were hidden in old versions of masktools2 but in recent updates of masktools2 there is an error message for such case
-# v1.11
+# v1.12
 function VSmClean(clip c, int "thSAD", bool "chroma", int "sharp", int "rn", int "deband", int "depth", float "strength", int "outbits", bool "icalc", int "rgmode")
 {
 
-    defH        = Max (C.Height, C.Width/4*3)   # Resolution calculation for auto blksize settings
+    defH        = Max (C.Height, C.Width/4*3)   # Resolution calculation for auto bs settings
     thSAD       = Default (thSAD, 400)   # Denoising threshold
     chroma      = Default (chroma, true)   # Process chroma
     sharp       = Default (sharp, 10)   # Sharp multiplier
@@ -30,44 +30,45 @@ function VSmClean(clip c, int "thSAD", bool "chroma", int "sharp", int "rn", int
     strength = min(max(strength, 0), 20) # Strength of denoising
 
 sc         =  defH>2800 ? 8 : defH>1400 ? 4 : defH>720 ? 2 : 1
-blksize    =  sc==8 ? 8 : ((defH/sc)/360)>1.5 ? 16 : ((defH/sc)/360)>0.8 ? 12 : 8
-overlap    =  blksize>=12 ? 6 : 2
+bs         =  defH/sc>360 ? 16 : 8
+ov         =  bs>12 ? 6 : 2
 pel        =  defH>720 ? 1 : 2
 truemotion =  defH>20 ? false : True
-lambda     =  777*(blksize*blksize)/64
-sharp      =  sharp>20 ? sharp+30 : DefH<=2600 ? 16+round(defH*(34/2600)*sharp/20) : 50
-depth      =  depth*2
+lambda     =  777*(bs*bs)/64
 depth2     =  -depth*3
+depth      =  depth*2
 
 sharp = sharp > 20 ? sharp + 30 : defH <= 2500 ? 15 + defH * sharp * 0.0007 : 50
 
 
 # Denoise preparation
 c           =  chroma ? Median(c, yy=false, uu=true, vv=true) : c
-c           =  !(sisvfloat || icalc) ? c.fmtc_bitdepth(flt=true) : c
-cy          =   ExtractY(c)
 
 # Temporal luma noise filter
-super1      =  MSuper (chroma ? c : cy, hpad=blksize, vpad=blksize, rfilter=4, sharp=1)
-super2      =  MSuper (chroma ? c : cy, hpad=blksize, vpad=blksize, rfilter=1, levels=1)
+c           =  !(sisvfloat || icalc) ? c.fmtc_bitdepth(flt=true) : c
+
+cy          =   ExtractY(c)
+
+super1      =  MSuper (chroma ? c : cy, hpad=bs, vpad=bs, pel=pel, rfilter=4, sharp=1)
+super2      =  MSuper (chroma ? c : cy, hpad=bs, vpad=bs, pel=pel, rfilter=1, levels=1)
 
 # --> Analysis
-bvec4       =  !icalc ? MRecalculate(super1, MAnalyse(super1, isb=true, delta=4, blksize=blksize, overlap=overlap, search=5, truemotion=truemotion),
-            \  blksize=blksize, overlap=overlap, search=5, truemotion=truemotion, lambda=lambda, thSAD=180) : nop()
-bvec3       =  MRecalculate(super1, MAnalyse(super1, isb=true, delta=3, blksize=blksize, overlap=overlap, search=5, truemotion=truemotion),
-            \  blksize=blksize, overlap=overlap, search=5, truemotion=truemotion, lambda=lambda, thSAD=180)
-bvec2       =  MRecalculate(super1, MAnalyse(super1, isb=true, delta=2, badsad=1100, lsad=1120, blksize=blksize, overlap=overlap, search=5, truemotion=truemotion),
-            \  blksize=blksize, overlap=overlap, search=5, truemotion=truemotion, lambda=lambda, thSAD=180)
-bvec1       =  MRecalculate(super1, MAnalyse(super1, isb=true, delta=1, badsad=1500, lsad=980, badrange=27, blksize=blksize, overlap=overlap, search=5, truemotion=truemotion),
-            \  blksize=blksize, overlap=overlap, search=5, truemotion=truemotion, lambda=lambda, thSAD=180)
-fvec1       =  MRecalculate(super1, MAnalyse(super1, isb=false, delta=1, badsad=1500, lsad=980, badrange=27, blksize=blksize, overlap=overlap, search=5, truemotion=truemotion),
-            \  blksize=blksize, overlap=overlap, search=5, truemotion=truemotion, lambda=lambda, thSAD=180)
-fvec2       =  MRecalculate(super1, MAnalyse(super1, isb=false, delta=2, badsad=1100, lsad=1120, blksize=blksize, overlap=overlap, search=5, truemotion=truemotion),
-            \  blksize=blksize, overlap=overlap, search=5, truemotion=truemotion, lambda=lambda, thSAD=180)
-fvec3       =  MRecalculate(super1, MAnalyse(super1, isb=false, delta=3, blksize=blksize, overlap=overlap, search=5, truemotion=truemotion),
-            \  blksize=blksize, overlap=overlap, search=5, truemotion=truemotion, lambda=lambda, thSAD=180)
-fvec4       =  !icalc ? MRecalculate(super1, MAnalyse(super1, isb=false, delta=4, blksize=blksize, overlap=overlap, search=5, truemotion=truemotion),
-            \  blksize=blksize, overlap=overlap, search=5, truemotion=truemotion, lambda=lambda, thSAD=180) : nop()
+bvec4       =  !icalc ? MRecalculate(super1, MAnalyse(super1, isb=true, delta=4, blksize=bs, overlap=ov, search=5, truemotion=truemotion),
+            \  blksize=bs, overlap=ov, search=5, truemotion=truemotion, lambda=lambda, thSAD=180) : nop()
+bvec3       =  MRecalculate(super1, MAnalyse(super1, isb=true, delta=3, blksize=bs, overlap=ov, search=5, truemotion=truemotion),
+            \  blksize=bs, overlap=ov, search=5, truemotion=truemotion, lambda=lambda, thSAD=180)
+bvec2       =  MRecalculate(super1, MAnalyse(super1, isb=true, delta=2, badsad=1100, lsad=1120, blksize=bs, overlap=ov, search=5, truemotion=truemotion),
+            \  blksize=bs, overlap=ov, search=5, truemotion=truemotion, lambda=lambda, thSAD=180)
+bvec1       =  MRecalculate(super1, MAnalyse(super1, isb=true, delta=1, badsad=1500, lsad=980, badrange=27, blksize=bs, overlap=ov, search=5, truemotion=truemotion),
+            \  blksize=bs, overlap=ov, search=5, truemotion=truemotion, lambda=lambda, thSAD=180)
+fvec1       =  MRecalculate(super1, MAnalyse(super1, isb=false, delta=1, badsad=1500, lsad=980, badrange=27, blksize=bs, overlap=ov, search=5, truemotion=truemotion),
+            \  blksize=bs, overlap=ov, search=5, truemotion=truemotion, lambda=lambda, thSAD=180)
+fvec2       =  MRecalculate(super1, MAnalyse(super1, isb=false, delta=2, badsad=1100, lsad=1120, blksize=bs, overlap=ov, search=5, truemotion=truemotion),
+            \  blksize=bs, overlap=ov, search=5, truemotion=truemotion, lambda=lambda, thSAD=180)
+fvec3       =  MRecalculate(super1, MAnalyse(super1, isb=false, delta=3, blksize=bs, overlap=ov, search=5, truemotion=truemotion),
+            \  blksize=bs, overlap=ov, search=5, truemotion=truemotion, lambda=lambda, thSAD=180)
+fvec4       =  !icalc ? MRecalculate(super1, MAnalyse(super1, isb=false, delta=4, blksize=bs, overlap=ov, search=5, truemotion=truemotion),
+            \  blksize=bs, overlap=ov, search=5, truemotion=truemotion, lambda=lambda, thSAD=180) : nop()
 
 # --> Applying cleaning
 clean       =  !icalc ? MDegrain4(chroma ? c : cy, super2, bvec1, fvec1, bvec2, fvec2, bvec3, fvec3, bvec4, fvec4, thSAD=thSAD) : MDegrain3(chroma ? c : cy, super2, bvec1, fvec1, bvec2, fvec2, bvec3, fvec3, thSAD=thSAD)
@@ -94,17 +95,14 @@ clsharp     =  sharp>0 ? mt_adddiff(clean2, repair(neo_tmedian(clsharp), clsharp
 # If selected, combining ReNoise
 noise_diff  =  mt_makediff (clean2, cy)
 clean1      =  rn>0<=20 ? mergeluma(clean2, mt_adddiff(clean2, tweak(neo_tmedian(noise_diff), cont=1.008+0.00016*rn)), 0.3+rn*0.035) : nop()
-clean2      =  rn>0<=20 ? mt_merge(clean2, clean1, mt_lut(overlay(clean, invert(clean), mode="darken"), "x 32 scaleb < 0 x 45 scaleb > range_max 0 x 35 scaleb - range_max 32 scaleb 65 scaleb - / * - ? ?", use_expr=2)) : clean2
+clean2      =  rn>0<=20 ? mt_merge(clean2, clean1, mt_lut(mt_lutxy(clean, invert(clean), "x y min", use_expr=1), "x 32 scaleb < 0 x 45 scaleb > range_max 0 x 35 scaleb - range_max 32 scaleb 65 scaleb - / * - ? ?", use_expr=2)) : clean2
 
 # Combining spatial detail enhancement with spatial noise reduction using prepared mask
 noise_diff  =  mt_invert(mt_binarize(noise_diff))
-clean2      =  sharp>0 ? mt_merge (clean2, clsharp, overlay(noise_diff, mt_edge(clean, "prewitt"), mode="lighten")) :
-            \  mt_merge (clean2, clean, overlay(noise_diff, mt_edge(clean, "prewitt"), mode="lighten"))
+clean2      =  mt_merge (clean2, sharp>0 ? clsharp : clean, mt_lutxy(noise_diff, mt_edge(clean, "prewitt",0,255,0,255), "x y max", use_expr=1))
 
 # Combining result of luma and chroma cleaning
 output      =  CombinePlanes(clean2, filt, planes="YUV", sample_clip=c)
 output      =  strength<20 ? Merge(c, output, 0.2+0.04*strength) : output
-output      =  depth>0 ? mt_adddiff(output, mt_makediff(awarpsharp2(output, depth=depth2, blur=3), awarpsharp2(output, depth=depth, blur=2))) : output
-
-return output
+return depth>0 ? mt_adddiff(output, mt_makediff(awarpsharp2(output, depth=depth2, blur=3), awarpsharp2(output, depth=depth, blur=2))) : output
 }
