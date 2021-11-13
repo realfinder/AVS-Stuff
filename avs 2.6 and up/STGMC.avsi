@@ -1,7 +1,8 @@
 #-------------------------------------------------------------------#
 #                                                                   #
-#                           STGMC 3.383                             #
-#           STGMC 3.384 2021 mod based on QTGMC 3.382               #
+#                           STGMC 3.385                             #
+#           STGMC 3.385 2021 mod based on QTGMC 3.382               #
+# https://github.com/realfinder/AVS-Stuff/blob/a487858224a063101b9bfc1e128a0953ee6c5046/avs%202.6%20and%20up/QTGMC.avsi
 #                                                                   #
 #-------------------------------------------------------------------#
 
@@ -16,7 +17,7 @@ function STGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
                     float "NoiseRestore", string "NoiseDeint", bool "StabilizeNoise", int "InputType", float "ProgSADMask", int "FPSDivisor", \
                     int "ShutterBlur", float "ShutterAngleSrc", float "ShutterAngleOut", int "SBlurLimit", bool "Border", bool "Precise", string "Tuning", \
                     bool "ShowSettings", string "GlobalNames", string "PrevGlobals", int "ForceTR", \
-                    val "BT", val "DetailRestore", val "MotionBlur", val "MBlurLimit", val "NoiseBypass", float "Str", float "Amp", bool "TV_range", bool "UseEdiExt", int "DftDither", bool "lsbd", bool "lsb", bool "n16", bool "keep_tv_range", String "device_type", int "device_id", bool "n16d", bool "FastMA", bool "ESearchP", bool "Refinemotion" )
+                    val "BT", val "DetailRestore", val "MotionBlur", val "MBlurLimit", val "NoiseBypass", float "Str", float "Amp", bool "TV_range", int "UseEdiExt", int "DftDither", bool "lsbd", bool "lsb", bool "n16", bool "keep_tv_range", String "device_type", int "device_id", bool "n16d", bool "FastMA", bool "ESearchP", bool "Refinemotion" )
 {
 
 	# Temporary Warnings
