@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.383 2021-09-14 mod
+# v2.384 2021-11-14 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with STGMC and add bob4p to change STGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -723,13 +723,14 @@ smetric > cmetric || diff > (sischbd ? isvideofloat() ? 0.6/255 : 0.6*vsc : 0.6)
 
 ##############
 # sanimebob by A.SONY
-# 1.74
+# 1.75
 
-function sanimebob(clip i, val "useSTGMC", val "bobpresmooth", float "Str", float "Amp", bool "TV_range", bool "STGMC_lsb", bool "usedaa3mod", bool "usesmam", int "tr2", bool "repblend", val "dslow", bool "STGMC_n16", int "nnrep", bool "nnedi3pad", bool "usetfm", string "tfm_params", bool "useBWDIF", int "NNSize", int "NNeurons", int "EdiQual", int "EdiMaxD", int "tfm_mi") {
+function sanimebob(clip i, val "useSTGMC", val "bobpresmooth", float "Str", float "Amp", bool "TV_range", bool "STGMC_lsb", bool "usedaa3mod", bool "usesmam", int "tr2", bool "repblend", val "dslow", bool "STGMC_n16", int "nnrep", bool "nnedi3pad", bool "usetfm", string "tfm_params", bool "useBWDIF", int "NNSize", int "NNeurons", int "EdiQual", int "EdiMaxD", int "tfm_mi", bool "FastNnediHBD") {
 
 sisphbd = AvsPlusVersionNumber > 2294
+SBitsn  = sisphbd ? i.BitsPerComponent() : 8
 STGMC_lsb = default(STGMC_lsb, sisphbd ? false : true)
-STGMC_n16 = default(STGMC_n16, sisphbd ? i.BitsPerComponent() > 8 ? false : true : false)
+STGMC_n16 = default(STGMC_n16, sisphbd ? SBitsn > 8 ? false : true : false)
 STGMC_lsb = AvsPlusVersionNumber < 3382 ? STGMC_lsb : false
 STGMC_n16 = !STGMC_n16 && !(AvsPlusVersionNumber < 3382) ? STGMC_lsb : STGMC_n16
 threads = sh_GetUserGlobalIMTint()
@@ -750,6 +751,8 @@ tfm_params = default(tfm_params, "")
 NNeurons = default(NNeurons, usesmam && useBWDIF ? 1 : undefined)
 NNSize = default(NNSize, usesmam && useBWDIF ? 1 : undefined)
 EdiMaxD = default(EdiMaxD, usesmam && useBWDIF ? 8 : undefined)
+FastNned = Default(FastNnediHBD, false)
+FastNned = SBitsn == 8 ? false : FastNned
 
 sisyuy2 = i.isyuy2()
 sisavs26 = !(VersionNumber() < 2.60)
@@ -759,12 +762,16 @@ Assert(Isint(useq) || Stringuseq, "'useSTGMC' only accepts int or string")
 prefiltered_i   = defined(bobpresmooth) ? isclip(bobpresmooth) ? bobpresmooth : IsString(bobpresmooth) ? Eval("i." + bobpresmooth) : undefined() : undefined()
 
 nonyuy2=sisavs26 && sisyuy2
-iforbob   = bobpresmbool ? defined(prefiltered_i) ? prefiltered_i : i.sh_bob(0,0.5).nonyuy2clipin(nonyuy2).reduceflicker(strength=2).nonyuy2clipout(nonyuy2).interlaced60or50(BFF=!(GetParity(i))) : i
-iforbob   = bobpresmbool && !defined(prefiltered_i) ? isyuy2(i) ? iforbob.SeparateFields().Interleaved2Planar().Repair(i.SeparateFields().Interleaved2Planar(),Planar=true).Planar2Interleaved().weave() : iforbob.SeparateFields().Repair(i.SeparateFields()).weave() : iforbob
+ii        = FastNned ? i.convertbits(8, dither=1) : i
+iforbob   = bobpresmbool ? defined(prefiltered_i) ? prefiltered_i : ii.sh_bob(0,0.5).nonyuy2clipin(nonyuy2).reduceflicker(strength=2).nonyuy2clipout(nonyuy2).interlaced60or50(BFF=!(GetParity(i))) : ii
+iforbob   = bobpresmbool && !defined(prefiltered_i) ? isyuy2(i) ? iforbob.SeparateFields().Interleaved2Planar().Repair(ii.SeparateFields().Interleaved2Planar(),Planar=true).Planar2Interleaved().weave() : iforbob.SeparateFields().Repair(ii.SeparateFields()).weave() : iforbob
 
+ib        = FastNned ? i.sh_bob(0,0.5) : i
 pyi       = i.sh_Padding(0,4,0,4,threads=threads)
 pni       = nnedi3pad ? iforbob.sh_Padding(2,4,2,4,threads=threads).nnedi3(-2, nsize=NNSize, nns=NNeurons, qual=EdiQual,threads=threads).crop(2,4,-2,-4,true) : iforbob.nnedi3(-2, nsize=NNSize, nns=NNeurons, qual=EdiQual,threads=threads)
-pei       = i.eedi3(-2, mdis=EdiMaxD,sclip=pni,threads=threads)
+pei       = ii.eedi3(-2, mdis=EdiMaxD,sclip=pni,threads=threads)
+pni       = FastNned ? ib.slimit_dif(pni.convertbits(SBitsn), thr=1, elast=1.5) : pni
+pei       = FastNned ? ib.slimit_dif(pei.convertbits(SBitsn), thr=1, elast=1.5) : pei
 pei       = nnrep > 0 ? nnrep > 1 ? pei.nonyuy2clipin(nonyuy2).slimit_dif2(pni.nonyuy2clipin(nonyuy2),thr=4).nonyuy2clipout(nonyuy2).sh_Padding(0,4,0,4,threads=threads) : isyuy2(i) ? pei.Interleaved2Planar().Repair(pni.Interleaved2Planar(),9,Planar=true).Planar2Interleaved().sh_Padding(0,4,0,4,threads=threads) : pei.Repair(pni,9).sh_Padding(0,4,0,4,threads=threads) : pei.sh_Padding(0,4,0,4,threads=threads)
 istff     = GetParity(i)
 
