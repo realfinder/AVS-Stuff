@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.154
+# V1.155
 
 ### Functions list:-
 # sh_StrReplace
@@ -1718,7 +1718,8 @@ input.TBilateral(diameterL=diameterL, diameterC=diameterC, sDevL=sDevL, sDevC=sD
 Function svsTcanny(clip clip, float "sigma", float "t_h", float "t_l", int "mode", float "gmmax", int "y", int "u", int "v", int "opt") 
 {
 sigma=Default(sigma,1.5)
-	   try { vsTCanny(clip, sigmaY=sigma, sigmaU=sigma, sigmaV=sigma, sigma_vY=sigma, sigma_vU=sigma, sigma_vV=sigma, t_h=t_h, t_l=t_l, mode=mode, op=0, gmmax=gmmax, y=y, u=u, v=v, opt=opt)
+scale=defined(gmmax) ? gmmax/10.0 : 5.0
+	   try { vsTCanny(clip, sigmaY=sigma, sigmaU=sigma, sigmaV=sigma, sigma_vY=sigma, sigma_vU=sigma, sigma_vV=sigma, t_h=t_h, t_l=t_l, mode=mode, op=0, scale=scale, y=y, u=u, v=v, opt=opt)
 } catch(error_msg) { 
 sTcannymod(clip, mode=mode, sigma=sigma, t_h=t_h, t_l=t_l, opt=opt, gmmax=gmmax, y=y, u=u, v=v, opt=opt)
 }
