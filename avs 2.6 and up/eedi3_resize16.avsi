@@ -1,5 +1,5 @@
 #################################################################################################
-###### eedi3_resize16 v3.3.11 ###### by mawen1250 mod by A.SONY ######     2021.09.02      ######
+###### eedi3_resize16 v3.3.11 ###### by mawen1250 mod by A.SONY ######     2022.01.06      ######
 #################################################################################################
 ###### from v2.8 on, eedi3_resize16 only supports AviSynth v2.6+                           ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, eedi3 v0.9.2.3,                    ######
@@ -127,14 +127,14 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     Y        = Default(Y,        3      )
     U        = Default(U,        3      )
     V        = Default(V,        3      )
-    planes   = string(y) + ", " + string(u) + ", " + string(v)
+    planes   = UseFmtc ? array(y, u, v) : undefined
     planes2  = string(y == 3 ? "0, " : "") + string(u == 3 ? "1, " : "") + string(v == 3 ? "2, " : "")
-    lsb_in   = Default(lsb_in,   False  )   # input  clip is 16-bit stacked or not
-    lsb      = Default(lsb,      False  )   # output clip is 16-bit stacked or not
-    tv_range = Default(tv_range, True   )   # input  clip is TV-range or PC-range
+    lsb_in   = Default(lsb_in,   False   )   # input  clip is 16-bit stacked or not
+    lsb      = Default(lsb,      False   )   # output clip is 16-bit stacked or not
+    tv_range = Default(tv_range, !sisprgb)   # input  clip is TV-range or PC-range
     dither   = tv_range ? Default(dither, 6) : Default(dither, 50)    # dither mode for 16-bit to 8-bit conversion
-    nlsb     = Default(nlsb,     false  )   # avs+ HBD mixed with lsb
-	FastEdi  = Default(FastediHBD, false)
+    nlsb     = Default(nlsb,     false   )   # avs+ HBD mixed with lsb
+    FastEdi  = Default(FastediHBD, false)
     
     sCSP     = input.sh_GetCSP()
     fullchr  = sisprgb ? true : sisphbd ? input.is444() : sCSP=="YV24"
@@ -568,7 +568,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
         \                                : input16.""" + syext + """()
         flatY   = (mixed || !Yedt) && Yt ? sischbd || sisprgb ? UseFmtc ? flatY          .""" + resstf + """
 		\                                           (ow , oh , src_left                    , src_top            ,
-        \                                            src_width      , src_height      , planes=!sisprgb ? planes : "all",
+        \                                            src_width      , src_height      , planes=!sisprgb ? planes : undefined,
         \                                             kernelh=yh?kernel_u:kernel_d, kernelv=yv?kernel_u:kernel_d,
 		\                                            fh=yh?f_u:f_d, fv=yv?f_u:f_d,
 		\                                            invksh=yh?invks_u:invks_d, invksv=yv?invks_u:invks_d,
