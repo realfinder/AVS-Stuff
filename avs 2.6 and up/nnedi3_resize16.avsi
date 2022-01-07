@@ -1,5 +1,5 @@
 #################################################################################################
-###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2022.01.06      ######
+###### nnedi3_resize16 v3.3      ######      by mawen1250      ######      2022.01.07      ######
 #################################################################################################
 ###### from v2.8 on, nnedi3_resize16 only supports AviSynth v2.6+                          ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, nnedi3 v0.9.4.53,                  ######
@@ -466,8 +466,15 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
         edgennY = !Ynnt ? NOP()
         \               : curve=="linear" ? edgennY
         \                                 : edgennY.""" + sg2lin + """(tv_range, tv_range, curve, u=1, v=1, gcor=gcor)
-        edgeY   = !Ynnt ? input16.BlankClip(width=ow , height=oh *2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
-    	\               : sischbd || sisprgb ? edgennY.ResizeX(ow , oh , src_left *yhrf+yhfix        , src_top *yvrf+yvfix,
+        edgeY   = !Ynnt ? input16.BlankClip(width=ow , height=sischbd ? oh : oh *2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
+    	\               : sischbd || sisprgb ? UseFmtc ? edgennY.fmtc_resample(ow , oh , src_left *yhrf+yhfix        , src_top *yvrf+yvfix,
+        \                                            src_width *yhrf, src_height *yvrf, planes=sisprgb ? undefined : array(Y31, 1, 1)  ,
+        \                                            kernelh=yrh?kernel_u:kernel_d, kernelv=yrv?kernel_u:kernel_d,
+		\                                            fh=yrh?f_u:f_d, fv=yrv?f_u:f_d,
+		\                                            invksh=yrh?invks_u:invks_d, invksv=yrv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ) :
+		\                           edgennY.ResizeX(ow , oh , src_left *yhrf+yhfix        , src_top *yvrf+yvfix,
         \                                            src_width *yhrf, src_height *yvrf, luma=!(Y31!=3), chroma=sisprgb && (U32==3||V32==3),
         \                                            kernel=yrh||yrv?kernel_u:kernel_d,
 		\                                            desampling=yrh||yrv?invks_u:invks_d,
@@ -484,8 +491,15 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
         \               : curve=="linear" ? edgeY
         \                                 : edgeY  .""" + slin2g + """(tv_range, tv_range, curve, u=1, v=1, gcor=gcor)
         
-    	edgeU   = sisprgb ? nop() : !Unnt ? input16.BlankClip(width=owc, height=ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
-    	\               : sischbd ? edgennU.ResizeX(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+    	edgeU   = sisprgb ? nop() : !Unnt ? input16.BlankClip(width=owc, height=sischbd ? ohc : ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
+    	\               : sischbd ? UseFmtc ? edgennU.fmtc_resample(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+        \                                            src_widthc*chrf, src_heightc*cvrf, planes=array(U31, 1, 1)  ,
+        \                                            kernelh=crh?kernel_u:kernel_d, kernelv=crv?kernel_u:kernel_d,
+		\                                            fh=crh?f_u:f_d, fv=crv?f_u:f_d,
+		\                                            invksh=crh?invks_u:invks_d, invksv=crv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ) :
+		\                           edgennU.ResizeX(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
         \                                            src_widthc*chrf, src_heightc*cvrf, luma=!(U31!=3), chroma=false,
         \                                            kernel=crh||crv?kernel_u:kernel_d,
 		\                                            desampling=crh||crv?invks_u:invks_d,
@@ -499,8 +513,15 @@ Function nnedi3_resize16(clip input, int "target_width", int "target_height", fl
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
 		\                                           )
 		
-    	edgeV   = sisprgb ? nop() : !Vnnt ? input16.BlankClip(width=owc, height=ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
-    	\               : sischbd ? edgennV.ResizeX(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+    	edgeV   = sisprgb ? nop() : !Vnnt ? input16.BlankClip(width=owc, height=sischbd ? ohc : ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
+    	\               : sischbd ? UseFmtc ? edgennV.fmtc_resample(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+        \                                            src_widthc*chrf, src_heightc*cvrf, planes=array(V31, 1, 1)  ,
+        \                                            kernelh=crh?kernel_u:kernel_d, kernelv=crv?kernel_u:kernel_d,
+		\                                            fh=crh?f_u:f_d, fv=crv?f_u:f_d,
+		\                                            invksh=crh?invks_u:invks_d, invksv=crv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ) :
+		\                           edgennV.ResizeX(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
         \                                            src_widthc*chrf, src_heightc*cvrf, luma=!(V31!=3), chroma=false,
         \                                            kernel=crh||crv?kernel_u:kernel_d,
 		\                                            desampling=crh||crv?invks_u:invks_d,

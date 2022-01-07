@@ -1,5 +1,5 @@
 #################################################################################################
-###### eedi3_resize16 v3.3.11 ###### by mawen1250 mod by A.SONY ######     2022.01.06      ######
+###### eedi3_resize16 v3.3.11 ###### by mawen1250 mod by A.SONY ######     2022.01.07      ######
 #################################################################################################
 ###### from v2.8 on, eedi3_resize16 only supports AviSynth v2.6+                           ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, eedi3 v0.9.2.3,                    ######
@@ -83,7 +83,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     etype    = Default(etype,    0      )
     pscrn    = Default(pscrn,    2      )
     threads  = Default(threads,  sh_GetUserGlobalIMTint(true))
-	UseFmtc  = Default(UseFmtc, sisparr )
+    UseFmtc  = Default(UseFmtc, sisparr )
     nnsclip  = Default(nnsclip,  false  )
     
     ###############################################################################################################################
@@ -471,8 +471,15 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
         edgeedY = !Yedt ? NOP()
         \               : curve=="linear" ? edgeedY
         \                                 : edgeedY.""" + sg2lin + """(tv_range, tv_range, curve, u=1, v=1, gcor=gcor)
-        edgeY   = !Yedt ? input16.BlankClip(width=ow , height=oh *2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
-    	\               : sischbd || sisprgb ? edgeedY.ResizeX(ow , oh , src_left *yhrf+yhfix        , src_top *yvrf+yvfix,
+        edgeY   = !Yedt ? input16.BlankClip(width=ow , height=sischbd ? oh : oh *2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
+    	\               : sischbd || sisprgb ? UseFmtc ? edgennY.fmtc_resample(ow , oh , src_left *yhrf+yhfix        , src_top *yvrf+yvfix,
+        \                                            src_width *yhrf, src_height *yvrf, planes=sisprgb ? undefined : array(Y31, 1, 1)  ,
+        \                                            kernelh=yrh?kernel_u:kernel_d, kernelv=yrv?kernel_u:kernel_d,
+		\                                            fh=yrh?f_u:f_d, fv=yrv?f_u:f_d,
+		\                                            invksh=yrh?invks_u:invks_d, invksv=yrv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ) :
+		\                           edgeedY.ResizeX(ow , oh , src_left *yhrf+yhfix        , src_top *yvrf+yvfix,
         \                                            src_width *yhrf, src_height *yvrf, luma=!(Y31!=3), chroma=sisprgb && (U32==3||V32==3),
         \                                            kernel=yrh||yrv?kernel_u:kernel_d,
 		\                                            desampling=yrh||yrv?invks_u:invks_d,
@@ -489,8 +496,15 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
         \               : curve=="linear" ? edgeY
         \                                 : edgeY  .""" + slin2g + """(tv_range, tv_range, curve, u=1, v=1, gcor=gcor)
         
-    	edgeU   = sisprgb ? nop() : !Uedt ? input16.BlankClip(width=owc, height=ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
-    	\               : sischbd ? edgeedU.ResizeX(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+    	edgeU   = sisprgb ? nop() : !Uedt ? input16.BlankClip(width=owc, height=sischbd ? ohc : ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
+    	\               : sischbd ? UseFmtc ? edgennU.fmtc_resample(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+        \                                            src_widthc*chrf, src_heightc*cvrf, planes=array(U31, 1, 1)  ,
+        \                                            kernelh=crh?kernel_u:kernel_d, kernelv=crv?kernel_u:kernel_d,
+		\                                            fh=crh?f_u:f_d, fv=crv?f_u:f_d,
+		\                                            invksh=crh?invks_u:invks_d, invksv=crv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ) :
+		\                           edgeedU.ResizeX(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
         \                                            src_widthc*chrf, src_heightc*cvrf, luma=!(U31!=3), chroma=false,
         \                                            kernel=crh||crv?kernel_u:kernel_d,
 		\                                            desampling=crh||crv?invks_u:invks_d,
@@ -504,8 +518,15 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
 		\                                           )
 		
-    	edgeV   = sisprgb ? nop() : !Vedt ? input16.BlankClip(width=owc, height=ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
-    	\               : sischbd ? edgeedV.ResizeX(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+    	edgeV   = sisprgb ? nop() : !Vedt ? input16.BlankClip(width=owc, height=sischbd ? ohc : ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
+    	\               : sischbd ? UseFmtc ? edgennV.fmtc_resample(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+        \                                            src_widthc*chrf, src_heightc*cvrf, planes=array(V31, 1, 1)  ,
+        \                                            kernelh=crh?kernel_u:kernel_d, kernelv=crv?kernel_u:kernel_d,
+		\                                            fh=crh?f_u:f_d, fv=crv?f_u:f_d,
+		\                                            invksh=crh?invks_u:invks_d, invksv=crv?invks_u:invks_d,
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                           ) :
+		\                           edgeedV.ResizeX(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
         \                                            src_widthc*chrf, src_heightc*cvrf, luma=!(V31!=3), chroma=false,
         \                                            kernel=crh||crv?kernel_u:kernel_d,
 		\                                            desampling=crh||crv?invks_u:invks_d,
