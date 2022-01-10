@@ -62,8 +62,8 @@ function AutoDeblock2(clip c, float "edgeValue", float "db1", float "db2", float
  
  ###################
  # AutoDeblock3, use admfilter method with AutoDeblock2 to make it work better
- # v1.1
- function AutoDeblock3(clip c, float "edgeValue", float "db1", float "db2", float "db3", bool "deblockY", bool "deblockUV", bool "debug", bool "redfix", bool "fastdeblock", float "adb1", float "adb2", float "adb3", float "adb1d", float "adb2d", float "adb3d", clip "MotionRampadc") {
+ # v1.12
+ function AutoDeblock3(clip c, float "edgeValue", float "db1", float "db2", float "db3", bool "deblockY", bool "deblockUV", bool "debug", bool "redfix", bool "fastdeblock", float "adb1", float "adb2", float "adb3", float "adb1d", float "adb2d", float "adb3d", clip "MotionRampadc", int "MotionRampMode") {
  c
  sisavs26   = !(VersionNumber() < 2.6)
  sisphbd = AvsPlusVersionNumber > 2294
@@ -72,6 +72,7 @@ function AutoDeblock2(clip c, float "edgeValue", float "db1", float "db2", float
  ssIsVF  = sischbd ? c.IsVideoFloat() : false
  mtnavb  = sisphbd ? shbdbpc > 8 ? shbdbpc == 10 ? 4 : shbdbpc == 12 ? 8 : shbdbpc == 14 ? 64 : 256 : nop() : nop()
 
+ MRampMode = Default (MotionRampMode, 1) #mode 2 same as AutoDeblock2
  edgeValue = sisavs26 ? Default (edgeValue, 24) : round(Default (edgeValue, 24))
  db1 = Default (db1, 1)
  db2 = Default (db2, 6)
@@ -102,7 +103,7 @@ function AutoDeblock2(clip c, float "edgeValue", float "db1", float "db2", float
  
  unfiltered = debug ? last.Subtitle("unfiltered") : last
  
- MotionRampadc = defined(MotionRampadc) ? MotionRampadc : c.MotionRamp(5.0,10.0,15.0,20.0,25.0,Max=255,fast=True)
+ MotionRampadc = MRampMode == 0 ? nop() : defined(MotionRampadc) ? MotionRampadc : c.MotionRamp(5.0,10.0,15.0,20.0,25.0,Max=255,fast=True)
  autodeblock3 = fastdeblock ? nop() : GScriptClip("""
                      adfloat = AverageLuma(MotionRampadc)
                      adSigmb = shbdbpc > 8 ? shbdbpc == 10 ? 1023 : shbdbpc == 12 ? 4095 : shbdbpc == 14 ? 16383 : nop() : nop()
@@ -110,19 +111,21 @@ function AutoDeblock2(clip c, float "edgeValue", float "db1", float "db2", float
 do1d=(LumaDifference(orig,orig_d) > adb1) && (YDifferenceToNext > adb1d)
 do2d=(LumaDifference(orig,orig_d) > adb2) && (YDifferenceToNext > adb2d)
 do3d=(LumaDifference(orig,orig_d) > adb3) && (YDifferenceToNext > adb3d)
-dostgd = do3d
-domedd = do2d && !dostgd
-dowakd = do1d && !domedd && !dostgd
- weakdeblock   = !dowakd ? nop() : merge(removegrain(2).removegrain(2).Deblock_QED(),adSigma/2  ).sneo_dfttest(sigma=db1*adSigma,y=deblockY ? 3 : 2,u=deblockUV ? 3 : 2,v=deblockUV ? 3 : 2,tbsize=1,threads=threads,fft_threads=threads)
+domedd = do2d && !do3d
+dowakd = do1d && !domedd && !do3d
+ prweakdeblock = MRampMode != 1 ? removegrain(2).removegrain(2).Deblock_QED() : !dowakd ? nop() : merge(removegrain(2).removegrain(2).Deblock_QED(),adSigma/2  )
+ weakdeblock   = !dowakd ? nop() : prweakdeblock.sneo_dfttest(sigma=MRampMode < 3 ? db1*adSigma : db1,y=deblockY ? 3 : 2,u=deblockUV ? 3 : 2,v=deblockUV ? 3 : 2,tbsize=1,threads=threads,fft_threads=threads)
  weakdeblock   = !dowakd || !debug ? weakdeblock : weakdeblock.Subtitle("weakdeblock")
- mediumdeblock = !domedd ? nop() : merge(removegrain(2).removegrain(2).Deblock_QED(),adSigma/1.5).sneo_dfttest(sigma=db2*adSigma,y=deblockY ? 3 : 2,u=deblockUV ? 3 : 2,v=deblockUV ? 3 : 2,tbsize=1,threads=threads,fft_threads=threads)
+ mediumdeblock = !domedd ? nop() : MRampMode == 1 ? merge(removegrain(2).removegrain(2).Deblock_QED(),adSigma/1.5) : prweakdeblock
+ mediumdeblock = !domedd ? nop() : mediumdeblock.sneo_dfttest(sigma=MRampMode < 3 ? db2*adSigma : db2,y=deblockY ? 3 : 2,u=deblockUV ? 3 : 2,v=deblockUV ? 3 : 2,tbsize=1,threads=threads,fft_threads=threads)
  mediumdeblock = !domedd || !debug ? mediumdeblock : mediumdeblock.Subtitle("mediumdeblock")
- strongdeblock = !dostgd ? nop() : merge(removegrain(2).removegrain(2).Deblock_QED(),adSigma    ).sneo_dfttest(sigma=db3*adSigma,y=deblockY ? 3 : 2,u=deblockUV ? 3 : 2,v=deblockUV ? 3 : 2,tbsize=1,threads=threads,fft_threads=threads)
- strongdeblock = !dostgd || !debug ? strongdeblock : strongdeblock.Subtitle("strongdeblock")
- autodeblock1 =  do1d ? weakdeblock : unfiltered
- autodeblock2 =  do2d ? mediumdeblock : autodeblock1
-                 do3d ? strongdeblock : autodeblock2
-                      """, args="MotionRampadc, adb1, adb2, adb3, db1, db2, db3, adb1d, adb2d, adb3d, deblockY, deblockUV, threads, orig, orig_d, debug, unfiltered, shbdbpc, ssIsVF, fastdeblock")
+ strongdeblock = !do3d ? nop() : MRampMode == 1 ? merge(removegrain(2).removegrain(2).Deblock_QED(),adSigma    ) : prweakdeblock
+ strongdeblock = !do3d ? nop() : strongdeblock.sneo_dfttest(sigma=MRampMode < 3 ? db3*adSigma : db3,y=deblockY ? 3 : 2,u=deblockUV ? 3 : 2,v=deblockUV ? 3 : 2,tbsize=1,threads=threads,fft_threads=threads)
+ strongdeblock = !do3d || !debug ? strongdeblock : strongdeblock.Subtitle("strongdeblock")
+ autodeblock1c =  do1d ? weakdeblock : unfiltered
+ autodeblock2c =  do2d ? mediumdeblock : autodeblock1c
+                  MRampMode > 2 ? do3d ? merge(strongdeblock,adSigma) : merge(autodeblock2c,adSigma) : do3d ? strongdeblock : autodeblock2c
+                      """, args="MotionRampadc, adb1, adb2, adb3, db1, db2, db3, adb1d, adb2d, adb3d, deblockY, deblockUV, threads, orig, orig_d, debug, unfiltered, shbdbpc, ssIsVF, fastdeblock, MRampMode")
  autodeblock0 = !fastdeblock ? nop() : gConditionalFilter(fastdeblock0, unfiltered, "(LumaDifference(orig,orig_d) > adb1) && (YDifferenceToNext > adb1d)", "==", "True", args="adb1, orig, orig_d, adb1d")
  reddeblock = !fastdeblock && redfix ? gConditionalFilter(sischbd ? unfiltered.Vinverse_avsi : unfiltered.vinverse(), autodeblock3, "(AverageLuma(c) > " + string(ssIsVF ? 50/255 : sischbd ? 50*mtnavb : 50) + ") && (AverageLuma(c) < " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaU(c) > " + string(ssIsVF ? 95/255 : sischbd ? 95*mtnavb : 95) + ") && (AverageChromaU(c) < " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaV(c) > " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaV(c) < " + string(ssIsVF ? 155/255 : sischbd ? 155*mtnavb : 155) + ")", "==", "True", args="c") : autodeblock3
  fastdeblock ? autodeblock0 : reddeblock
