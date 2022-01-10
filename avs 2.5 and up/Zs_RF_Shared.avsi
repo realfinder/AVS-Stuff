@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.155
+# V1.156
 
 ### Functions list:-
 # sh_StrReplace
@@ -1390,11 +1390,11 @@ return(last)
 ###############
 #motion adaptive by A.SONY
 
-function smam(clip input, clip "prefilter", val "filter", int "pel", int "blksize", clip "motionmask", float "Str", float "Amp", bool "TV_range", bool "qtgmc_lsb", int "tr2", int "usedaa3mod", bool "repblend", val "dslow", bool "qtgmc_n16") {
+function smam(clip input, clip "prefilter", val "filter", int "pel", int "blksize", clip "motionmask", float "Str", float "Amp", bool "TV_range", bool "stgmc_lsb", int "tr2", int "usedaa3mod", bool "repblend", val "dslow", bool "stgmc_n16", bool "FastMA") {
 
 sisphbd = AvsPlusVersionNumber > 2294
-qtgmc_lsb = default(qtgmc_lsb, sisphbd ? false : true)
-qtgmc_n16 = default(qtgmc_n16, sisphbd ? input.BitsPerComponent() > 8 ? false : true : false)
+stgmc_lsb = default(stgmc_lsb, sisphbd ? false : true)
+stgmc_n16 = default(stgmc_n16, sisphbd ? input.BitsPerComponent() > 8 ? false : true : false)
 repblend  = default(repblend, false)
 threads = sh_GetUserGlobalIMTint()
 
@@ -1408,10 +1408,10 @@ tr2             = default (tr2, sisbob ? 3 : 1)
 usedaa3mod      = default (usedaa3mod, exfilclp ? 0 : sisbob ? 1 : 2)
 
 infiltr = usedaa3mod == 1 ? input.daa3mod(dslow,threads=threads) : input
-filclip = defined(filter) ? exfilclp ? filter : eval("infiltr." + filter) : infiltr.QTGMC(InputType=1, tr0=0, tr1=sisbob ? undefined : 1, tr2=tr2, lsb=qtgmc_lsb, n16=qtgmc_n16, rep1=sisbob ? undefined : 11, rep2=sisbob ? undefined : 11, Sharpness=0.0, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads)
+filclip = defined(filter) ? exfilclp ? filter : eval("infiltr." + filter) : infiltr.STGMC(InputType=1, tr0=0, tr1=sisbob ? undefined : 1, tr2=tr2, lsb=stgmc_lsb, n16=stgmc_n16, rep1=sisbob ? undefined : 11, rep2=sisbob ? undefined : 11, Sharpness=0.0, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads)
 filclip = usedaa3mod == 2 ? filclip.daa3mod(dslow,threads=threads) : filclip
 
-momask  = !defined(motionmask) ? input.smam_mask(prefilter,pel,blksize) : motionmask #if you deal with YUY2 then it should be Planar YUY2 in avs2.5 and yv16 in avs2.6
+momask  = !defined(motionmask) ? input.smam_mask(prefilter,pel,blksize,fastma=fastma) : motionmask #if you deal with YUY2 then it should be Planar YUY2 in avs2.5 and yv16 in avs2.6
 isyuy2(input) && VersionNumber() < 2.60 ? mt_merge(input.Interleaved2Planar(),filclip.Interleaved2Planar(),momask,u=3,v=3).Planar2Interleaved() : isyuy2(input) ? mt_merge(input.converttoyv16(),filclip.converttoyv16(),momask,u=3,v=3).converttoyuy2() : mt_merge(input,filclip,momask,u=3,v=3)
 repblend ? isyuy2(input) && VersionNumber() < 2.60 ? Interleaved2Planar() : isyuy2(input) ? converttoyv16() : last : last
 repblend ? isyuy2(input) && VersionNumber() < 2.60 ? Repair(Repair(input.Interleaved2Planar(),16,Planar=true),12,Planar=true).Planar2Interleaved() : isyuy2(input) ? Repair(Repair(input.converttoyv16(),16),12).converttoyuy2() : Repair(Repair(input,16),12) : last
@@ -1422,7 +1422,8 @@ repblend ? isyuy2(input) && VersionNumber() < 2.60 ? Repair(Repair(input.Interle
 #smam_mask
 # if input is YUY2 the output will be Planar YUY2 in avs 2.5 and yv16 in avs 2.6
 
-function smam_mask(clip input, clip "prefilter", int "pel", int "blksize", bool "chroma", int "dct") {
+function smam_mask(clip input, clip "prefilter", int "pel", int "blksize", bool "chroma", int "dct", bool "FastMA") {
+sisphbd   = AvsPlusVersionNumber > 2294
     ox = input.width()
     oy = input.height()
     HD = (ox > 1099 || oy > 599)
@@ -1430,12 +1431,15 @@ function smam_mask(clip input, clip "prefilter", int "pel", int "blksize", bool 
     pel = default( pel,     HD ? 1 : 2 )
     dct = default( dct, sisbob ? 0 : 2 )
     blksize = default(blksize,HD ? sisbob ? 8 : 16 : sisbob ? 4 : 8)
+    FastMA = default( FastMA, false )
 	threads = sh_GetUserGlobalIMTint()
 	mt = sh_GetUserGlobalIMTbool()
-preclip= defined(prefilter) ? prefilter : isyuy2(input) ? input.HQdn3d_2().FFT3DFilter(ncpu=threads) : input.HQdn3d().sneo_FFT3D(ncpu=threads)
-sup    = defined(mt) ? preclip.MSuper(pel=pel,sharp=1,mt=mt) : preclip.MSuper(pel=pel,sharp=1)
-fv1    = defined(mt) ? sup.MAnalyse(isb=false,delta=1,DCT=dct,Truemotion=false,blksize=blksize,chroma=chroma,mt=mt) : sup.MAnalyse(isb=false,delta=1,DCT=dct,Truemotion=false,blksize=blksize,chroma=chroma)
-fv2    = defined(mt) ? sup.MAnalyse(isb=true,delta=1,DCT=dct,Truemotion=true,blksize=blksize,chroma=chroma,mt=mt) : sup.MAnalyse(isb=true,delta=1,DCT=dct,Truemotion=true,blksize=blksize,chroma=chroma)
+preclip  = defined(prefilter) ? prefilter : isyuy2(input) ? input.HQdn3d_2().FFT3DFilter(ncpu=threads) : input.HQdn3d().sneo_FFT3D(ncpu=threads)
+dofastma = sisphbd ? FastMA && preclip.BitsPerComponent() != 8 : false
+preclip  = dofastma ? preclip.ConvertBits(8,dither=1) : preclip
+sup      = defined(mt) ? preclip.MSuper(pel=pel,sharp=1,mt=mt) : preclip.MSuper(pel=pel,sharp=1)
+fv1      = defined(mt) ? sup.MAnalyse(isb=false,delta=1,DCT=dct,Truemotion=false,blksize=blksize,chroma=chroma,mt=mt) : sup.MAnalyse(isb=false,delta=1,DCT=dct,Truemotion=false,blksize=blksize,chroma=chroma)
+fv2      = defined(mt) ? sup.MAnalyse(isb=true,delta=1,DCT=dct,Truemotion=true,blksize=blksize,chroma=chroma,mt=mt) : sup.MAnalyse(isb=true,delta=1,DCT=dct,Truemotion=true,blksize=blksize,chroma=chroma)
 
 momask1 = input.MMask(fv1, kind = 1, ml=2)
 momask2 = input.MMask(fv2, kind = 1, ml=3)
