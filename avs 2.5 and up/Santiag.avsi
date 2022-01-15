@@ -1,4 +1,4 @@
-# santiag v1.604
+# santiag v1.605
 # Simple antialiasing
 
 # This program is free software. It comes without any warranty, to
@@ -33,8 +33,8 @@ Function santiag (clip c, int "strh", int "strv", string "type", int "nns", int 
 	fwh = (strv < 0) ? fw : w
 	fhh = (strv < 0) ? fh : h
 
-	(strh >= 0) ? santiag_dir (strh, typeh, halfres, scaler_post, aain ? true : false, nns=nns, aa=aa, aac=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt, fw=aain ? fw : fwh, fh=aain ? fh : fhh, lumaonly=lumaonly, nnrep=nnrep, scaler_arg=scaler_arg) : last
-	(strv >= 0) ? santiag_dir (strv, typev, halfres, scaler_post, aain ? false : true, nns=nns, aa=aa, aac=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt, fw=aain ? fwh : fw, fh=aain ? fhh : fh, lumaonly=lumaonly, nnrep=nnrep, scaler_arg=scaler_arg) : last
+	(strh >= 0) ? santiag_dir (strh, typeh, halfres, scaler_post,  aain, nns=nns, aa=aa, aac=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt, fw=aain ? fw : fwh, fh=aain ? fh : fhh, lumaonly=lumaonly, nnrep=nnrep, scaler_arg=scaler_arg) : last
+	(strv >= 0) ? santiag_dir (strv, typev, halfres, scaler_post, !aain, nns=nns, aa=aa, aac=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt, fw=aain ? fwh : fw, fh=aain ? fhh : fh, lumaonly=lumaonly, nnrep=nnrep, scaler_arg=scaler_arg) : last
 
 	fwx = Default (fw, w)
 	fhx = Default (fh, h)
@@ -61,14 +61,14 @@ sisyuy2 = c.isyuy2()
 	c_y = multi && !sislumaonly ? sisphbd ? ExtractY() : sisavs26 ? converttoy8() :   ConvertToYV12 () : last
 	c_u = multi && !sislumaonly ? sisphbd ? ExtractU() : sisavs26 ? UToY8() : UToY ().ConvertToYV12 () : nop()
 	c_v = multi && !sislumaonly ? sisphbd ? ExtractV() : sisavs26 ? VToY8() : VToY ().ConvertToYV12 () : nop()
-	c_y =                           dot ? c_y.sTryFTurnLeft(!multi).santiag_stronger (strength, type, halfres, multi, sisavs26, nns=nns, aa=aa, aac=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep).sTryFTurnRight(!multi) : c_y.santiag_stronger (strength, type, halfres, multi, sisavs26, nns=nns, aa=aa, aac=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep)
-	c_u = lumaonly ? c_u : (multi && !sislumaonly) ? dot ? c_u.sTryFTurnLeft(false).santiag_stronger (strength, type, halfres, true, sisavs26 , nns=nns, aa=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep).sTryFTurnRight(false) : c_u.santiag_stronger (strength, type, halfres, true, sisavs26 , nns=nns, aa=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep) : nop()
-	c_v = lumaonly ? c_v : (multi && !sislumaonly) ? dot ? c_v.sTryFTurnLeft(false).santiag_stronger (strength, type, halfres, true, sisavs26 , nns=nns, aa=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep).sTryFTurnRight(false) : c_v.santiag_stronger (strength, type, halfres, true, sisavs26 , nns=nns, aa=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep) : nop()
+	c_y =                                            dot ? c_y.sTryFTurnLeft(!multi).santiag_stronger (strength, type, halfres, multi, sisavs26, nns=nns, aa=aa, aac=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep).sTryFTurnRight(!multi) : c_y.santiag_stronger (strength, type, halfres, multi, sisavs26, nns=nns, aa=aa, aac=aac, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep)
+	c_u = lumaonly ? c_u : (multi && !sislumaonly) ? dot ? c_u.sTryFTurnLeft(false ).santiag_stronger (strength, type, halfres, true, sisavs26 , nns=nns, aa=aac        , threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep).sTryFTurnRight(false ) : c_u.santiag_stronger (strength, type, halfres, true, sisavs26 , nns=nns, aa=aac        , threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep) : nop()
+	c_v = lumaonly ? c_v : (multi && !sislumaonly) ? dot ? c_v.sTryFTurnLeft(false ).santiag_stronger (strength, type, halfres, true, sisavs26 , nns=nns, aa=aac        , threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep).sTryFTurnRight(false ) : c_v.santiag_stronger (strength, type, halfres, true, sisavs26 , nns=nns, aa=aac        , threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt,nnrep=nnrep) : nop()
 	chrfw = chr422 || chr420 ? fw/2 : chr411 ? fw/4 : fw
 	chrfh = chr420 ? fh/2 : fh
-	c_u = lumaonly ? c_u : multi && !sislumaonly ? Eval ("c_u." + scaler_post + " (chrfw, chrfh, src_left=(halfres)?0:-0.125, src_top=(halfres)?0:0.125, src_width=c_u.Width (), src_height=c_u.Height ()" + scaler_arg + ")") : c_u
-	c_v = lumaonly ? c_v : multi && !sislumaonly ? Eval ("c_v." + scaler_post + " (chrfw, chrfh, src_left=(halfres)?0:-0.125, src_top=(halfres)?0:0.125, src_width=c_v.Width (), src_height=c_v.Height ()" + scaler_arg + ")") : c_v
-	c_y = Eval ("c_y." + scaler_post + " (fw, fh, src_left=(halfres)?0:-0.125, src_top=(halfres)?0:0.125, src_width=c_y.Width (), src_height=c_y.Height ()" + scaler_arg + ")")
+	c_u = lumaonly ? c_u : multi && !sislumaonly ? Eval ("c_u." + scaler_post + " (chrfw, chrfh, src_left=(halfres)?0:!dot?0:-0.5, src_top=(halfres)?0:dot?0:0.5, src_width=c_u.Width (), src_height=c_u.Height ()" + scaler_arg + ")") : c_u
+	c_v = lumaonly ? c_v : multi && !sislumaonly ? Eval ("c_v." + scaler_post + " (chrfw, chrfh, src_left=(halfres)?0:!dot?0:-0.5, src_top=(halfres)?0:dot?0:0.5, src_width=c_v.Width (), src_height=c_v.Height ()" + scaler_arg + ")") : c_v
+	c_y =                                          Eval ("c_y." + scaler_post + " (fw,    fh,    src_left=(halfres)?0:!dot?0:-0.5, src_top=(halfres)?0:dot?0:0.5, src_width=c_y.Width (), src_height=c_y.Height ()" + scaler_arg + ")")
 
 	(multi && !sislumaonly) ? YToUV(c_u, c_v, c_y) : c_y
 	sisyuy2 && sisavs26 ? ConvertToYUY2() : last
