@@ -1,4 +1,4 @@
-/* edi_rpow2 v1.0 mod 86
+/* edi_rpow2 v1.0 mod 87
 
 An improved rpow2 function for nnedi3, nnedi3ocl, eedi3, and eedi2.
 
@@ -354,7 +354,7 @@ emclip = mclip.Defined() && bordfix  ? mclip.ResizeX(iw+padL+padR, ih+padT+padB,
          mclipU = Undefined()
          mclipV = Undefined()
          """)
-\ : (sisphbd ? input.isy() : csp == "Y8") || chr420 ?
+\ : (sisphbd ? input.isy() : csp == "Y8") ?
 \   nop()
 \ : csp == "RGB24" ?
 \   Eval("""
