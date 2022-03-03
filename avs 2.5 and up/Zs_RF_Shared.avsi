@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.156
+# V1.157
 
 ### Functions list:-
 # sh_StrReplace
@@ -82,6 +82,7 @@
 # sh_GetUserGlobalIMTint
 # sh_GetUserGlobalIMTbool
 # sChromaShift2
+# srgauss
 # ChrEatWhite
 # IsAvsNeo
 # IsAvsPlus
@@ -1812,6 +1813,26 @@ V = SPClone ? Eval("V." + ResizeMethod + "Resize(w, h, VX, VY, w+VX, h+VY)") : E
 
 YToUV(U, V, clp)
 sisavs26 && sisyuy2 ? converttoyuy2() : last }
+
+
+# srgauss
+# 1.00
+function srgauss(clip clp, float "radius", float "radiusV", float "p", bool "chroma")
+{
+sisavs26 = !(VersionNumber() < 2.6)
+sisphbd = AvsPlusVersionNumber > 2294
+sislumaonly = sisphbd ? clp.isy() : sisavs26 ? clp.isy8() : true
+src = sislumaonly ? clp : sisphbd ? clp.converttoy() : clp.converttoy8()
+             radius   = default(radius, 0.319)
+             radiusV  = default(radiusV, radius)
+             p        = default(p, 10)
+             chroma   = default(chroma, true)
+             w        = src.width
+             h        = src.height
+             upsmp    = GaussResize(src, Round(w * (radius + 1)), Round(h * (radiusV + 1)), p=p)
+             bilinearresize(upsmp, w, h)
+             return !sisavs26 && !chroma ? MergeChroma(last,clp) : sislumaonly || chroma ? last : sisphbd ? CombinePlanes(last,clp,planes="YUV",sample_clip=clp) : ytouv(clp.utoy8(),clp.vtoy8(),last)
+}
 
 
 #StainlessS helper function ChrEatWhite

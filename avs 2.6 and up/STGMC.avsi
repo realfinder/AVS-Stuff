@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------#
 #                                                                   #
-#                           STGMC 3.385                             #
-#           STGMC 3.385 2021 mod based on QTGMC 3.382               #
+#                           STGMC 3.386                             #
+#               STGMC 2022 mod based on QTGMC 3.382                 #
 # https://github.com/realfinder/AVS-Stuff/blob/a487858224a063101b9bfc1e128a0953ee6c5046/avs%202.6%20and%20up/QTGMC.avsi
 #                                                                   #
 #-------------------------------------------------------------------#
@@ -877,8 +877,8 @@ function STGMC_Interpolate( clip Input, int InputType, string EdiMode, int NNSiz
                                                            Repair( Input.Yadifmod2( mode=3 ), default( Fallback, Input.sh_Bob( 0,0.5 ) ), 2, 0 ) : \	
 	         (EdiMode == "RepcYadif")    ? isyuy2(Input) ? Repair( Input.Yadif( mode=3 ).nonyuy2clipin(true), default( Fallback, Input.sh_Bob( 0,0.5 ) ).nonyuy2clipin(true), 2, 0 ).nonyuy2clipout(true) : \
 	         	         	                               Repair( Input.Yadif( mode=3 ), default( Fallback, Input.sh_Bob( 0,0.5 ) ), 2, 0 ) : \
-	         (EdiMode == "BWDIF+NNEDI3") ? isyuy2(Input) ? Input.nonyuy2clipin(true).BWDIF(-2,edeint=NNEDI3clp.nonyuy2clipin(true)).Vinverse_avsi(custem=NNEDI3clp.nonyuy2clipin(true)).nonyuy2clipout(true) : Input.BWDIF(-2,edeint=NNEDI3clp).Vinverse_avsi(custem=NNEDI3clp) : \
-	         (EdiMode == "BWDIF+EEDI3")  ? isyuy2(Input) ? Input.nonyuy2clipin(true).BWDIF(-2,edeint=EEDI3clp.nonyuy2clipin(true)).Vinverse_avsi(custem=NNEDI3clp.nonyuy2clipin(true)).nonyuy2clipout(true) : Input.BWDIF(-2,edeint=EEDI3clp).Vinverse_avsi(custem=NNEDI3clp) : \
+	         (EdiMode == "BWDIF+NNEDI3") ? isyuy2(Input) ? Input.nonyuy2clipin(true).BWDIF(-2,edeint=NNEDI3clp.nonyuy2clipin(true)).Vinverse_avsi(clip2=NNEDI3clp.nonyuy2clipin(true)).nonyuy2clipout(true) : Input.BWDIF(-2,edeint=NNEDI3clp).Vinverse_avsi(clip2=NNEDI3clp) : \
+	         (EdiMode == "BWDIF+EEDI3")  ? isyuy2(Input) ? Input.nonyuy2clipin(true).BWDIF(-2,edeint=EEDI3clp.nonyuy2clipin(true)).Vinverse_avsi(clip2=NNEDI3clp.nonyuy2clipin(true)).nonyuy2clipout(true) : Input.BWDIF(-2,edeint=EEDI3clp).Vinverse_avsi(clip2=NNEDI3clp) : \
 	                                       default( Fallback, Input.sh_Bob( 0,0.5 ) )
 
 	interpuv = (InputType == 1)        ? NOP() : \
