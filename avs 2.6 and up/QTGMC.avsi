@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------#
 #                                                                   #
 #                     QTGMC 3.33 by Vit, 2012                       #
-#     QTGMC 3.383 2022 mod by A.SONY, based on v3.33d by Dogway     #
+#     QTGMC 3.384 2022 mod by A.SONY, based on v3.33d by Dogway     #
 #                                                                   #
 #   A high quality deinterlacer using motion-compensated temporal   #
 #  smoothing, with a range of features for quality and convenience  #
@@ -12,6 +12,9 @@
 # Full documentation is in the 'QTGMC' html file that may comes with this script, or even better see avisynth wiki
 #
 # --- LATEST CHANGES ---
+#
+# v3.384s
+# - replace vinverse_avsi with vinverse by Asd-g 
 #
 # v3.383s
 # - update to STGMC 3.385
@@ -36,7 +39,7 @@
 # - fix keep_tv_range in avs+
 #
 # v3.375s
-# - new EdiMode modes "BWDIF+NNEDI3" and "BWDIF+EEDI3" (need moded Vinverse_avsi)
+# - new EdiMode modes "BWDIF+NNEDI3" and "BWDIF+EEDI3" (need last Vinverse)
 # - fix RepYadif EdiMode for non YUY2 clip (it was same as Yadif)
 #
 # v3.371s
@@ -169,7 +172,7 @@
 #	KNLMeansCL - if selected for noise processing
 #	AddGrainC - if NoiseDeint="Generate" selected for noise bypass
 #	chikuzen PlanarTools - if you work with YUY2 source (not necessarily required but may improve speed)
-#	BWDIF and Vinverse_avsi - for EdiMode modes "BWDIF+NNEDI3" and "BWDIF+EEDI3"
+#	BWDIF and Vinverse - for EdiMode modes "BWDIF+NNEDI3" and "BWDIF+EEDI3"
 
 
 # --- GETTING STARTED ---
@@ -509,7 +512,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	bobbed = (InputType == 0) ? UseEdiExt > 0 ? isyuy2(EdiExt) ? EdiExt.nonyuy2clipin(true) : EdiExt : planarClip.sh_Bob( 0,0.5 ) : \
 	         (InputType == 1) ? planarClip : \
 	                            planarClip.Blur( 0,1 )
-	bobbed = (InputType == 0) && UseEdiExt > 1 ? bobbed.Vinverse_avsi() : bobbed
+	bobbed = (InputType == 0) && UseEdiExt > 1 ? bobbed.Vinverse() : bobbed
 
 	# If required, get any existing global clips with a matching "GlobalNames" setting. Unmatched values get NOP (= 0)
 	srchClip  = QTGMC_GetUserGlobal( GlobalNames, "srchClip",  ReuseGlobals )
@@ -542,7 +545,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	domtr02 = TR0 == -2 && !(InputType == 0 && UseEdiExt > 1)
 	domtr01 = TR0 == -1 && !(InputType == 0 && UseEdiExt > 1)
 	binomial0 = IsClip(srchClip) ? NOP() : \
-	  domtr02 && defined(EdiExt) ? isyuy2(EdiExt) ? EdiExt.nonyuy2clipin(true).Vinverse_avsi() : EdiExt.Vinverse_avsi() : TR0 == -2 ? bobbed : \
+	  domtr02 && defined(EdiExt) ? isyuy2(EdiExt) ? EdiExt.nonyuy2clipin(true).Vinverse() : EdiExt.Vinverse() : TR0 == -2 ? bobbed : \
 	  domtr01 && defined(EdiExt) ? isyuy2(EdiExt) ? EdiExt.nonyuy2clipin(true) : EdiExt : TR0 == -1 ? bobbed : \
 	            (TR0 == 0)       ? bobbed : \
 	            (TR0 == 1)       ? (ChromaMotion ? ts1.Merge( bobbed, 0.25 ) : ts1.MergeLuma( bobbed, 0.25 )) : \
@@ -1064,8 +1067,8 @@ function QTGMC_Interpolate( clip Input, int InputType, string EdiMode, int NNSiz
                                                            Repair( Input.Yadifmod2( mode=3 ), default( Fallback, Input.sh_Bob( 0,0.5 ) ), 2, 0 ) : \	
 	         (EdiMode == "RepcYadif")    ? isyuy2(Input) ? Repair( Input.Yadif( mode=3 ).nonyuy2clipin(true), default( Fallback, Input.sh_Bob( 0,0.5 ) ).nonyuy2clipin(true), 2, 0 ).nonyuy2clipout(true) : \
 	         	         	                               Repair( Input.Yadif( mode=3 ), default( Fallback, Input.sh_Bob( 0,0.5 ) ), 2, 0 ) : \
-	         (EdiMode == "BWDIF+NNEDI3") ? isyuy2(Input) ? Input.nonyuy2clipin(true).BWDIF(-2,edeint=NNEDI3clp.nonyuy2clipin(true)).Vinverse_avsi(clip2=NNEDI3clp.nonyuy2clipin(true)).nonyuy2clipout(true) : Input.BWDIF(-2,edeint=NNEDI3clp).Vinverse_avsi(clip2=NNEDI3clp) : \
-	         (EdiMode == "BWDIF+EEDI3")  ? isyuy2(Input) ? Input.nonyuy2clipin(true).BWDIF(-2,edeint=EEDI3clp.nonyuy2clipin(true)).Vinverse_avsi(clip2=NNEDI3clp.nonyuy2clipin(true)).nonyuy2clipout(true) : Input.BWDIF(-2,edeint=EEDI3clp).Vinverse_avsi(clip2=NNEDI3clp) : \
+	         (EdiMode == "BWDIF+NNEDI3") ? isyuy2(Input) ? Input.nonyuy2clipin(true).BWDIF(-2,edeint=NNEDI3clp.nonyuy2clipin(true)).Vinverse(clip2=NNEDI3clp.nonyuy2clipin(true)).nonyuy2clipout(true) : Input.BWDIF(-2,edeint=NNEDI3clp).Vinverse(clip2=NNEDI3clp) : \
+	         (EdiMode == "BWDIF+EEDI3")  ? isyuy2(Input) ? Input.nonyuy2clipin(true).BWDIF(-2,edeint=EEDI3clp.nonyuy2clipin(true)).Vinverse(clip2=NNEDI3clp.nonyuy2clipin(true)).nonyuy2clipout(true) : Input.BWDIF(-2,edeint=EEDI3clp).Vinverse(clip2=NNEDI3clp) : \
 	                                       default( Fallback, Input.sh_Bob( 0,0.5 ) )
 
 	interpuv = (InputType == 1)        ? NOP() : \
