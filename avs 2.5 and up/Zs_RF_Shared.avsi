@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.157
+# V1.158
 
 ### Functions list:-
 # sh_StrReplace
@@ -30,7 +30,7 @@
 # sh_Y8_YV411
 # ContraSharpening
 # MinBlur
-# sbr
+# sbr_avsi
 # Dither_YUY2toPlanar16
 # Dither_YUY2toPlanar
 # Dither_YUY2toInterleaved16
@@ -45,7 +45,7 @@
 # sigmoid_direct 
 # sigmoid_inverse 
 # sh_Vinverse2
-# sbrV
+# sbrV_avsi
 # sh_Vinverse2H
 # sbrH
 # sBlackerPixel
@@ -655,7 +655,7 @@ blurrep= default(blurrep,false)
 
 blurstr= mode == "Median_Both" ? "medianblur(r*medfy,r*medf,r*medf)" : mode == "average_Both" ? "aBlur(r, abtype, chroma=uv)" : mode == "average_horizontal" ? "aBlur(r, abtype, blurv="+String(r==1 ? 0 : 1)+", chroma=uv)" : mode == "average_vertical" ? "aBlur("+String(r==1 ? 0 : 1)+", abtype, blurv=r, chroma=uv)" : mode
 
-RG11D = (r==0) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.sbr(planar=planar,y=y2,U=u2,V=v2).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.sbr(planar=planar,y=y2,U=u2,V=v2),y=y2,U=u2,V=v2)
+RG11D = (r==0) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.Planar2Interleaved(ch2).ConvertToYV16().sbr(y=y2,U=u2,V=v2),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.sbr_avsi(planar=planar,y=y2,U=u2,V=v2),y=y2,U=u2,V=v2)
  \    : (r==1) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.removegrain(rg11y,rg11,planar=planar).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.removegrain(rg11y,rg11,planar=planar),y=y2,U=u2,V=v2)
  \    : (r==2) ? yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.removegrain(rg11y,rg11,planar=planar).removegrain(rg20y,rg20,planar=planar).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.removegrain(rg11y,rg11,planar=planar).removegrain(rg20y,rg20,planar=planar),y=y2,U=u2,V=v2)
  \    :          yuy26 ? mt_makediff(clp.Planar2Interleaved(ch2).ConvertToYV16(),clp.removegrain(rg11y,rg11,planar=planar).removegrain(rg20y,rg20,planar=planar).removegrain(rg20y,rg20,planar=planar).Planar2Interleaved(ch2).ConvertToYV16(),y=y2,U=u2,V=v2).ConvertToYUY2().Interleaved2planar(ch2) : mt_makediff(clp,clp.removegrain(rg11y,rg11,planar=planar).removegrain(rg20y,rg20,planar=planar).removegrain(rg20y,rg20,planar=planar),y=y2,U=u2,V=v2)
@@ -674,7 +674,7 @@ blurrep ? Repair(clp.removegrain(y!=3 ? 0 : 17,u==3 ? 0 : -1,v==3 ? 0 : -1,plana
  # helper function: make a highpass on a blur's difference (well, kind of that)
  # Highpass of spatial r=1 Gaussian (like blur(1.0)) (Modified for Planar input)
 
-function sbr(clip c, bool "planar", int "y", int "r", int "U", int "V") {
+function sbr_avsi(clip c, bool "planar", int "y", int "r", int "U", int "V") {
 
 planar = default(planar,false)
 avs26 = VersionNumber() < 2.60 ? false : true
@@ -1049,7 +1049,7 @@ function sh_Vinverse2(clip clp, float "sstr", int "amnt", int "uv")
 }
 
 
-function sbrV(clip o)
+function sbrV_avsi(clip o)
 {
   rg11=o.mt_convolution("1","1 2 1")
   rg11D=mt_makediff(o,rg11)
@@ -1863,6 +1863,17 @@ function Undefined(val "dummyArg")
     Assert(!Defined(dummyArg), "Undefined: Cannot be called with any arguments.")
     return dummyArg
 }
+
+function sbrV(clip o)
+{
+sbrV_avsi(o)
+}
+
+function sbr(clip c) {
+{
+sbr_avsi(c)
+}
+
 """) : nop()
 
 
