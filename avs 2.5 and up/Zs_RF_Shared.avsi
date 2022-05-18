@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.158
+# V1.159
 
 ### Functions list:-
 # sh_StrReplace
@@ -507,7 +507,7 @@ output = dref ? !sisavs26 ? mt_lutxyz(src,flt,ref, "y z - abs "+string(thrc)+" <
 
 
 # base on Dither_limit_dif16 idea (not 100% same output)
-function slimit_dif2(clip "flt", clip "src", clip "ref", float "thr", float "elast", int "Y", int "U", int "V", bool "elastinfl", int "A")
+function slimit_dif2(clip "flt", clip "src", clip "ref", float "thr", float "elast", int "Y", int "U", int "V", bool "elastinfl", int "A", clip "fltref")
 {
 thr    = default(thr,                 0.25)
 elast  = default(elast,                3.0)
@@ -519,14 +519,15 @@ elastinfl = default(elastinfl, false)
 A  = default(A,           2)
 
 dref = defined(ref)
+dfref = defined(fltref)
 sisavs26 = !(VersionNumber() < 2.6)
  
 Assert(!(elast < 1), "slimit_dif2: elast must be more than 1")
 Assert((defined(flt) && defined(src)), "slimit_dif2: both flt clip and src clip are needed")
  
-ldmask = elast!=1 ? !sisavs26 ? mt_lutxy(dref ? ref : src,flt,"x y - abs "+string(thr)+" <= 255 x y - abs "+string(elast2)+" <= ? 255 255 "+string(elast2)+" / x y - abs * - 0 ?", Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V)
-                    \         : mt_lutxy(dref ? ref : src,flt,"x y - abs "+string(thr)+" yscalef <= yrange_max x y - abs "+string(elast2)+" yscalef <= ? yrange_max yrange_max "+string(elast2)+" yscalef / x y - abs * - 0 ?",use_expr=2, Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V,A=A==2 ? 1 : A) : 
-         \   dref ? !sisavs26 ? ref.mt_lutxy(flt,"x y - abs "+string(thr)+" <= 255 0 ?", Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V) : ref.mt_lutxy(flt,"x y - abs "+string(thr)+" yscalef <= yrange_max 0 ?",use_expr=2,clamp_float_UV=true, Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V,A=A==2 ? 1 : A) : nop()
+ldmask = elast!=1 ? !sisavs26 ? mt_lutxy(dref ? ref : src,dfref ? fltref : flt,"x y - abs "+string(thr)+" <= 255 x y - abs "+string(elast2)+" <= ? 255 255 "+string(elast2)+" / x y - abs * - 0 ?", Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V)
+                    \         : mt_lutxy(dref ? ref : src,dfref ? fltref : flt,"x y - abs "+string(thr)+" yscalef <= yrange_max x y - abs "+string(elast2)+" yscalef <= ? yrange_max yrange_max "+string(elast2)+" yscalef / x y - abs * - 0 ?",use_expr=2, Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V,A=A==2 ? 1 : A) : 
+                  \ dref || dfref ? !sisavs26 ? mt_lutxy(dref ? ref : src, dfref ? fltref : flt,"x y - abs "+string(thr)+" <= 255 0 ?", Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V) : mt_lutxy(dref ? ref : src, dfref ? fltref : flt,"x y - abs "+string(thr)+" yscalef <= yrange_max 0 ?",use_expr=2,clamp_float_UV=true, Y=Y==2 ? 1: Y,U=U==2 ? 1 : U,V=V==2 ? 1 : V,A=A==2 ? 1 : A) : nop()
 
 elast!=1 || dref ? !sisavs26 ? smaskmerge(src,flt, elastinfl ? ldmask.mt_inflate(155,Y=Y,U=U,V=V) : ldmask, Y=Y,U=U,V=V) : Mt_Merge(src,flt, elastinfl ? ldmask.mt_inflate(155,Y=Y,U=U,V=V,A=A) : ldmask, Y=Y,U=U,V=V,A=A) : \
                    !sisavs26 ? src.mt_lutxy(flt,"x y - abs "+string(thr)+" <= y x ?", Y=Y,U=U,V=V)
