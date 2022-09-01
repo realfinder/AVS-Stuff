@@ -1,5 +1,5 @@
 # DeHalo_alpha with high bit support, need masktools 2.2.20 or up in avs26 and last avs+
-# 2021.04.05
+# 2022.08.31
 
 function DeHalo_alpha_mt(clip input, float "rx", float "ry", float "darkstr", float "brightstr", float "lowsens", float "highsens", float "ss", bool "cs", int "search_rade", int "search_radi", val "customfix")
 {
@@ -55,8 +55,8 @@ halos  = cfd ? isclip(customfix) ? customfix : eval(customfix) :
              \  rxup && ryup ? clp.bilinearresize(m4_sh(ox*rx),m4_sh(oy*ry)).bilinearresize(ox,oy) : clp.bicubicresize(m4_sh(ox/rx),m4_sh(oy/ry)).bicubicresize(ox,oy,1,0)
 are    = sre==1 && sri==1 ? clp .mt_edge(mode="min/max", thY1=0, thY2=255)  : !sisavs26 ? mt_lutxy(clp  .spasses(sre,"mt_expand()"),clp  .spasses(sri,"mt_inpand()"),"x y -",U=1,V=1) : mt_lutxy(clp  .spasses(sre,"mt_expand()"),clp  .spasses(sri,"mt_inpand()"),"x y -",use_expr=3,U=1,V=1)
 ugly   = sre==1 && sri==1 ? halos.mt_edge(mode="min/max", thY1=0, thY2=255) : !sisavs26 ? mt_lutxy(halos.spasses(sre,"mt_expand()"),halos.spasses(sri,"mt_inpand()"),"x y -",U=1,V=1) : mt_lutxy(halos.spasses(sre,"mt_expand()"),halos.spasses(sri,"mt_inpand()"),"x y -",use_expr=3,U=1,V=1)
-so     = !!sisavs26 ? mt_lutxy( ugly, are, "y x - y 0.001 + / 255 * "+LOS+" - y 256 + 512 / "+HIS+" + *" )
-         \          : mt_lutxy( ugly, are, "y x - y 0.001 + / range_max * "+LOS+" scalef - y range_size + 512 scalef / "+HIS+" + *",clamp_float=true, scale_inputs="floatf",use_expr=1 )
+so     = !sisavs26 ? mt_lutxy( ugly, are, "y x - y 0.001 + / 255 * "+LOS+" - y 256 + 512 / "+HIS+" + *" )
+         \         : mt_lutxy( ugly, are, "y x - y 0.001 + / range_max * "+LOS+" scalef - y range_size + 512 scalef / "+HIS+" + *",clamp_float=true, scale_inputs="floatf",use_expr=1 )
 lets   = mt_merge(halos,clp,so,U=1,V=1)
 remove = (ss==1.0) ? clp.repair(lets,1,0) 
           \        : clp.lanczosresize(m4_sh(ox*ss),m4_sh(oy*ss))
