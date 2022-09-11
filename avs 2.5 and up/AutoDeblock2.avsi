@@ -1,4 +1,4 @@
-#HBD mod 1.2 and new AutoDeblock3
+#HBD mod 1.21 and new AutoDeblock3
 #Author: eXmendiC, joletb, vinylfreak89, Gebbi
 #Version: 2.6
 function AutoDeblock2(clip c, float "edgeValue", float "db1", float "db2", float "db3", bool "deblockY", bool "deblockUV", bool "debug", bool "redfix", bool "fastdeblock", float "adb1", float "adb2", float "adb3", float "adb1d", float "adb2d", float "adb3d") {
@@ -55,14 +55,14 @@ function AutoDeblock2(clip c, float "edgeValue", float "db1", float "db2", float
  autodeblock2 = ConditionalFilter(mediumdeblock, autodeblock1, "(LumaDifference(AutoDeblock2_orig,AutoDeblock2_orig_d) > AutoDeblock2_adb2) && (YDifferenceToNext > AutoDeblock2_adb2d)", "==", "True")
  autodeblock3 = ConditionalFilter(strongdeblock, autodeblock2, "(LumaDifference(AutoDeblock2_orig,AutoDeblock2_orig_d) > AutoDeblock2_adb3) && (YDifferenceToNext > AutoDeblock2_adb3d)", "==", "True")
  
- reddeblock = redfix ? ConditionalFilter(sischbd ? unfiltered.Vinverse_avsi : unfiltered.vinverse(), autodeblock3, "(AverageLuma(AutoDeblock2_o) > " + string(ssIsVF ? 50/255 : sischbd ? 50*mtnavb : 50) + ") && (AverageLuma(AutoDeblock2_o) < " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaU(AutoDeblock2_o) > " + string(ssIsVF ? 95/255 : sischbd ? 95*mtnavb : 95) + ") && (AverageChromaU(AutoDeblock2_o) < " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaV(AutoDeblock2_o) > " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaV(AutoDeblock2_o) < " + string(ssIsVF ? 155/255 : sischbd ? 155*mtnavb : 155) + ")", "==", "True") : autodeblock3
+ reddeblock = redfix ? ConditionalFilter(unfiltered.vinverse(), autodeblock3, "(AverageLuma(AutoDeblock2_o) > " + string(ssIsVF ? 50/255 : sischbd ? 50*mtnavb : 50) + ") && (AverageLuma(AutoDeblock2_o) < " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaU(AutoDeblock2_o) > " + string(ssIsVF ? 95/255 : sischbd ? 95*mtnavb : 95) + ") && (AverageChromaU(AutoDeblock2_o) < " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaV(AutoDeblock2_o) > " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaV(AutoDeblock2_o) < " + string(ssIsVF ? 155/255 : sischbd ? 155*mtnavb : 155) + ")", "==", "True") : autodeblock3
  fastdeblock ? autodeblock0 : reddeblock
  }
  
  
  ###################
  # AutoDeblock3, use admfilter method with AutoDeblock2 to make it work better
- # v1.12
+ # v1.13
  function AutoDeblock3(clip c, float "edgeValue", float "db1", float "db2", float "db3", bool "deblockY", bool "deblockUV", bool "debug", bool "redfix", bool "fastdeblock", float "adb1", float "adb2", float "adb3", float "adb1d", float "adb2d", float "adb3d", clip "MotionRampadc", int "MotionRampMode") {
  c
  sisavs26   = !(VersionNumber() < 2.6)
@@ -127,6 +127,6 @@ dowakd = do1d && !domedd && !do3d
                   MRampMode > 2 ? do3d ? merge(strongdeblock,adSigma) : merge(autodeblock2c,adSigma) : do3d ? strongdeblock : autodeblock2c
                       """, args="MotionRampadc, adb1, adb2, adb3, db1, db2, db3, adb1d, adb2d, adb3d, deblockY, deblockUV, threads, orig, orig_d, debug, unfiltered, shbdbpc, ssIsVF, fastdeblock, MRampMode")
  autodeblock0 = !fastdeblock ? nop() : gConditionalFilter(fastdeblock0, unfiltered, "(LumaDifference(orig,orig_d) > adb1) && (YDifferenceToNext > adb1d)", "==", "True", args="adb1, orig, orig_d, adb1d")
- reddeblock = !fastdeblock && redfix ? gConditionalFilter(sischbd ? unfiltered.Vinverse_avsi : unfiltered.vinverse(), autodeblock3, "(AverageLuma(c) > " + string(ssIsVF ? 50/255 : sischbd ? 50*mtnavb : 50) + ") && (AverageLuma(c) < " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaU(c) > " + string(ssIsVF ? 95/255 : sischbd ? 95*mtnavb : 95) + ") && (AverageChromaU(c) < " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaV(c) > " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaV(c) < " + string(ssIsVF ? 155/255 : sischbd ? 155*mtnavb : 155) + ")", "==", "True", args="c") : autodeblock3
+ reddeblock = !fastdeblock && redfix ? gConditionalFilter(unfiltered.vinverse(), autodeblock3, "(AverageLuma(c) > " + string(ssIsVF ? 50/255 : sischbd ? 50*mtnavb : 50) + ") && (AverageLuma(c) < " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaU(c) > " + string(ssIsVF ? 95/255 : sischbd ? 95*mtnavb : 95) + ") && (AverageChromaU(c) < " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaV(c) > " + string(ssIsVF ? 130/255 : sischbd ? 130*mtnavb : 130) + ") && (AverageChromaV(c) < " + string(ssIsVF ? 155/255 : sischbd ? 155*mtnavb : 155) + ")", "==", "True", args="c") : autodeblock3
  fastdeblock ? autodeblock0 : reddeblock
  }

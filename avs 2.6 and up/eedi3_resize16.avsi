@@ -1,5 +1,5 @@
 #################################################################################################
-###### eedi3_resize16 v3.3.11 ###### by mawen1250 mod by A.SONY ######     2022.01.07      ######
+###### eedi3_resize16 v3.3.14 ###### by mawen1250 mod by A.SONY ######     2022.05.17      ######
 #################################################################################################
 ###### from v2.8 on, eedi3_resize16 only supports AviSynth v2.6+                           ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, eedi3 v0.9.2.3,                    ######
@@ -78,13 +78,20 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     # Parameters for nnedi3
 	
     nsize    = Default(nsize,    0      )
-    nns      = Default(nns,      3      )
+    nns      = Default(nns,      4      )
     qual     = Default(qual,     2      )
     etype    = Default(etype,    0      )
-    pscrn    = Default(pscrn,    2      )
-    threads  = Default(threads,  sh_GetUserGlobalIMTint(true))
+    pscrn    = Default(pscrn,    4      )
     UseFmtc  = Default(UseFmtc, sisparr )
     nnsclip  = Default(nnsclip,  false  )
+
+
+    # Parameters for eedi3
+	
+    alpha    = Default(alpha,    0.1    )
+    beta     = Default(beta,     0.3    )
+    gamma    = Default(gamma,    30.0   )
+    threads  = Default(threads,  sh_GetUserGlobalIMTint(true))
     
     ###############################################################################################################################
 	###############################################################################################################################
@@ -472,7 +479,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
         \               : curve=="linear" ? edgeedY
         \                                 : edgeedY.""" + sg2lin + """(tv_range, tv_range, curve, u=1, v=1, gcor=gcor)
         edgeY   = !Yedt ? input16.BlankClip(width=ow , height=sischbd ? oh : oh *2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
-    	\               : sischbd || sisprgb ? UseFmtc ? edgennY.fmtc_resample(ow , oh , src_left *yhrf+yhfix        , src_top *yvrf+yvfix,
+    	\               : sischbd || sisprgb ? UseFmtc ? edgeedY.fmtc_resample(ow , oh , src_left *yhrf+yhfix        , src_top *yvrf+yvfix,
         \                                            src_width *yhrf, src_height *yvrf, planes=sisprgb ? undefined : array(Y31, 1, 1)  ,
         \                                            kernelh=yrh?kernel_u:kernel_d, kernelv=yrv?kernel_u:kernel_d,
 		\                                            fh=yrh?f_u:f_d, fv=yrv?f_u:f_d,
@@ -497,7 +504,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
         \                                 : edgeY  .""" + slin2g + """(tv_range, tv_range, curve, u=1, v=1, gcor=gcor)
         
     	edgeU   = sisprgb ? nop() : !Uedt ? input16.BlankClip(width=owc, height=sischbd ? ohc : ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
-    	\               : sischbd ? UseFmtc ? edgennU.fmtc_resample(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+    	\               : sischbd ? UseFmtc ? edgeedU.fmtc_resample(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
         \                                            src_widthc*chrf, src_heightc*cvrf, planes=array(U31, 1, 1)  ,
         \                                            kernelh=crh?kernel_u:kernel_d, kernelv=crv?kernel_u:kernel_d,
 		\                                            fh=crh?f_u:f_d, fv=crv?f_u:f_d,
@@ -519,7 +526,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 		\                                           )
 		
     	edgeV   = sisprgb ? nop() : !Vedt ? input16.BlankClip(width=owc, height=sischbd ? ohc : ohc*2, pixel_type=sischbd ? "Y" + string(input.BitsPerComponent()) : "Y8", color_yuv=$008080)
-    	\               : sischbd ? UseFmtc ? edgennV.fmtc_resample(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
+    	\               : sischbd ? UseFmtc ? edgeedV.fmtc_resample(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
         \                                            src_widthc*chrf, src_heightc*cvrf, planes=array(V31, 1, 1)  ,
         \                                            kernelh=crh?kernel_u:kernel_d, kernelv=crv?kernel_u:kernel_d,
 		\                                            fh=crh?f_u:f_d, fv=crv?f_u:f_d,
