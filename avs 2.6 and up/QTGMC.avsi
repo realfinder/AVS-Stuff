@@ -1012,6 +1012,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	output = (ShowNoise == 0.0) ? cropped : finalNoise.mt_lut( "x range_half - " + string(ShowNoise) + " * range_half +", clamp_float=true, use_expr=2, U=CNmt128,V=CNmt128 )
 	output = yuy2 ? output.nonyuy2clipout(true) : output
 	output = keep_tv_range ? sisphbd ? output.Limiter(16, 235, 16, 240, paramscale=true) : output.Limiter(16, 235, 16, 240) : output
+	output = AvsPlusVersionNumber >= 3276 ? propSet(output, "_FieldBased", 0).propset("_Combed", 0) : output
 	return (ShowSettings == false) ? output : \
 		output.Subtitle( "TR0=" + string(TR0) + " | TR1=" + string(TR1) + " | TR2=" + string(TR2) + " | Rep0=" + string(Rep0) + " | Rep1=" + string(Rep1) + \
 		" | Rep2=" + string(Rep2) + " | RepChroma=" + string(RepChroma) + "\nEdiMode='" + EdiMode + "' | NNSize=" + string(NNSize) + " | NNeurons=" + \
