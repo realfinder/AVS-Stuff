@@ -54,7 +54,7 @@
 ### v1.6 : - added preblur option
 ###        - added new Smethod=4
 ###
-### v1.5 : - fixed LUT expression (thanks to Didée)
+### v1.5 : - fixed LUT expression (thanks to DidÃ©e)
 ###        - changed Smethod to Smethod+secure
 ###
 ### v1.4 : - changed defaults="new" to defaults="slow" & defaults="fast"
@@ -214,19 +214,19 @@
 ###    =3 : Limit to zero on edges and to over/undershoot on not-edges
 ###    =4 : Limit to over/undershoot on edges and to over/undershoot2 on not-edges
 ###
-### overshoot [int]
+### overshoot [float]
 ### ---------------
 ### Limit for pixels that get brighter during sharpening
 ###
-### undershoot [int]
+### undershoot [float]
 ### ----------------
 ### Limit for pixels that get darker during sharpening
 ###
-### overshoot2 [int]
+### overshoot2 [float]
 ### ----------------
 ### Same as overshoot, only for Lmode=4
 ###
-### undershoot2 [int]
+### undershoot2 [float]
 ### -----------------
 ### Same as undershoot, only for Lmode=4
 ###
@@ -645,7 +645,7 @@ output = edgemode!=-1    ? output
    \                  float "strength", int "Smode", int "Smethod", int "kernel",
    \                  string "preblur", bool "secure", string "source",
    \                  float "Szrp", float "Spwr", float "SdmpLo", float "SdmpHi",
-   \                  int "Lmode", float "overshoot", float "undershoot", float "overshoot2", int "undershoot2",
+   \                  int "Lmode", float "overshoot", float "undershoot", float "overshoot2", float "undershoot2",
    \                  int "soft", bool "soothe", int "keep",
    \                  int "edgemode", bool "edgemaskHQ",
    \                  float "ss_x", float "ss_y", int "dest_x", int "dest_y",
