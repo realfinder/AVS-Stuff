@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.386 2022-03-20 mod
+# v2.386 2023-03-20 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with STGMC and add bob4p to change STGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -357,7 +357,7 @@ blenddecim = (mode==4 && omode==1) ? chrfix_b ? (palf && Ofrate==2) ? debprep.td
 credbob = defined(i1) ? clearbob.selecteven() : nop()
 
 #Progressive : Blend deinterlace the 24t background while doing minimal damage on the 30p credits
-blendbg= defined(p1) ? real30p ? i : i.daa3() : nop()
+blendbg= defined(p1) ? real30p ? i : i.odaa3() : nop()
 
 ###CFR conversion###
 #######################
@@ -575,20 +575,20 @@ topp = omode==1 ? finalcfr : omode==2 ? finalvfr : nop()
 dec = 	killcomb==0 ? topp : 
 \	killcomb==1 ? topp.vinverse() : 
 \	killcomb==2 ? topp.vinverseD() : 
-\	killcomb==3 ? topp.daa3() : 
+\	killcomb==3 ? topp.odaa3() : 
 \		interleave(	topp.		 subtitle("killcomb=0",align=9),
 \				topp.vinverse(). subtitle("killcomb=1",align=9),
 \				topp.vinverseD().subtitle("killcomb=2",align=9),
-\				topp.daa3().subtitle("killcomb=3",align=9))
+\				topp.odaa3().subtitle("killcomb=3",align=9))
 
 aaed = 	aa==0 ? dec : 
 \	aa==1 ? dec.ediaa() : 
-\	aa==2 ? dec.daa3() : 
+\	aa==2 ? dec.odaa3() : 
 \	aa==3 ? dec.maa() : 
 \	aa==4 ? dec.sharpaamcmod(dark,thin,sharp,smooth,stabilize,tradius,aapel,aaov,aablk,aatype) : 
 \			interleave(	dec.		subtitle("aa=0",align=9),
 \					dec.ediaa().	subtitle("aa=1",align=9),
-\					dec.daa3().	subtitle("aa=2",align=9),
+\					dec.odaa3().	subtitle("aa=2",align=9),
 \					dec.maa().	subtitle("aa=3",align=9),
 \					dec.sharpaamcmod(dark,thin,sharp,smooth,stabilize,tradius,aapel,aaov,aablk,aatype).subtitle("aa=4",align=9))
 

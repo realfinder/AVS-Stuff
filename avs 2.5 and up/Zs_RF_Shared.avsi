@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.159
+# V1.161
 
 ### Functions list:-
 # sh_StrReplace
@@ -54,7 +54,8 @@
 # chroma_rep2
 # smartfademod
 # ediaa
-# daa
+# odaa
+# odaa3
 # maa
 # SharpAAMCmod
 # VinverseD
@@ -1278,7 +1279,7 @@ show ? scriptclip(c, "subtitle(string(abs(	  separatefields().selectodd().averag
             				- separatefields().selecteven().averageluma())))") : \
        scriptclip(c, "sep = separatefields() \
        avg = sep.selectodd().averageluma() - sep.selecteven().averageluma() \
-       abs(avg) > sfthr ? interleave(sep.selecteven(),sep.selectodd()).weave().daa3() : last")
+       abs(avg) > sfthr ? interleave(sep.selecteven(),sep.selectodd()).weave().odaa3() : last")
 
 cache<0 ? last : last.RequestLinear(8, cache, 5, false, false)
 
@@ -1292,13 +1293,23 @@ function ediaa(clip a) {return a.EEDI2(field=1).TurnRight().EEDI2(field=1).TurnL
 
 
 #Anti-aliasing with contra-sharpening by Didée
-function daa(clip c) {
+function odaa(clip c) {
 nn	= c.nnedi2(field=-2)
 dbl   	= mt_average(selecteven(nn),selectodd(nn),U=3,V=3)
 dblD 	= mt_makediff(c,dbl,U=3,V=3)
 shrpD 	= mt_makediff(dbl,dbl.removegrain((width(c)>1100) ? 20 : 11),U=3,V=3)
 DD 	= shrpD.repair(dblD,13)
 return dbl.mt_adddiff(DD,U=3,V=3) }
+
+
+    #Anti-aliasing with contra-sharpening by Didée
+    FUNCTION odaa3(clip c) {
+    nn      = c.nnedi3(field=-2)
+    dbl     = mt_average(selecteven(nn),selectodd(nn),U=3,V=3)
+    dblD    = mt_makediff(c,dbl,U=3,V=3)
+    shrpD   = mt_makediff(dbl,dbl.removegrain((width(c)>1100) ? 20 : 11),U=3,V=3)
+    DD      = shrpD.repair(dblD,13)
+    return dbl.mt_adddiff(DD,U=3,V=3) }
 
 
 #Anti-aliasing with edge masking by martino, mask using "sobel" taken from Kintaro's useless filterscripts and modded by thetoof for spline36
