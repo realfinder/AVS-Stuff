@@ -290,7 +290,7 @@ useMedianBlur = sislumaonly && !(VersionNumber() < 2.6) ? -1 : useMedianBlur
 c = sislumaonly || !lumaonly ? input : sisphbd ? input.converttoy() : input.converttoy8()
 
 c
-useMedianBlur==0 ? SmoothUV(3,200,false) : useMedianBlur>0 ? MedianBlur(0,useMedianBlur,useMedianBlur) : last
+useMedianBlur==0 ? SmoothUV2(3,200,-1) : useMedianBlur>0 ? MedianBlur(0,useMedianBlur,useMedianBlur) : last
 Overlay(last, Blur(1,honly ? 0 : 1).Blur(1,honly ? 0 : 1), mode="difference")
 grsc=sislumaonly ? nop() : GreyCenteredToMask_dhh().greyscale()
 sislumaonly ? GreyCenteredToMask_dhh() : sisphbd ? grsc.converttoy() : grsc.converttoy8()
@@ -420,7 +420,7 @@ lsb ? lsb_out ? dp_merge : dp_merge.Ditherpost(mode=7, slice=false) : dp_merge
 }
 
 
-# Padding by Didée
+# Padding by DidÃ©e
 function sh_Padding(clip c, int left, int top, int right, int bottom, int "threads")
 {
 threads = Default(threads, sh_GetUserGlobalIMTint(true))
@@ -566,10 +566,10 @@ Function sh_Y8_YV411(clip c) {
 ########################################################
 
 ########################################
-## Didée's functions:
+## DidÃ©e's functions:
 
  # contra-sharpening: sharpen the denoised clip, but don't add more to any pixel than what was removed previously.
- # script function from Didée, at the VERY GRAINY thread
+ # script function from DidÃ©e, at the VERY GRAINY thread
 
  # ContraSharpeningHD formerly, HD parameter renamed to MC, and function renamed to ContraSharpening
 
@@ -612,7 +612,7 @@ yuy26 ? last.ConvertToYUY2().Interleaved2planar() : last
 }
 
 
- # MinBlur   by Didée
+ # MinBlur   by DidÃ©e
  # Nifty Gauss/Median combination (Modified for Planar input)
 
 function MinBlur(clip clp, int "r", int "uv", bool "planar", string "mode", int "abtype", bool "blurrep", int "y", int "u", int "v"){
@@ -1292,7 +1292,7 @@ cache<0 ? last : last.RequestLinear(8, cache, 5, false, false)
 function ediaa(clip a) {return a.EEDI2(field=1).TurnRight().EEDI2(field=1).TurnLeft().spline36resize(a.width,a.height,-0.5,-0.5)}
 
 
-#Anti-aliasing with contra-sharpening by Didée
+#Anti-aliasing with contra-sharpening by DidÃ©e
 function odaa(clip c) {
 nn	= c.nnedi2(field=-2)
 dbl   	= mt_average(selecteven(nn),selectodd(nn),U=3,V=3)
@@ -1302,7 +1302,7 @@ DD 	= shrpD.repair(dblD,13)
 return dbl.mt_adddiff(DD,U=3,V=3) }
 
 
-    #Anti-aliasing with contra-sharpening by Didée
+    #Anti-aliasing with contra-sharpening by DidÃ©e
     FUNCTION odaa3(clip c) {
     nn      = c.nnedi3(field=-2)
     dbl     = mt_average(selecteven(nn),selectodd(nn),U=3,V=3)
