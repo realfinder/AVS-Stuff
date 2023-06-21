@@ -1,5 +1,5 @@
 # AnimeIVTC() by thetoof
-# v2.386 2023-03-20 mod
+# v2.387 2023-06-20 mod
 # last update by AmjadSONY was:- make "precision=1" use "nnedi3" only for "Toriko Anime" by using it like this:- AnimeIVTC(1, precision=1)
 # add mode22 bool to use it in mode 2 for Spatial field-blend (field-blend in a part of the picture), ex:- AnimeIVTC(2, bbob=1, mode22=true)
 # TC file now will out in V2 ;) , add ediext clip to use it with STGMC and add bob4p to change STGMC Preset , add extbob clip to use an External bobber with bbob/cbob=5 , chrfix in mode 1 and other things fixed by doom9 member
@@ -40,6 +40,7 @@
 # simiauto using tfmtrimIn (autoload TrimInFile.txt)
 # change mode22 from bool to int from -1 to 3, 0 now same as false, 1 now same as true
 # mode22 new -2 mode
+# added TDecimateAnime and vfrDec
 
 # Read the documentation for all the required info to know how to use this function, With note that there are some things have changed in this MOD
 
@@ -52,7 +53,7 @@ function AnimeIVTC (clip i, int "mode", int "aa", int "precision", int "killcomb
 		, int "bbob", int "cbob", string "edimode", int "degrain", int "omode", int "cthresh", int "blockx", int "blocky", int "MI", int "tfmm", int "pp", int "metric", int "micmatching", bool "mChroma", bool "Chroma" \
 		, int "i1", int "i2", int "e1", int "e2", int "e3", int "p1", int "p2", bool "dchr", bool "palf", bool "tcfv1", bool "nvfr", bool "real30p", bool "autoAssuf", int "ediandnn", bool "o3025cfr", string "bbob4_params", bool "crepwithtdeint", int "tdeinttype" \
 		, int "overlap", int "pel", int "search", bool "nnedi3pel", val "credconv", int "mode22", val "ediext", string "bob4p", clip "extbob", string "extbobf", bool "repwithtdeint", bool "bobpresmooth", string "cbob4_params", bool "tdeintsharp", val "prefiltered_i" \
-		, float "dark", int "thin", int "sharp", int "smooth", bool "stabilize", int "tradius", int "aapel", int "aaov", int "aablk", string "aatype", int "vidDetect", string "d2v", string "tfmtrimIn", int "threads", float "autoAssufthr1", float "autoAssufthr2", float "autoAssufmthr", int "tfmslow"){
+		, float "dark", int "thin", int "sharp", int "smooth", bool "stabilize", int "tradius", int "aapel", int "aaov", int "aablk", string "aatype", int "vidDetect", string "d2v", string "tfmtrimIn", int "threads", float "autoAssufthr1", float "autoAssufthr2", float "autoAssufmthr", int "tfmslow", bool "TDecimateAnime", int "vfrDec"){
 
 ###General arguments###
 Assert(defined(mode), "Specify a mode... please read the documentation.")
@@ -101,7 +102,7 @@ frate  	= Ofrate==1 ? o3025cfr ? 29.970 : 23.976 : palf ? 24 : 25
 tnum	= Ofrate==1 ? o3025cfr ? 30000 : 24000 : mode!=4 && palf ? 24 : ((mode==1 || mode==3) && o3025cfr) || mode==2 ? 25 : 20
 tden	= Ofrate==1 ? 1001 : 1
 
-
+TDecimateAnime  = default ( TDecimateAnime,   false )
 
 #Set pattern=0 (tdecimate) for DHT (safest)
 pattern		= default ( pattern,		  0 )
@@ -322,7 +323,7 @@ dhtbob = mode==3 ? chrfix_b ? debprep : clearbob : nop()
 ################
 
 #HT decimation (mode=1), remove 3 frames out of 5 when chrfix=true since the clip has been bobbed to 60fps
-fmdecim = mode==1 ? chrfix_b ? (palf && Ofrate==2) ? debprep.tdecimate(1,13,25) : (o3025cfr) ? debprep.tdecimate(1,3,6) : debprep.tdecimate(1,3,5) : (palf && Ofrate==2) ? fm.tdecimate(1,1,25) : (o3025cfr) ? fm : (autoAssuf) ? fm.tdecimate(1) : fm.tdecimate() : nop()
+fmdecim = mode==1 ? chrfix_b ? (palf && Ofrate==2) ? debprep.tdecimate(1,13,25) : (o3025cfr) ? debprep.tdecimate(1,3,6) : debprep.tdecimate(1,3,5) : (palf && Ofrate==2) ? fm.tdecimate(1,1,25) : (o3025cfr) ? fm : (autoAssuf || TDecimateAnime) ? fm.tdecimate(1) : fm.tdecimate() : nop()
 
 #Field blended blend removal & decimation (mode=2) No need to check for chrfix since it was done in the previous step
 fbdecim = mode==2 ? mode22 == 3 ? chrfix_b ? Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob.detearing()).srestore(omode=1, thresh=44).RequestLinear().SelectOdd().srestore(omode=2, mode=4, thresh=44, cache=cache*3/2).srestore(frate=frate, mode=4, speed=-4, cache=cache) : 	Interleave(Merge(fbbob.DuplicateFrame(0).DeleteFrame(fbbob.FrameCount()),fbbob),fbbob.detearing()).srestore(omode=1, thresh=44).RequestLinear().SelectOdd().srestore(omode=2, mode=4, thresh=44, cache=cache*3/2).srestore(frate=frate, mode=-4, speed=-4, cache=cache) 	:
@@ -347,7 +348,7 @@ dhtdecim = mode==3 ? 			pattern==-1 ? stackvertical(stackhorizontal(a.subtitle("
 \ palf && Ofrate==2 ? tdecimate(1,13,25) : o3025cfr ? dhtbob.tdecimate(1,3,6) : dhtbob.tdecimate(1,3,5) : nop()
 
 #Hybrid CFR blend decimation of 30p into 24p
-blenddecim = (mode==4 && omode==1) ? chrfix_b ? (palf && Ofrate==2) ? debprep.tdecimate(1,13,25,hybrid=1) : o3025cfr ? debprep.tdecimate(1,3,6) : debprep.tdecimate(1,3,5,hybrid=1) : o3025cfr ? fm : (palf && Ofrate==2) ? fm.tdecimate(1,1,25,hybrid=1) : fm.tdecimate(hybrid=1) : nop()
+blenddecim = (mode==4 && omode==1) ? chrfix_b ? (palf && Ofrate==2) ? debprep.tdecimate(1,13,25,hybrid=1) : o3025cfr ? debprep.tdecimate(1,3,6) : debprep.tdecimate(1,3,5,hybrid=1) : o3025cfr ? fm : (palf && Ofrate==2) ? fm.tdecimate(1,1,25,hybrid=1) : TDecimateAnime ? fm.tdecimate(1,hybrid=1) : fm.tdecimate(hybrid=1) : nop()
 
 #########
 #Credits# CREDS=TRUE (USER SPECIFIES I1, I2, P1, P2, E1, E2 OR E3)
@@ -567,7 +568,7 @@ tovfrdec1 = omode==2 ? creds ? spliced : chrfix_b ? debprep : hybridfm : nop()
 tovfrdec2 = omode==2 ? rendering ? i : creds ? spliced : chrfix_b ? debprep : fm : nop()
 
 finalvfr = 	omode==2 && pass==1 ? o3025cfr ? tovfrdec1 : nvfr ? tovfrdec1.TDecimate(4, output="stats.txt",denoise=true,vidThresh=0.8,dupThresh=0.9,vidDetect=vidDetect) : tovfrdec1.TDecimate(4, output="stats.txt",vidDetect=vidDetect) :
-\		omode==2 && pass==2 ? o3025cfr ? tovfrdec2 : nvfr ? tovfrdec2.TDecimate(5,hybrid=2,tfmin=creds ? "" : "tfm.txt",input="stats.txt",mkvout="timecodes.txt",tcfv1=tcfv1,batch=true,vidThresh=0.4,dupThresh=0.6,vidDetect=vidDetect) : tovfrdec2.TDecimate(5,hybrid=2,tfmin=creds ? "" : "tfm.txt",input="stats.txt",mkvout="timecodes.txt",tcfv1=tcfv1,batch=true,vidDetect=vidDetect) : nop()
+\		omode==2 && pass==2 ? o3025cfr ? tovfrdec2 : nvfr ? tovfrdec2.TDecimate(5,vfrDec=vfrDec,hybrid=2,tfmin=creds ? "" : "tfm.txt",input="stats.txt",mkvout="timecodes.txt",tcfv1=tcfv1,batch=true,vidThresh=0.4,dupThresh=0.6,vidDetect=vidDetect) : tovfrdec2.TDecimate(5,vfrDec=vfrDec,hybrid=2,tfmin=creds ? "" : "tfm.txt",input="stats.txt",mkvout="timecodes.txt",tcfv1=tcfv1,batch=true,vidDetect=vidDetect) : nop()
 
 topp = omode==1 ? finalcfr : omode==2 ? finalvfr : nop()
 
