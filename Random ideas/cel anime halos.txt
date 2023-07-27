@@ -1,1 +1,0 @@
-DeHalo_alpha_2BD(customfix="clp.BilinearResize(Round(Width(clp)*1.5), Round(Height(clp)*1.5)).invert.mt_expand(mode=mt_circle).invert.BilinearResize(Width(clp),Height(clp))",ss=1,darkstr=0.01,search_rade=2,search_radi=1)
