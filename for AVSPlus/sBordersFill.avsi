@@ -1,5 +1,5 @@
 # sBordersFill by real.finder
-# Beta 08
+# Beta 081
 Function sBordersFill(clip c, int "left", int "top", int "right", int "bottom")
 {
 left   = default(left,   0)
@@ -7,7 +7,7 @@ top    = default(top,    0)
 right  = default(right,  0)
 bottom = default(bottom, 0)
 c
-z_ConvertFormat(chroma_subsampling="444", use_props=1)
+isy() ? last : z_ConvertFormat(chroma_subsampling="444", use_props=1)
 propSet("_FieldBased", 0)
 c2=last
 mask=BlankClip(last).LetterBox(top,bottom,left,right,color_yuv=$FFFFFF)
