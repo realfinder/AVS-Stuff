@@ -1,6 +1,6 @@
 #################################################################################################
 ###### GrainStabilizeMC v1.0     ######      by mawen1250      ######      2014.03.22      ######
-######                                    2020.05.28 HBD mod                               ######
+######                                    2023.12.01 HBD mod                               ######
 #################################################################################################
 ###### Requirements: masktools v2.0a48, mvtools v2.6.0.5, dither v1.25.1,                  ######
 ######               RgTools v0.92.1, MedianBlur2 v0.94, SmoothAdjust v3.00                ######
@@ -167,7 +167,7 @@ sischbd = sisphbd ? input.BitsPerComponent() > 8 : false
     pre_nr8  = !plsb ? Defined(p) ? p8
     \                             : nrmode <  0 ? sischbd ? input8.MinBlur(-nrmode, Y=Y32, U=U32, V=V32) : input8 .GSMC_MinBlur(-nrmode, Y=Y32, U=U32, V=V32, lsb_in=False, lsb=False, tv_range=tv_range, dither=dither)
     \                             : nrmode == 0 ? input8 .RemoveGrain(Yt?20:0, Ut?20:0, Vt?20:0)
-    \                                           : sischbd ? input8.sbr( r=nrmode, Y=Y32, U=U32, V=V32) : input8 .GSMC_sbr    ( nrmode, Y=Y32, U=U32, V=V32, lsb_in=False, lsb=False, tv_range=tv_range, dither=dither)
+    \                                           : sischbd ? input8.sbr_avsi( r=nrmode, Y=Y32, U=U32, V=V32) : input8 .GSMC_sbr    ( nrmode, Y=Y32, U=U32, V=V32, lsb_in=False, lsb=False, tv_range=tv_range, dither=dither)
     \                : NOP()
     dif_nr8  = !plsb ? mt_makediff(input8, pre_nr8, Y=Y31, U=U31, V=V31) : NOP()
     
