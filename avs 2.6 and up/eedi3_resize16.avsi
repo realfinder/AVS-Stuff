@@ -1,5 +1,5 @@
 #################################################################################################
-###### eedi3_resize16 v3.3.15 ###### by mawen1250 mod by A.SONY ######     2023.03.27      ######
+###### eedi3_resize16 v3.3.16 ###### by mawen1250 mod by A.SONY ######     2023.12.27      ######
 #################################################################################################
 ###### from v2.8 on, eedi3_resize16 only supports AviSynth v2.6+                           ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, eedi3 v0.9.2.3,                    ######
@@ -34,7 +34,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 \                        int "Y", int "U", int "V", bool "lsb_in", bool "lsb", int "dither", bool "nlsb",
 \                        bool "FastediHBD", bool "UseFmtc", bool "nnsclip", float "alpha",
 \                        float "beta", float "gamma", int "nrad", int "mdis", bool "hp", bool "ucubic", bool "cost3", 
-\                        int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2", int "nnrep")
+\                        int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2", int "nnrep", bool "cl")
 {
     sisphbd = AvsPlusVersionNumber > 2294
     sisparr = AvsPlusVersionNumber > 3381
@@ -77,13 +77,14 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
 	###############################################################################################################################
     # Parameters for nnedi3
 	
-    nsize    = Default(nsize,    0      )
-    nns      = Default(nns,      4      )
-    qual     = Default(qual,     2      )
-    etype    = Default(etype,    0      )
-    pscrn    = Default(pscrn,    4      )
-    UseFmtc  = Default(UseFmtc, sisparr )
-    nnsclip  = Default(nnsclip,  false  )
+    nsize    = Default(nsize,    0       )
+    nns      = Default(nns,      4       )
+    qual     = Default(qual,     2       )
+    etype    = Default(etype,    0       )
+    cl       = Default(cl,       false   )
+    pscrn    = Default(pscrn, cl ? 1 : 4 )
+    UseFmtc  = Default(UseFmtc, sisparr  )
+    nnsclip  = Default(nnsclip,  false   )
 
 
     # Parameters for eedi3
@@ -409,7 +410,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     !(enable && edt) ? NOP() : \
     yhct==chct && yvct==cvct && chr420 ? \
     Eval("""
-        edgeed  = eedi3_resize16_rpow2(nlsb ? input16 : input8, yvct, yhct, 1, 1, Yt, Ut, Vt, nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = nlsb)
+        edgeed  = eedi3_resize16_rpow2(nlsb ? input16 : input8, yvct, yhct, 1, 1, Yt, Ut, Vt, nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = nlsb, cl=cl)
     	edgeedY = sharp>0 ? nlsb ? edgeed.CSmod16(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp)
     	\                        : sischbd ? FastEdi ? UseFmtc ? edgeed.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).fmtc_bitdepth(sbpc, planes=planes2, fulls=!tv_range) : edgeed.CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).convertbits(sbpc)
 		\                                             : edgeed.CSmod(chroma=false, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
@@ -422,43 +423,43 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
     Eval("""
         edgeedY = !Yedt ? NOP()
     	\               : sharp>0 ? sisprgb ? input16.eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, Ut, Vt,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false, cl=cl)
         \                                 .CSmod(chroma=U32==3||V32==3, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
         \                                   : nlsb ? input16.ConvertToY ().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = true)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = true, cl=cl)
         \                                 .CSmod16(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp)
         \                                   : sischbd && FastEdi ? UseFmtc ? input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false, cl=cl)
         \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).fmtc_bitdepth(sbpc, planes=Yt ? "0" : "", fulls=!tv_range)
 		\                         		    : input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false, cl=cl)
         \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1).convertbits(sbpc)
 		\                         		    : sischbd ? input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false, cl=cl)
         \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
 		\                         		    : input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false, cl=cl)
         \                                 .CSmod(chroma=False, ss_w=1.00, ss_h=1.00, preblur=-4, Smethod=1, kernel=6, strength=sharp, Soothe=-1)
     	\                                 .eedi3_resize16_U16(tv_range, Yt, False, False)
         \                         : sisprgb ? input16.eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, Ut, Vt,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false, cl=cl)
         \                                   : nlsb || sischbd ? FastEdi ? UseFmtc ? input16.ConvertToY ().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = !sischbd).fmtc_bitdepth(sbpc, planes=Yt ? "0" : "", fulls=!tv_range)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = !sischbd, cl=cl).fmtc_bitdepth(sbpc, planes=Yt ? "0" : "", fulls=!tv_range)
         \                                : input16.ConvertToY ().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = !sischbd).convertbits(sbpc)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = !sischbd, cl=cl).convertbits(sbpc)
         \                                : input16.ConvertToY ().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = !sischbd)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = !sischbd, cl=cl)
         \                                : input8.""" + syext + """().eedi3_resize16_rpow2(yvct, yhct, 1, 1, Yt, False, False,
-        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false)
+        \                                                                        nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = false, cl=cl)
     	\                                 .eedi3_resize16_U16(tv_range, Yt, False, False)
     	edgeedU = sisprgb || !Uedt ? NOP()
     	\               : eedi3_resize16_rpow2(nlsb ? input16.ExtractU() : input8.""" + suext + """(), cvct, chct, 1, 1, Ut, False, False,
-        \                                                            nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = nlsb)
+        \                                                            nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = nlsb, cl=cl)
     	edgeedU = sisprgb || !Uedt ? NOP()
     	\               : nlsb || sischbd ? FastEdi ? UseFmtc ? edgeedU.fmtc_bitdepth(sbpc, planes=Ut ? "0" : "", fulls=!tv_range) : edgeedU.convertbits(sbpc) : edgeedU : edgeedU.eedi3_resize16_U16(tv_range, Ut, False, False)
     	edgeedV = sisprgb || !Vedt ? NOP()
     	\               : eedi3_resize16_rpow2(nlsb ? input16.ExtractV() : input8.""" + svext + """(), cvct, chct, 1, 1, Vt, False, False,
-        \                                                            nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = nlsb)
+        \                                                            nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, false, nlsb = nlsb, cl=cl)
     	edgeedV = sisprgb || !Vedt ? NOP()
     	\               : nlsb || sischbd ? FastEdi ? UseFmtc ? edgeedV.fmtc_bitdepth(sbpc, planes=Vt ? "0" : "", fulls=!tv_range) : edgeedV.convertbits(sbpc) : edgeedV : edgeedV.eedi3_resize16_U16(tv_range, Vt, False, False)
     """)
@@ -707,7 +708,7 @@ flat16planes = string(Y32 == 3 ? "0, " : "") + string(U32 == 3 ? "1, " : "") + s
 
 
 Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", int "hfield", bool "Y", bool "U", bool "V",
-\                              int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads", bool "nnsclip", float "alpha", float "beta", float "gamma", int "nrad", int "mdis", bool "hp", bool "ucubic", bool "cost3", int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2", int "nnrep", bool "honly", bool "nlsb")
+\                              int "nsize", int "nns", int "qual", int "etype", int "pscrn", int "threads", bool "nnsclip", float "alpha", float "beta", float "gamma", int "nrad", int "mdis", bool "hp", bool "ucubic", bool "cost3", int "vcheck", float "vthresh0", float "vthresh1", float "vthresh2", int "nnrep", bool "honly", bool "nlsb", bool "cl")
 {
     vct      = Default(vct,      1      )
     hct      = Default(hct,      1      )
@@ -720,6 +721,7 @@ Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", in
     nlsb     = Default(nlsb,     False  )
     nnsclip  = Default(nnsclip,  false  )
     nnrep    = Default(nnrep,    0      )
+    cl       = Default(cl,       false  )
     
     sisphbd = AvsPlusVersionNumber > 2294
     
@@ -729,8 +731,8 @@ Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", in
     Eval("""
         (honly) ? last
         \       : Eval(" try { sisphbd ? dontdoft : fturnright(chroma=U||V, mt=threads!=1) } catch(error_msg) { TurnRight() } ")
-        nnec = (nnrep > 0 || nnsclip) ? sh_Padding(2,2,2,2,threads).nnedi3(hfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
-        eedi3(hfield, True, Y, U, V, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnsclip ? nnec : undefined, threads)
+        nnec = (nnrep > 0 || nnsclip) ? cl ? sh_Padding(2,2,2,2,threads).nnedi3cl(hfield, True, nsize=nsize, nns=nns, qual=qual, etype=etype, pscrn=pscrn).crop(2,4,-2,-4,true) : sh_Padding(2,2,2,2,threads).nnedi3(hfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
+        cl ? eedi3cl(hfield, True, alpha=alpha, beta=beta, gamma=gamma, nrad=nrad, mdis=mdis, hp=hp, ucubic=ucubic, cost3=cost3, vcheck=vcheck, vthresh0=vthresh0, vthresh1=vthresh1, vthresh2=vthresh2, sclip=nnsclip ? nnec : undefined) : eedi3(hfield, True, Y, U, V, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnsclip ? nnec : undefined, threads)
         nnrep > 1 ? slimit_dif2(last,nnec,thr=4,U=U?3:2,V=V?3:2) : nnrep > 1 ? Repair(nnec,9,U?9:0,V?9:0) : last
         
     	hct    = hct - 1
@@ -743,8 +745,8 @@ Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", in
     
     vct >= 1 && !honly ? \
     Eval("""
-        nnec = (nnrep > 0 || nnsclip) ? sh_Padding(2,2,2,2,threads).nnedi3(vfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
-        eedi3(vfield, True, Y, U, V, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnsclip ? nnec : undefined, threads)
+        nnec = (nnrep > 0 || nnsclip) ? cl ? sh_Padding(2,2,2,2,threads).nnedi3cl(vfield, True, nsize=nsize, nns=nns, qual=qual, etype=etype, pscrn=pscrn).crop(2,4,-2,-4,true) : sh_Padding(2,2,2,2,threads).nnedi3(vfield, True, Y, U, V, nsize, nns, qual, etype, pscrn, threads).crop(2,4,-2,-4,true) : nop()
+        cl ? eedi3cl(vfield, True, alpha=alpha, beta=beta, gamma=gamma, nrad=nrad, mdis=mdis, hp=hp, ucubic=ucubic, cost3=cost3, vcheck=vcheck, vthresh0=vthresh0, vthresh1=vthresh1, vthresh2=vthresh2, sclip=nnsclip ? nnec : undefined) : eedi3(vfield, True, Y, U, V, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnsclip ? nnec : undefined, threads)
         nnrep > 1 ? slimit_dif2(last,nnec,thr=4,U=U?3:2,V=V?3:2) : nnrep > 1 ? Repair(nnec,9,U?9:0,V?9:0) : last
         
     	vct    = vct - 1
@@ -754,7 +756,7 @@ Function eedi3_resize16_rpow2(clip input, int "vct", int "hct", int "vfield", in
     nlsb && (Y||U||V) ? last.ConvertToStacked() : last
     
     return Y||U||V ? vct <= 0 && hct <= 0 ? last
-    \                                     : last.eedi3_resize16_rpow2(vct, hct, vfield, hfield, Y, U, V, nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, honly, nlsb)
+    \                                     : last.eedi3_resize16_rpow2(vct, hct, vfield, hfield, Y, U, V, nsize, nns, qual, etype, pscrn, threads, nnsclip, alpha, beta, gamma, nrad, mdis, hp, ucubic, cost3, vcheck, vthresh0, vthresh1, vthresh2, nnrep, honly, nlsb, cl)
     \              : input
 }
 
