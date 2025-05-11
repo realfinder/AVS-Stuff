@@ -1,4 +1,4 @@
-# santiag v1.606
+# santiag v1.607
 # Simple antialiasing
 
 # This program is free software. It comes without any warranty, to
@@ -7,8 +7,8 @@
 # To Public License, Version 2, as published by Sam Hocevar. See
 # http://sam.zoy.org/wtfpl/COPYING for more details.
 
-# type = "nnedi3", "eedi2", "eedi3" or "sangnom"
-# "eedi3" requires v0.9.2 or later and 0.9.2.3 or later in avs26\avs+
+# type = "nnedi3", "eedi2", "eedi3", "eedi3cl" or "sangnom"
+# "eedi3" requires eedi3 v0.9.2 or later and 0.9.2.3 or later in avs26\avs+
 # "sangnom" requires sangnom2
 Function santiag (clip c, int "strh", int "strv", string "type", int "nns", int "aa", int "aac", int "threads", int "nsize", int "vcheck", int "fw", int "fh", bool "halfres", string "scaler_post", int "maskt", string "typeh", string "typev", bool "lumaonly", bool "aath", int "nnrep", string "scaler_arg", bool "santiag_sangnom_bug")
 {
@@ -86,6 +86,7 @@ Function santiag_stronger (clip c, int strength, string type, bool halfres, bool
 	  (type == "nnedi3" ) ? santiag_nnedi3  (dh, field, lumaonly, nns=nns, threads=threads, nsize=nsize)
 \	: (type == "eedi2"  ) ? santiag_eedi2   (dh, field)
 \	: (type == "eedi3"  ) ? santiag_eedi3   (dh, field, lumaonly, nns=nns, threads=threads, nsize=nsize, vcheck=vcheck, maskt=maskt, nnrep=nnrep)
+\	: (type == "eedi3cl") ? santiag_eedi3cl (dh, field, lumaonly, nns=nns, threads=threads, nsize=nsize, vcheck=vcheck, nnrep=nnrep)
 \	: (type == "sangnom") ? santiag_sangnom (dh, santiag_sangnom_bug ? field : field==0 ? 2 : 1, aa=aa, aac=aac, itavs26, chroma=!lumaonly,santiag_sangnom_bug=santiag_sangnom_bug)
 \	: Assert (false, "Santiag: unexpected value for type.")
 }
@@ -120,6 +121,17 @@ Function santiag_eedi3 (clip c, bool dh, int field, bool lumaonly, int "nns", in
 
 	c.eedi3 (dh=dh, field=field, threads=threads, vcheck=vcheck, sclip=sclip, mclip=mclip, u=!lumaonly, v=!lumaonly)
 	nnrep > 1 ? slimit_dif2(last,sclip,thr=4,u=!lumaonly ? 3 : 2, v=!lumaonly ? 3 : 2) : nnrep > 1 ? Repair(sclip,9,!lumaonly ? 9 : 0) : last
+}
+
+Function santiag_eedi3cl (clip c, bool dh, int field, bool lumaonly, int "nns", int "threads", int "nsize", int "vcheck", int "nnrep")
+{
+nochr = c.isy()
+c1 = !nochr && lumaonly ? c.ExtractY() : c
+	sclip = c1.santiag_nnedi3 (dh, field, lumaonly, nns=nns, threads=threads, nsize=nsize)
+
+	c1.eedi3cl (dh=dh, field=field, vcheck=vcheck, sclip=sclip)
+	nnrep > 1 ? slimit_dif2(last,sclip,thr=4) : nnrep > 1 ? Repair(sclip,9) : last
+	!nochr && lumaonly ? CombinePlanes(last,c,planes="YUV",sample_clip=c) : last
 }
 
 Function santiag_sangnom (clip c, bool dh, int field, bool itavs26, int "aa", int "aac", bool "luma", bool "chroma", bool "santiag_sangnom_bug")
