@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------#
 #                                                                   #
 #                     QTGMC 3.33 by Vit, 2012                       #
-#     QTGMC 3.385 2023 mod by A.SONY, based on v3.33d by Dogway     #
+#     QTGMC 3.386 2025 mod by A.SONY, based on v3.33d by Dogway     #
 #                                                                   #
 #   A high quality deinterlacer using motion-compensated temporal   #
 #  smoothing, with a range of features for quality and convenience  #
@@ -12,6 +12,9 @@
 # Full documentation is in the 'QTGMC' html file that may comes with this script, or even better see avisynth wiki
 #
 # --- LATEST CHANGES ---
+#
+# v3.386s
+# - Fix EEDI3CL
 #
 # v3.385s
 # - added new EdiMode modes:- NNEDI3CL, EEDI3CL, EEDI3CL+NNEDI3CL, BWDIF+NNEDI3CL and BWDIF+EEDI3CL
@@ -1057,8 +1060,8 @@ function QTGMC_Interpolate( clip Input, int InputType, string EdiMode, int NNSiz
 	NNEDI3clp = EdiMode == "NNEDI3CL" || EdiMode == "EEDI3CL+NNEDI3CL" || EdiMode == "BWDIF+NNEDI3CL" || EdiMode == "BWDIF+EEDI3CL" ? Input.NNEDI3CL( field=-2, nsize=NNSize, nns=NNeurons, qual=EdiQual, planes=!CEed?array(0):undefined) : NNEDI3clp
 	EEDI3clp = EdiMode == "BWDIF+EEDI3" ? isyuy2(Input) ? Input.nonyuy2clipin(true).EEDI3( field=-2, mdis=EdiMaxD, threads=EdiThreads, U=CEed,V=CEed, sclip=NNEDI3clp.nonyuy2clipin(true) ).slimit_dif2(NNEDI3clp.nonyuy2clipin(true),thr=4, U=CEed?3:2,V=CEed?3:2).nonyuy2clipout(true) : Input.EEDI3( field=-2, mdis=EdiMaxD, threads=EdiThreads, U=CEed,V=CEed, sclip=NNEDI3clp ).slimit_dif2(NNEDI3clp,thr=4,U=CEed?3:2,V=CEed?3:2) : \
 	                                      EdiMode == "EEDI3" || EdiMode == "EEDI3+NNEDI3" ? Input.EEDI3( field=-2, mdis=EdiMaxD, threads=EdiThreads, U=CEed,V=CEed, sclip=NNEDI3clp ) : nop()									  
-	EEDI3clp = EdiMode == "BWDIF+EEDI3CL" ? isyuy2(Input) ? Input.nonyuy2clipin(true).EEDI3CL( field=-2, mdis=EdiMaxD, threads=EdiThreads, planes=!CEed?array(0):undefined, sclip=NNEDI3clp.nonyuy2clipin(true) ).slimit_dif2(NNEDI3clp.nonyuy2clipin(true),thr=4, U=CEed?3:2,V=CEed?3:2).nonyuy2clipout(true) : Input.EEDI3CL( field=-2, mdis=EdiMaxD, threads=EdiThreads, planes=!CEed?array(0):undefined, sclip=NNEDI3clp ).slimit_dif2(NNEDI3clp,thr=4,U=CEed?3:2,V=CEed?3:2) : \
-	                                      EdiMode == "EEDI3CL" || EdiMode == "EEDI3CL+NNEDI3CL" ? Input.EEDI3CL( field=-2, mdis=EdiMaxD, threads=EdiThreads, planes=!CEed?array(0):undefined, sclip=NNEDI3clp ) : EEDI3clp
+	EEDI3clp = EdiMode == "BWDIF+EEDI3CL" ? isyuy2(Input) ? Input.nonyuy2clipin(true).EEDI3CL( field=-2, mdis=EdiMaxD, planes=!CEed?array(0):undefined, sclip=NNEDI3clp.nonyuy2clipin(true) ).slimit_dif2(NNEDI3clp.nonyuy2clipin(true),thr=4, U=CEed?3:2,V=CEed?3:2).nonyuy2clipout(true) : Input.EEDI3CL( field=-2, mdis=EdiMaxD, planes=!CEed?array(0):undefined, sclip=NNEDI3clp ).slimit_dif2(NNEDI3clp,thr=4,U=CEed?3:2,V=CEed?3:2) : \
+	                                      EdiMode == "EEDI3CL" || EdiMode == "EEDI3CL+NNEDI3CL" ? Input.EEDI3CL( field=-2, mdis=EdiMaxD, planes=!CEed?array(0):undefined, sclip=NNEDI3clp ) : EEDI3clp
 
 	interp = (InputType == 1)            	 ? Input : \
 	         (EdiMode == "NNEDI3")       	 ? NNEDI3clp : \
