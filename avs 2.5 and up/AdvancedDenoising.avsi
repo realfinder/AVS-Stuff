@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.915
+# Advanced Denoising v1.915
 # Collections of Functions
 
 ### Functions list:-
