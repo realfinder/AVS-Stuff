@@ -1,4 +1,4 @@
-# Advanced Denoising and anime bob v1.905
+# Advanced Denoising and anime bob v1.915
 # Collections of Functions
 
 ### Functions list:-
@@ -429,19 +429,22 @@ filtering_wsb(src,filter,oneborder,linesm,clip4lines,mmy,mmLuma,mmuv,minflate, 1
 
 
 # filtering without borders
-Function filtering_wob (clip src, string "filter", int "left", int "top", int "right", int "bottom")
+# 1.1
+Function filtering_wob (clip src, string "filter", int "left", int "top", int "right", int "bottom", bool "croptest")
 {
 left=Default(left,0)
 top=Default(top,0)
 right=Default(right,0)
 bottom=Default(bottom,0)
+croptest=Default(croptest,false)
+src2crop=croptest ? src.Invert() : src
 src
 crop(left, top, -right, -bottom)
-eval(filter)
-left > 0 ? src.crop(0,top,-(Width(src)-left),-bottom).StackHorizontal(last) : last
-right > 0 ? last.StackHorizontal(src.Crop(Width(src)-right,top,0,-bottom)) : last
-top > 0 ? src.crop(0,0,-(Height(src)-top),0).StackVertical(last) : last
-bottom > 0 ? last.StackVertical(src.Crop(0,Height(src)-bottom,0,0)) : last
+croptest ? last : eval(filter)
+left > 0 ? src2crop.crop(0,top,-(Width(src)-left),-bottom).StackHorizontal(last) : last
+right > 0 ? last.StackHorizontal(src2crop.Crop(Width(src)-right,top,0,-bottom)) : last
+top > 0 ? src2crop.crop(0,0,0,-(Height(src)-top)).StackVertical(last) : last
+bottom > 0 ? last.StackVertical(src2crop.Crop(0,Height(src)-bottom,0,0)) : last
 }
 
 
