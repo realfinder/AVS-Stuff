@@ -13,6 +13,9 @@
 #
 # --- LATEST CHANGES ---
 #
+# v3.387s
+# - add bool xflateMaTo to use masktools2 mt_ for deflate and inflate
+#
 # v3.386s
 # - Fix EEDI3CL
 #
@@ -212,7 +215,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
                     float "NoiseRestore", string "NoiseDeint", bool "StabilizeNoise", int "InputType", float "ProgSADMask", int "FPSDivisor", \
                     int "ShutterBlur", float "ShutterAngleSrc", float "ShutterAngleOut", int "SBlurLimit", bool "Border", bool "Precise", string "Tuning", \
                     bool "ShowSettings", string "GlobalNames", string "PrevGlobals", int "ForceTR", \
-                    val "BT", val "DetailRestore", val "MotionBlur", val "MBlurLimit", val "NoiseBypass", float "Str", float "Amp", bool "TV_range", int "useEdiExt", int "DftDither", bool "lsbd", bool "lsb", bool "n16", bool "keep_tv_range", String "device_type", int "device_id", bool "n16d", bool "FastMA", bool "ESearchP", bool "Refinemotion" )
+                    val "BT", val "DetailRestore", val "MotionBlur", val "MBlurLimit", val "NoiseBypass", float "Str", float "Amp", bool "TV_range", int "useEdiExt", int "DftDither", bool "lsbd", bool "lsb", bool "n16", bool "keep_tv_range", String "device_type", int "device_id", bool "n16d", bool "FastMA", bool "ESearchP", bool "Refinemotion", bool "xflateMaTo" )
 {
 	# EdiMode="RepcYadif"/"cYadif" require the Yadif plugin, which doesn't autoload. Typically the calling script would load it.
 
@@ -237,6 +240,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	
 	# Dogways Added Defaults
 	RefineMotion = default( RefineMotion,        false    )
+	xflateMaTo   = default( xflateMaTo, false)
 	lsbd         = default( lsbd, false)
 	lsb          = default( lsb, false)
 
@@ -558,7 +562,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	                               (ChromaMotion ? ts1.Merge( ts2, 0.357 ).Merge( bobbed, 0.125 ) : ts1.MergeLuma( ts2, 0.357 ).MergeLuma( bobbed, 0.125 ))
 
 	# Remove areas of difference between temporal blurred motion search clip and bob that are not due to bob-shimmer - removes general motion blur
-	repair0 = (IsClip(srchClip) || Rep0 == 0) ? binomial0 : binomial0.QTGMC_KeepOnlyBobShimmerFixes( bobbed, Rep0, (RepChroma && ChromaMotion) )
+	repair0 = (IsClip(srchClip) || Rep0 == 0) ? binomial0 : binomial0.QTGMC_KeepOnlyBobShimmerFixes( bobbed, Rep0, (RepChroma && ChromaMotion), xflateMaTo )
 
 	# Blur image and soften edges to assist in motion matching of edge blocks. Blocks are matched by SAD (sum of absolute differences between blocks), but even
 	# a slight change in an edge from frame to frame will give a high SAD due to the higher contrast of edges
@@ -893,7 +897,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	                         degrain1.Merge( degrain2, 0.2 ).Merge( edi, 0.0625 )
 
 	# Remove areas of difference between smoothed image and interpolated image that are not bob-shimmer fixes: repairs residual motion blur from temporal smooth
-	repair1 = (Rep1 == 0) ? binomial1 : binomial1.QTGMC_KeepOnlyBobShimmerFixes( edi, Rep1, RepChroma )
+	repair1 = (Rep1 == 0) ? binomial1 : binomial1.QTGMC_KeepOnlyBobShimmerFixes( edi, Rep1, RepChroma, xflateMaTo )
 
 	# Apply source match - use difference between output and source to succesively refine output [extracted to function to clarify main code path]
 	match = (SourceMatch == 0) ? repair1 : \
@@ -958,7 +962,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	stable  = (TR2 > 0) ? lsb ? stable.ditherpost(mode=6, slice=false) : n16 ? stable.ConvertTo8bit(dither=1) : stable : stable
 
 	# Remove areas of difference between final output & basic interpolated image that are not bob-shimmer fixes: repairs motion blur caused by temporal smooth
-	repair2 = (Rep2 == 0) ? stable : stable.QTGMC_KeepOnlyBobShimmerFixes( edi, Rep2, RepChroma )
+	repair2 = (Rep2 == 0) ? stable : stable.QTGMC_KeepOnlyBobShimmerFixes( edi, Rep2, RepChroma, xflateMaTo )
 
 	# Limit over-sharpening by clamping to neighboring (spatial or temporal) min/max values in original
 	# Occurs here (after final temporal smooth) if SLMode == 3,4. Allows more sharpening here, but more prone to introducing minor artefacts
@@ -1100,8 +1104,10 @@ function QTGMC_Interpolate( clip Input, int InputType, string EdiMode, int NNSiz
 
 # Functions (from original TGMC) used instead of mt_xxflate with similar operation but a somewhat stronger result. Originally added for speed, they are
 # no longer faster due to improvements in masktools. Difference (visual and speed) is small so may be reverted in a later version.
-function QTGMC_inflate( clip c, int "Y", int "U", int "V" )
+function QTGMC_inflate( clip c, int "Y", int "U", int "V", bool "MaTo" )
 {
+	MaTo=default( MaTo, false )
+!MaTo ? eval("""
 	# >>>> YUY2 is planar here
 	mtY =default( Y, 3 )
 	mtU =default( U, 1 )
@@ -1110,10 +1116,13 @@ function QTGMC_inflate( clip c, int "Y", int "U", int "V" )
 	rgU = (mtU == 3) ? 20 : -1
 	rgV = (mtV == 3) ? 20 : -1
 	mt_logic( c, c.RemoveGrain( rgY, rgU, rgV ), "max", Y=mtY,U=mtU,V=mtV )
+""") : c.mt_inflate( Y=Y,U=U,V=V )
 }
 
-function QTGMC_deflate( clip c, int "Y", int "U", int "V" )
+function QTGMC_deflate( clip c, int "Y", int "U", int "V", bool "MaTo" )
 {
+	MaTo=default( MaTo, false )
+!MaTo ? eval("""
 	# >>>> YUY2 is planar here
 	mtY =default( Y, 3 )
 	mtU =default( U, 1 )
@@ -1122,12 +1131,13 @@ function QTGMC_deflate( clip c, int "Y", int "U", int "V" )
 	rgU = (mtU == 3) ? 20 : -1
 	rgV = (mtV == 3) ? 20 : -1
 	mt_logic( c, c.RemoveGrain( rgY, rgU, rgV ), "min", Y=mtY,U=mtU,V=mtV )
+""") : c.mt_deflate( Y=Y,U=U,V=V )
 }
 
 # Helper function: Compare processed clip with reference clip: only allow thin, horizontal areas of difference, i.e. bob shimmer fixes
 # Rough algorithm: Get difference, deflate vertically by a couple of pixels or so, then inflate again. Thin regions will be removed
 #                  by this process. Restore remaining areas of difference back to as they were in reference clip.
-function QTGMC_KeepOnlyBobShimmerFixes( clip Input, clip Ref, int Rep, bool Chroma )
+function QTGMC_KeepOnlyBobShimmerFixes( clip Input, clip Ref, int Rep, bool Chroma, bool MaTo )
 {
 	# >>>> YUY2 is planar here
 
@@ -1147,7 +1157,7 @@ function QTGMC_KeepOnlyBobShimmerFixes( clip Input, clip Ref, int Rep, bool Chro
 	choke1 =                        diff.  mt_inpand( mode="vertical", U=RCrg,V=RCrg )            #      x x x x x x x x    1 pixel   \
 	choke1 = (ed > 2)             ? choke1.mt_inpand( mode="vertical", U=RCrg,V=RCrg ) : choke1   #      . . . x x x x x    1 pixel    |  Deflate to remove thin areas
 	choke1 = (ed > 5)             ? choke1.mt_inpand( mode="vertical", U=RCrg,V=RCrg ) : choke1   #      . . . . . . x x    1 pixel   /
-	choke1 = (ed % 3 != 0)        ? choke1.QTGMC_deflate( U=RCrg,V=RCrg )              : choke1   #      . x x . x x . x    A bit more deflate & some horizonal effect
+	choke1 = (ed % 3 != 0)        ? choke1.QTGMC_deflate( U=RCrg,V=RCrg, MaTo=MaTo )   : choke1   #      . x x . x x . x    A bit more deflate & some horizonal effect
 	choke1 = (ed == 2 || ed == 5) ? choke1.RemoveGrain( 4              )               : choke1   #      . . x . . x . .    Local median
                                                                                                                       
 	choke1 =                        choke1.mt_expand( mode="vertical", U=RCrg,V=RCrg )            #      x x x x x x x x    1 pixel  \
@@ -1156,22 +1166,22 @@ function QTGMC_KeepOnlyBobShimmerFixes( clip Input, clip Ref, int Rep, bool Chro
 
 	# Over-dilation - extra reflation up to about 1 pixel
 	choke1 = (od == 0)            ? choke1 : \
-	         (od == 1)            ? choke1.QTGMC_inflate( U=RCrg,V=RCrg ) : \
-	         (od == 2)            ? choke1.QTGMC_inflate( U=RCrg,V=RCrg ).QTGMC_inflate( U=RCrg,V=RCrg ) : \
+	         (od == 1)            ? choke1.QTGMC_inflate( U=RCrg,V=RCrg, MaTo=MaTo ) : \
+	         (od == 2)            ? choke1.QTGMC_inflate( U=RCrg,V=RCrg, MaTo=MaTo ).QTGMC_inflate( U=RCrg,V=RCrg, MaTo=MaTo ) : \
 	                                choke1.mt_expand ( U=RCrg,V=RCrg )
 
 	# Areas of negative difference (similar to above)
 	choke2 =                        diff.  mt_expand( mode="vertical", U=RCrg,V=RCrg )         
 	choke2 = (ed > 2)             ? choke2.mt_expand( mode="vertical", U=RCrg,V=RCrg ) : choke2
 	choke2 = (ed > 5)             ? choke2.mt_expand( mode="vertical", U=RCrg,V=RCrg ) : choke2
-	choke2 = (ed % 3 != 0)        ? choke2.QTGMC_inflate( U=RCrg,V=RCrg )              : choke2
+	choke2 = (ed % 3 != 0)        ? choke2.QTGMC_inflate( U=RCrg,V=RCrg, MaTo=MaTo )   : choke2
 	choke2 = (ed == 2 || ed == 5) ? choke2.RemoveGrain( 4              )               : choke2
 	choke2 =                        choke2.mt_inpand( mode="vertical", U=RCrg,V=RCrg )
 	choke2 = (ed > 1)             ? choke2.mt_inpand( mode="vertical", U=RCrg,V=RCrg ) : choke2
 	choke2 = (ed > 4)             ? choke2.mt_inpand( mode="vertical", U=RCrg,V=RCrg ) : choke2
 	choke2 = (od == 0)            ? choke2 : \
-	         (od == 1)            ? choke2.QTGMC_deflate( U=RCrg,V=RCrg )  : \
-	         (od == 2)            ? choke2.QTGMC_deflate( U=RCrg,V=RCrg ).QTGMC_deflate( U=RCrg,V=RCrg ) : \
+	         (od == 1)            ? choke2.QTGMC_deflate( U=RCrg,V=RCrg, MaTo=MaTo )  : \
+	         (od == 2)            ? choke2.QTGMC_deflate( U=RCrg,V=RCrg, MaTo=MaTo ).QTGMC_deflate( U=RCrg,V=RCrg, MaTo=MaTo ) : \
 	                                choke2.mt_inpand ( U=RCrg,V=RCrg )
 
 	# Combine above areas to find those areas of difference to restore
