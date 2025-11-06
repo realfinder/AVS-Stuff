@@ -1106,7 +1106,7 @@ function QTGMC_Interpolate( clip Input, int InputType, string EdiMode, int NNSiz
 # no longer faster due to improvements in masktools. Difference (visual and speed) is small so may be reverted in a later version.
 function QTGMC_inflate( clip c, int "Y", int "U", int "V", bool "MaTo" )
 {
-	MaTo=default( Y, false )
+	MaTo=default( MaTo, false )
 !MaTo ? eval("""
 	# >>>> YUY2 is planar here
 	mtY =default( Y, 3 )
@@ -1121,7 +1121,7 @@ function QTGMC_inflate( clip c, int "Y", int "U", int "V", bool "MaTo" )
 
 function QTGMC_deflate( clip c, int "Y", int "U", int "V", bool "MaTo" )
 {
-	MaTo=default( Y, false )
+	MaTo=default( MaTo, false )
 !MaTo ? eval("""
 	# >>>> YUY2 is planar here
 	mtY =default( Y, 3 )
