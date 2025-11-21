@@ -26,6 +26,7 @@ Requirements:
 - ExTools by Dogway
 - RgTools
 - MaskTools2
+- Zs_RF_Shared.avsi
 
 Parameters:
 
@@ -173,7 +174,7 @@ pixel_type
 ==============================================================================
 */
 
-Function crt_display (clip src, float sw, float sh, float "voff", float "ppp",
+Function crt_display (clip ogsrc, float sw, float sh, float "voff", float "ppp",
 \	float "cutoff", float "scandist", float "sharpv", float "sharph",
 \	float "blurh", float "glowgain", float "glowh", float "glowv",
 \	float "glowsens", float "contrast", float "gamma", float "softclip",
@@ -181,8 +182,10 @@ Function crt_display (clip src, float sw, float sh, float "voff", float "ppp",
 \	float "vcs", float "cromaclear", float "maskpp", float "gainb",
 \	float "halgain", float "halrange", string "pixel_type")
 {
-	Assert (IsRGB (src), "crt_display: src must be RGB.")
-	Assert (src.BitsPerComponent() > 8, "crt_display: more than 8bit only")
+	Assert (IsRGB (ogsrc), "crt_display: src must be RGB.")
+	src    = IsPlanar(ogsrc) ? ConvertToPlanarRGB(ogsrc) : ogsrc
+	srcbit = BitsPerComponent(src)
+	Assert (srcbit > 8, "crt_display: more than 8bit only")
 	
 	voff       = Default (voff, (sh == 3) ? 0.25 : 0.5)
 	ppp        = Default (ppp, Max (Min (sw * 0.5, 2.5), 1.0))
@@ -247,7 +250,7 @@ Function crt_display (clip src, float sw, float sh, float "voff", float "ppp",
 	# Low-pass filtering from the display electronics
 	# Oversamples the picture horizontally
 	ssw = Int (Round (w * ssx * ppp))
-	(cutoff < 1) ? fmtc_resample (ssw, h, kernel="bicubic", fh=-cutoff*1.5, flt=true) : last
+	(cutoff < 1) ? fmtc_resample (ssw, h, kernel="bicubic", fh=-cutoff*1.5, flt=true).fmtc_bitdepth(srcbit,fulls=true,corplane=true).propCopy(last) : last
 
 	# Converts the pixel values to linear light.
 	y_gamma_to_linear (tv_range_in=false, tv_range_out=false, curve="sRGB", gcor=gamma/2.2)
@@ -256,7 +259,7 @@ Function crt_display (clip src, float sw, float sh, float "voff", float "ppp",
 
 	# Sets the beam sharpness
 	# Oversamples the picture horizontally if it's not already done
-	fmtc_resample (ssw, h, kernel="gauss", a1=100, fh=-sharph, flt=true)
+	fmtc_resample (ssw, h, kernel="gauss", a1=100, fh=-sharph, flt=true).fmtc_bitdepth(srcbit,fulls=true,corplane=true).propCopy(last)
 
 	# Oversamples the picture vertically to show a beam with variable width.
 	# The beam won't fill all the line height, it will be smoothed and
@@ -290,7 +293,7 @@ Function crt_display (clip src, float sw, float sh, float "voff", float "ppp",
 
 	# Applies a vertical gaussian blur to smooth and expand the beam
 	vblur = Float (sharpv * scandist) / (ssy - rad)
-	(vblur < 1) ? fmtc_resample (ssw, ssh, fv=-vblur, center=false, cnorm=true, kernel="gauss", taps=ssy*3/4, a1=80.0, flt=true) : last
+	(vblur < 1) ? fmtc_resample (ssw, ssh, fv=-vblur, center=false, cnorm=true, kernel="gauss", taps=ssy*3/4, a1=80.0, flt=true).fmtc_bitdepth(srcbit,fulls=true,corplane=true).propCopy(last) : last
 
 	# It's better to fix the contrast at this point to avoid losing
 	# precision in the next steps. But don't fix it completely because
@@ -310,7 +313,7 @@ Function crt_display (clip src, float sw, float sh, float "voff", float "ppp",
 	c_glo0 = (glowflag) ? expr ("i16 x " + String(contrast_fix_ssy/65536.0) + " * "
 \	                                    + String (glowsens) + " ^ "
 \	                                    + String(65536.0/contrast_fix_ssy) + " *", scale_inputs="allf") : last
-	c_glow = (glowflag) ? c_glo0.fmtc_resample (ssw, ssh, kernel="gauss", fh=glow_fh, fv=glow_fv, center=false, a1=70.0, flt=true) : last
+	c_glow = (glowflag) ? c_glo0.fmtc_resample (ssw, ssh, kernel="gauss", fh=glow_fh, fv=glow_fv, center=false, a1=70.0, flt=true).fmtc_bitdepth(srcbit,fulls=true,corplane=true).propCopy(c_glo0) : last
 	c_glow = (glowflag) ? c_glow.ex_makediff (c_glo0, dif=false, uv=3) : c_glow
 	c_glow = (glowflag) ? c_glow.expr ("i16 x " + String (glowgain) + " *", scale_inputs="allf") : c_glow
 	(glowflag) ? ex_adddiff (c_glow, dif=false, uv=3) : last
@@ -330,8 +333,8 @@ Function crt_display (clip src, float sw, float sh, float "voff", float "ppp",
 	ccl_t = ccl_h * ccl_thickness
 	(cromaclear > 0) ? shadowmask_cromaclear (ssx, ccl_h, (ccl_h / 4.0), ccl_t, cromaclear) : last
 
-	# Next steps will be easier with all the components packed in 4:4:4
-	YToUV (SelectEvery (3, 1), SelectEvery (3, 2), SelectEvery (3, 0))
+	# Next steps will be easier with all the components packed in PlanarRGB
+	MergeRGB (SelectEvery (3, 0), SelectEvery (3, 1), SelectEvery (3, 2), pixel_type=pixeltype(src))
 
 	# Rescales the picture to the target resolution
 	dw = Int (w * sw)
@@ -341,8 +344,9 @@ Function crt_display (clip src, float sw, float sh, float "voff", float "ppp",
 	center_fix = Float (Round (center_dst))
 	src_top = (center_fix - center_dst) * ssy / sh	# With an integer scaling ratio, ensures that the center of the scanline is located exactly on a pixel line, not between lines (when voff = 0.5).
 	blurh_freq = sw / (blurh * ssx * ppp)
-	(blurh > 0) ? fmtc_resample (ssw, ssh, kernel="gauss", fh=-blurh_freq, a1=70, flt=true) : last	# Could be done at the final resolution to save computation, but this would help less to fight moire & color tint because of the spline36 aliasing.
-	fmtc_resample (dw, dh, sx=src_left, sy=src_top, kernel="spline36", flt=true)
+	(blurh > 0) ? fmtc_resample (ssw, ssh, kernel="gauss", fh=-blurh_freq, a1=70, flt=true).fmtc_bitdepth(srcbit,fulls=true,corplane=true).propCopy(last) : last	# Could be done at the final resolution to save computation, but this would help less to fight moire & color tint because of the spline36 aliasing.
+	fmtc_resample (dw, dh, sx=src_left, sy=src_top, kernel="spline36", flt=true).fmtc_bitdepth(srcbit,fulls=true,corplane=true).propCopy(last)
+	IsVideoFloat() ? expr("x range_min < range_min x range_max > range_max x ? ?") : last
 
 	# Final contrast correction
 	# Saturated components are spread on the neighbour pixels to make
@@ -375,12 +379,11 @@ Function crt_display (clip src, float sw, float sh, float "voff", float "ppp",
 \	)
 
 	# Back to the sRGB colorspace
-	y_linear_to_gamma (tv_range_in=false, tv_range_out=false, curve="sRGB", u=3, v=3)
-	r = ExtractY()
-	g = ExtractU()
-	b = ExtractV()
+	r = ExtractR().y_linear_to_gamma (tv_range_in=false, tv_range_out=false, curve="sRGB")
+	g = ExtractG().y_linear_to_gamma (tv_range_in=false, tv_range_out=false, curve="sRGB")
+	b = ExtractB().y_linear_to_gamma (tv_range_in=false, tv_range_out=false, curve="sRGB")
 
-	MergeRGB (r, g, b, pixel_type=pixel_type)
+	MergeRGB (r, g, b, pixel_type=Default(pixel_type,pixeltype(ogsrc)))
 }
 
 
@@ -404,7 +407,7 @@ Function shift_vertical16 (clip src, float ofs)
 	(Abs (ofs - Round (ofs)) < 0.1)
 \	?	src.PointResize (w, h, src_top=-Int (Round (ofs)))
 \	:	src.sigmoid_inverse ()
-\		   .fmtc_resample (w, h, sy=-ofs, kernel="spline36", flt=true)
+\		   .fmtc_resample (w, h, sy=-ofs, kernel="spline36", flt=true).fmtc_bitdepth(BitsPerComponent(src),fulls=true,corplane=true).propCopy(last)
 \		   .sigmoid_direct ()
 }
 
@@ -486,6 +489,7 @@ Function gen_expr_softclip (string x, float softclip)
 Function spread_residual (clip src, clip residual, int count)
 {
 	residual = residual.removegrain (20)
+	residual = IsVideoFloat(residual) ? residual.expr("x range_min < range_min x range_max > range_max x ? ?") : residual
 	avail    = src.expr ("i16 65535 x -", scale_inputs="allf")
 	src.ex_adddiff (residual, dif=false, y=3, uv=3)
 	residual = residual.ex_makediff (avail, dif=false, y=3, uv=3)
@@ -501,6 +505,6 @@ Function smooth_pointresize16 (clip src, int dw, int dh)
 	rx = Max (dw / w, 1)
 	ry = Max (dh / h, 1)
 	(w > 1 || h > 1) ? PointResize (w * rx, h * ry) : last
-	fmtc_resamplenr (dw, dh, kernel="bicubic", a1=0.5, a2=0.25, flt=true)
+	fmtc_resamplenr (dw, dh, kernel="bicubic", a1=0.5, a2=0.25, flt=true).fmtc_bitdepth(BitsPerComponent(src),fulls=true,corplane=true).propCopy(last)
 }
 
