@@ -183,7 +183,7 @@ Function crt_display (clip ogsrc, float sw, float sh, float "voff", float "ppp",
 \	float "halgain", float "halrange", string "pixel_type")
 {
 	Assert (IsRGB (ogsrc), "crt_display: src must be RGB.")
-	src    = IsPlanar(ogsrc) ? ConvertToPlanarRGB(ogsrc) : ogsrc
+	src    = !IsPlanar(ogsrc) ? ConvertToPlanarRGB(ogsrc) : ogsrc
 	srcbit = BitsPerComponent(src)
 	Assert (srcbit > 8, "crt_display: more than 8bit only")
 	
