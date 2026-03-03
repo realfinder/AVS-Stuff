@@ -1,7 +1,7 @@
-# FixChromaBleedingMod v1.381
+# FixChromaBleedingMod v1.382
 # since 1.38 it need Utils-r41.avsi for Levelss in avsplus, aside from other dependencies
 
-Function FixChromaBleedingMod(clip input, int "cxShift", int "cyShift", float "thr", float "strength", bool "f", float "opacity", bool "n", bool "xysh", bool "Bic", bool "YIQNTSC", bool "noexpand") {
+Function FixChromaBleedingMod(clip input, int "cxShift", int "cyShift", float "thr", float "strength", bool "f", float "opacity", bool "n", bool "xysh", bool "Bic", bool "YIQNTSC", bool "noexpand", int "redorblue") {
 sisavs26 = !(VersionNumber() < 2.60)
 sisphbd = AvsPlusVersionNumber > 2294
 sisyuy2 = input.isyuy2()
@@ -17,17 +17,19 @@ input = sisavs26 && sisyuy2 ? input.converttoyv16() : input
   opacity = default ( opacity,       1 )
   noexpand = default ( noexpand,   false )
   f =  default ( f,       !noexpand )
+  redorblue = default ( redorblue,       0 ) #0 = both, 1 = red only, 2 = blue only
 
   # prepare to work on the V channel and reduce to speed up and filter noise
   vch  = sisphbd ? YIQNTSC ? input.SwapUV().Tweak(hue=-33).tweak(sat=thr).ExtractU() : input.tweak(sat=thr).ExtractV() : !sisavs26 ? YIQNTSC ? input.SwapUV().Tweak(hue=-33).tweak(sat=thr).UtoY : input.tweak(sat=thr).VtoY : YIQNTSC ? input.SwapUV().Tweak(hue=-33).tweak(sat=thr).UtoY8 : input.tweak(sat=thr).VtoY8
   area = f ? !sisavs26 ? vch.ConvertToyv12.ReduceBy2 : vch.ReduceBy2 : n ? !sisavs26 ? vch.ConvertToyv12.Blur(1) : vch.Blur(1) : !sisavs26 ? vch.ConvertToyv12 : vch
 
   # select and normalize both extremes of the scale
-  red = sisphbd ? area.Levelss(255,1.0,255,255,0) : area.levels(255,1.0,255,255,0)
-  blue = sisphbd ? area.Levelss(0,1.0,0,0,255) : area.levels(0,1.0,0,0,255)
+  red = redorblue != 2 ? sisphbd ? area.Levelss(255,1.0,255,255,0) : area.levels(255,1.0,255,255,0) : nop()
+  blue = redorblue != 1 ? sisphbd ? area.Levelss(0,1.0,0,0,255) : area.levels(0,1.0,0,0,255) : nop()
 
   # merge both masks
-  maskc = noexpand || n || f ?  MergeLuma(red, blue, 0.5) : MergeLuma(red, blue, 0.5).Blur(1)
+  maskc = redorblue == 0 ?  MergeLuma(red, blue, 0.5) : redorblue == 1 ? red : blue
+  maskc = noexpand || n || f ?  maskc : maskc.Blur(1)
   maskc = sisphbd ? maskc.Levelss(250,1.0,250,255,0) : maskc.Levels(250,1.0,250,255,0)
 
   # expand to cover beyond the bleeding areas and shift to compensate the resizing
