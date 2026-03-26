@@ -1,6 +1,6 @@
 # SRFComb by Doom9 real.finder
 # it should give Best of many of AVS Rainbow & Dot Crawl Removal, it Planed to be as SComb2 but I change it to SRFComb
-# 1.00
+# 1.01
 Function SRFComb(clip clip, int "DotCrawlThSAD", int "RainbowThSAD", bool "SpatialDeDotCraw")
 {
 
@@ -18,7 +18,7 @@ thSAD = Default(DotCrawlThSAD, 500)
 thSADC = Default(RainbowThSAD, 500)
 SpatialDeDotCraw = Default(SpatialDeDotCraw, true)
 clip.SeparateFields()
-LumaSpatialDeDot=SpatialDeDotCraw ? YToUV(ExtractU(),ExtractV(),ConvertToY().Blur(1.58,0).Sharpen(1,0)).Repair(last,5,0) : clip
+LumaSpatialDeDot=SpatialDeDotCraw ? YToUV(ExtractU(),ExtractV(),ConvertToY().Blur(1.58,0).Sharpen(1,0)).Repair(last,5,0) : last
 ogs=last
 ogy=clip.ConvertToY()
 pre=ogy.DeDot(10,30).TemporalRepair(ogy,3).checkmate().TemporalRepair(ogy,3).Repair(ogy).SeparateFields().Ablur(1,blurv=0).Blur(1.58,0).Sharpen(1,0)
