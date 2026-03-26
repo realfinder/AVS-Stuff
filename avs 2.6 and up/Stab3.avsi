@@ -6,7 +6,7 @@
 ###
 ####################################
 
-function Stab3 (clip clp, int "ts", int "range", int "dxmax", int "dymax", bool "UVfix", bool "FixFalPos", float "zoom", int "mirror", float "PAR", clip "Prefilter", int "Luma_Exp", int "FillBorder", clip "FalPosclip", bool "use_ExInpaint", bool "use_InpaintDelogo", bool "use_Feedback") {
+function Stab3 (clip clp, int "ts", int "range", int "dxmax", int "dymax", bool "UVfix", bool "FixFalPos", float "zoom", int "mirror", float "PAR", clip "Prefilter", int "Luma_Exp", int "FillBorder", clip "FalPosclip", bool "use_ExInpaint", bool "use_InpaintDelogo", bool "use_Feedback", bool "tstab") {
 
 ts     = default(ts, 7)        #frames to temporal average for better motion estimation (max. 7)
 range  = default(range, 1)     #frames before/after to estimate motion
@@ -20,9 +20,10 @@ UVfix  = default(UVfix, false)  # Fixes the bug of change of HUE in Depan, not n
 bfix   = default(FillBorder, u_feed ? 2 : 1) # 1=Fixes borders of 3 or less pixels wide.
 u_ExIn = default(use_ExInpaint, false)
 u_InDe = default(use_InpaintDelogo, u_feed)
+tstab  = default(tstab, false)
 b3fix  = bfix > 0
 FixFalPos  = default(FixFalPos, true) # Fixes borders of 3 or more pixels wide. Use along crop(2,2,-2,-2)...
-									  # ...after stab2() to get rid of border issues entirely
+									  # ...after stab3() to get rid of border issues entirely
 Lumae  = default(Luma_Exp, 1) #Luma Rebuild
 
 Pref   = Defined(Prefilter) ? Prefilter : clp
@@ -65,7 +66,10 @@ stabclip = bfix > 1 && u_feed ? Layer(stabclip.AddAlphaPlane(stabclpa1).Feedback
 stabclip = bfix > 1 && u_feed ? stabclip.RemoveAlphaPlane() : stabclip
 preclip = mt_merge(stabclip,clp,bfixc,luma=true)
 preclip = bfix > 1 && u_feed ? mt_merge(stabclip,preclip,stabclpa2,luma=true).repair(preclip) : preclip
-bfix > 1 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, FillBordersc=u_ExIn ? preclip.ExInpaint(bfixc.mt_lut(u=-255,v=-255)) : u_InDe ? preclip.InpaintDelogo(mask=bfixc, Loc="0,0,0,0",dPP=0,dPPm=1,diPP=1,diPPm=0,oPP=1,oPPm=0,Inflate=0) : preclip.InpaintLogo(bfixc)) : bfixc
+FillBorderscc = bfix > 1 ? u_ExIn ? preclip.ExInpaint(bfixc.mt_lut(u=-255,v=-255)) : u_InDe ? !isyv12(preclip) ? preclip.converttoyv12().InpaintDelogo(mask=bfixc, Loc="0,0,0,0",Inflate=0) : preclip.InpaintDelogo(mask=bfixc, Loc="0,0,0,0",Inflate=0) : preclip.InpaintLogo(bfixc) : nop()
+FillBorderscc = bfix > 1 ? u_ExIn ? FillBorderscc : u_InDe && !isyv12(preclip) ? mt_merge(preclip,FillBorderscc.MatchColorFormat(preclip),bfixc,luma=true) : FillBorderscc : FillBorderscc
+bfix > 1 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, FillBordersc=FillBorderscc) : bfixc
+bfix > 1 && tstab ? mt_merge(last,TemporalSoften(3, 255, 255, 10, 2),bfixc,luma=true) : last
 bfix > 1 && u_feed ? mt_merge(stabclip,last,stabclpa2.sh_Padding(2,2,2,2).mt_expand().crop(2,2,-2,-2),luma=true).repair(preclip) : last
 
 UVfix ? eval("""
