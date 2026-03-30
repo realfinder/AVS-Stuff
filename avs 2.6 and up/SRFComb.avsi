@@ -48,7 +48,7 @@ Weave()
 }
 
 # SRFComb2 by Doom9 real.finder
-# same goal as SRFComb but with deferet different
+# same goal as SRFComb but with different way
 # 1.00
 Function SRFComb2(clip clip, bool "SpatialDeDotCraw", bool "SpatialDeRainbow", int "DotCrawlThSAD", int "RainbowThSAD", bool "PAL")
 {
