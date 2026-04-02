@@ -88,6 +88,13 @@
 # IsAvsNeo
 # IsAvsPlus
 # AvsPlusVersionNumber
+# sh_is444
+# sh_is420
+# sh_is422
+# sh_isy
+# sh_ExtractU
+# sh_ExtractV
+# sh_ConvertToY
 
 #################################################
 
@@ -420,7 +427,7 @@ lsb ? lsb_out ? dp_merge : dp_merge.Ditherpost(mode=7, slice=false) : dp_merge
 }
 
 
-# Padding by Didée
+# Padding by Did e
 function sh_Padding(clip c, int left, int top, int right, int bottom, int "threads")
 {
 threads = Default(threads, sh_GetUserGlobalIMTint(true))
@@ -566,10 +573,10 @@ Function sh_Y8_YV411(clip c) {
 ########################################################
 
 ########################################
-## Didée's functions:
+## Did e's functions:
 
  # contra-sharpening: sharpen the denoised clip, but don't add more to any pixel than what was removed previously.
- # script function from Didée, at the VERY GRAINY thread
+ # script function from Did e, at the VERY GRAINY thread
 
  # ContraSharpeningHD formerly, HD parameter renamed to MC, and function renamed to ContraSharpening
 
@@ -612,7 +619,7 @@ yuy26 ? last.ConvertToYUY2().Interleaved2planar() : last
 }
 
 
- # MinBlur   by Didée
+ # MinBlur   by Did e
  # Nifty Gauss/Median combination (Modified for Planar input)
 
 function MinBlur(clip clp, int "r", int "uv", bool "planar", string "mode", int "abtype", bool "blurrep", int "y", int "u", int "v"){
@@ -1292,7 +1299,7 @@ cache<0 ? last : last.RequestLinear(8, cache, 5, false, false)
 function ediaa(clip a) {return a.EEDI2(field=1).TurnRight().EEDI2(field=1).TurnLeft().spline36resize(a.width,a.height,-0.5,-0.5)}
 
 
-#Anti-aliasing with contra-sharpening by Didée
+#Anti-aliasing with contra-sharpening by Did e
 function odaa(clip c) {
 nn	= c.nnedi2(field=-2)
 dbl   	= mt_average(selecteven(nn),selectodd(nn),U=3,V=3)
@@ -1302,7 +1309,7 @@ DD 	= shrpD.repair(dblD,13)
 return dbl.mt_adddiff(DD,U=3,V=3) }
 
 
-    #Anti-aliasing with contra-sharpening by Didée
+    #Anti-aliasing with contra-sharpening by Did e
     FUNCTION odaa3(clip c) {
     nn      = c.nnedi3(field=-2)
     dbl     = mt_average(selecteven(nn),selectodd(nn),U=3,V=3)
@@ -1844,6 +1851,42 @@ src = sislumaonly ? clp : sisphbd ? clp.converttoy() : clp.converttoy8()
              upsmp    = GaussResize(src, Round(w * (radius + 1)), Round(h * (radiusV + 1)), p=p)
              bilinearresize(upsmp, w, h)
              return !sisavs26 && !chroma ? MergeChroma(last,clp) : sislumaonly || chroma ? last : sisphbd ? CombinePlanes(last,clp,planes="YUV",sample_clip=clp) : ytouv(clp.utoy8(),clp.vtoy8(),last)
+}
+
+
+Function sh_is444(clip clip)
+{
+ AvsPlusVersionNumber > 2294 ? is444(clip) : isyv24(clip)
+}
+
+Function sh_is420(clip clip)
+{
+ AvsPlusVersionNumber > 2294 ? is420(clip) : isyv12(clip)
+}
+
+Function sh_is422(clip clip)
+{
+ AvsPlusVersionNumber > 2294 ? is422(clip) : isyv16(clip)
+}
+
+Function sh_isy(clip clip)
+{
+ AvsPlusVersionNumber > 2294 ? isy(clip) : isy8(clip)
+}
+
+Function sh_ExtractU(clip clip)
+{
+ AvsPlusVersionNumber > 2294 ? ExtractU(clip) : UToY8(clip)
+}
+
+Function sh_ExtractV(clip clip)
+{
+ AvsPlusVersionNumber > 2294 ? ExtractV(clip) : VToY8(clip)
+}
+
+Function sh_ConvertToY(clip clip)
+{
+ AvsPlusVersionNumber > 2294 ? ConvertToY(clip) : ConvertToY8(clip)
 }
 
 
