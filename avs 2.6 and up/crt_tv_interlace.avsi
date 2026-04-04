@@ -38,6 +38,7 @@ sistff=GetParity(src)
 Interleave(\
 SelectEven().crt_display(cw, ch, voff, ppp, cutoff, scandist, sharpv, sharph, blurh, glowgain, glowh, glowv, glowsens, contrast, gamma, softclip, mix, beamshape, phosphor, pgrid, vcs, cromaclear, maskpp, gainb, halgain, halrange, pixel_type).BilinearResize(w,h,0,sistff ? ishift : -ishift), \
 SelectOdd().crt_display(cw, ch, voff, ppp, cutoff, scandist, sharpv, sharph, blurh, glowgain, glowh, glowv, glowsens, contrast, gamma, softclip, mix, beamshape, phosphor, pgrid, vcs, cromaclear, maskpp, gainb, halgain, halrange, pixel_type).BilinearResize(w,h,0,sistff ? -ishift : ishift)).AssumeFrameBased()
+AvsPlusVersionNumber >= 3276 ? propSet("_FieldBased", 0).propset("_Combed", 0) : last
 Afterglow ? SMiniPhosphorPersistence() : last
 YUVout ? ConvertToYUV420(matrix="Rec709") : last
 s8bout ? Convertbits(8,dither=1) : last
