@@ -1,7 +1,7 @@
 # crt_tv_interlace by Doom9 real.finder
 # helper Function for crt_display by cretindesalpes
 # you need crt_display avs+ update by real.finder to make it work unless you disable do8bitout, YUVout, do16bitin and doRGBin (and maybe Afterglow)
-# 1.01
+# 1.02
 Function crt_tv_interlace (clip src, int "w", int "h", bool "do8bitout", bool "YUVout", bool "do16bitin", bool "doRGBin", float "voff", float "ppp",
 \	float "cutoff", float "scandist", float "sharpv", float "sharph",
 \	float "blurh", float "glowgain", float "glowh", float "glowv",
@@ -43,18 +43,18 @@ YUVout ? ConvertToYUV420(matrix="Rec709") : last
 s8bout ? Convertbits(8,dither=1) : last
 }
 
+
 # SMiniPhosphorPersistence by Doom9 real.finder
+# 1.01
 function SMiniPhosphorPersistence(clip c)
 {
 c
 
-f4=Loop(5,0,0)
 f3=Loop(4,0,0)
 f2=Loop(3,0,0)
 f1=Loop(2,0,0)
 
-p3=mt_merge(f3,f4,Mt_lutxy(Grayscale(f3),Grayscale(f4),"y x > range_half range_min ?",use_expr=1))
-p2=mt_merge(f2,p3,Mt_lutxy(Grayscale(f2),Grayscale(p3),"y x > range_half 2 / range_min ?",use_expr=1))
-p1=mt_merge(f1,p2,Mt_lutxy(Grayscale(f1),Grayscale(p2),"y x > range_half 4 / range_min ?",use_expr=1))
-mt_merge(c,p1,Mt_lutxy(Grayscale(c),Grayscale(p1),"y x > range_half 8 / range_min ?",use_expr=1))
+p2=mt_merge(f2,f3,Mt_lutxy(sh_ConvertToY(f2),sh_ConvertToY(f3),"y x > range_half range_min ?",use_expr=1),luma=true)
+p1=mt_merge(f1,p2,Mt_lutxy(sh_ConvertToY(f1),sh_ConvertToY(p2),"y x > range_half 4 / range_min ?",use_expr=1),luma=true)
+   mt_merge( c,p1,Mt_lutxy(sh_ConvertToY(c ),sh_ConvertToY(p1),"y x > range_half 8 / range_min ?",use_expr=1),luma=true)
 }
