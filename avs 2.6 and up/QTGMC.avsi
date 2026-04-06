@@ -13,7 +13,7 @@
 #
 # --- LATEST CHANGES ---
 # v3.390s
-# - Add RefineMotionAll and RefineMotionSearch RefineMotionRadius MCompensate params
+# - Add RefineMotionAll and RefineMotionSearch RefineMotionRadius params for MRecalculate
 #
 # v3.389s
 # - Add trymany and temporal MAnalyse params
