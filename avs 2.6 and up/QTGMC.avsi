@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------#
 #                                                                   #
 #                     QTGMC 3.33 by Vit, 2012                       #
-#     QTGMC 3.389 2026 mod by A.SONY, based on v3.33d by Dogway     #
+#     QTGMC 3.390 2026 mod by A.SONY, based on v3.33d by Dogway     #
 #                                                                   #
 #   A high quality deinterlacer using motion-compensated temporal   #
 #  smoothing, with a range of features for quality and convenience  #
@@ -247,8 +247,6 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
     Amp           = default( Amp,     0.0625 )
     TV_range      = default( TV_range,           false)
     keep_tv_range = default( keep_tv_range,      false)
-    temporal      = default( temporal, false)
-    trymany       = default( trymany, false)
     RefineMotionAll = default (RefineMotionAll, false)
     RefineMotionSearch = default (RefineMotionSearch, Search)
     RefineMotionRadius = default (RefineMotionRadius, SearchParam)
