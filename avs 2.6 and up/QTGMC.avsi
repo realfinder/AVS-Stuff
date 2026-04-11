@@ -251,8 +251,6 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
     Amp           = default( Amp,     0.0625 )
     TV_range      = default( TV_range,           false)
     keep_tv_range = default( keep_tv_range,      false)
-    temporal      = default( temporal, false)
-    trymany       = default( trymany, false)
     RefineMotionAll = default (RefineMotionAll, false)
     RefineMotionSearch = default (RefineMotionSearch, Search)
     RefineMotionRadius = default (RefineMotionRadius, SearchParam)
