@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------#
 #                                                                   #
 #                     QTGMC 3.33 by Vit, 2012                       #
-#     QTGMC 3.391s 2026 mod by A.SONY, based on v3.33d by Dogway     #
+#     QTGMC 3.391 2026 mod by A.SONY, based on v3.33d by Dogway     #
 #                                                                   #
 #   A high quality deinterlacer using motion-compensated temporal   #
 #  smoothing, with a range of features for quality and convenience  #
