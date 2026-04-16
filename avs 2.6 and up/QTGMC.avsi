@@ -14,6 +14,8 @@
 # --- LATEST CHANGES ---
 # v3.392s
 # - Add Refinemotion2 for second stage motion refining (1/4 of the initial block size)
+# - Fix lambda scaling for all stages motion refining 
+#   (see also comment at https://github.com/pinterf/mvtools/blob/a488b095c4bdc8d81abfd952ab534c015a9d45b7/Sources/PlaneOfBlocks.cpp#L3550)
 #
 # v3.391s
 # - Add MEus for Motion Estimation with upsized clip to simulate pel>1 with pel=1 processing in MAnalyse and MRecalculate.
@@ -472,6 +474,8 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	TrueMotion   = default( TrueMotion,   false )
 	GlobalMotion = default( GlobalMotion, true  )
 	Lambda       = default( Lambda, ((TrueMotion) ? 1000 : 100 ) * (BlockSize*BlockSize)/(8*8) )
+	Lambda_d2    = default( Lambda/4, ((TrueMotion) ? 1000 : 100 ) * (BlockSize*BlockSize)/(8*8*4) )
+	Lambda_d4    = default( Lambda/16, ((TrueMotion) ? 1000 : 100 ) * (BlockSize*BlockSize)/(8*8*16) )
 	LSAD         = default( LSAD,    (TrueMotion) ? 1200 : 400 )
 	PNew         = default( PNew,    (TrueMotion) ? 50   : 25  )
 	PLevel       = default( PLevel,  (TrueMotion) ? 1    : 0   )
@@ -626,11 +630,11 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	bVec6 = bVec6c || !RefineMotion || !(maxTR > 5) ? bVec6 : srchSuper_us.MRecalculate(bVec6, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	bVec6 = bVec6c || !RefineMotion2 || !(maxTR > 5) ? bVec6 : srchSuper_us.MRecalculate(bVec6, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	bVec5c = IsClip(bVec5)
 	bVec5 = bVec5c ? bVec5 : \
@@ -640,11 +644,11 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	bVec5 = bVec5c || !RefineMotion || !(maxTR > 4) ? bVec5 : srchSuper_us.MRecalculate(bVec5, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false )
+											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false )
 
 	bVec5 = bVec5c || !RefineMotion2 || !(maxTR > 4) ? bVec5 : srchSuper_us.MRecalculate(bVec5, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	bVec4c = IsClip(bVec4)
 	bVec4 = bVec4c ? bVec4 : \
@@ -654,11 +658,11 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	bVec4 = bVec4c || !RefineMotion || !(maxTR > 3) ? bVec4 : srchSuper_us.MRecalculate(bVec4, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	bVec4 = bVec4c || !RefineMotion2 || !(maxTR > 3) ? bVec4 : srchSuper_us.MRecalculate(bVec4, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	bVec3c = IsClip(bVec3)
 	bVec3 = bVec3c ? bVec3 : \
@@ -668,11 +672,11 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	bVec3 = bVec3c || !RefineMotion || !(maxTR > 2) ? bVec3 : srchSuper_us.MRecalculate(bVec3, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	bVec3 = bVec3c || !RefineMotion2 || !(maxTR > 2) ? bVec3 : srchSuper_us.MRecalculate(bVec3, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	bVec2c = IsClip(bVec2)
 	bVec2 = bVec2c ? bVec2 : \
@@ -682,11 +686,11 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	bVec2 = bVec2c || !RefineMotion || !(maxTR > 1) ? bVec2 : srchSuper_us.MRecalculate(bVec2, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false)
+											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false)
 
 	bVec2 = bVec2c || !RefineMotion2 || !(maxTR > 1) ? bVec2 : srchSuper_us.MRecalculate(bVec2, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 
 	bVec1c = IsClip(bVec1)
@@ -697,11 +701,11 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	bVec1 = bVec1c || !RefineMotion || !(maxTR > 0) ? bVec1 : srchSuper_us.MRecalculate(bVec1, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	bVec1 = bVec1c || !RefineMotion2 || !(maxTR > 0) ? bVec1 : srchSuper_us.MRecalculate(bVec1, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 
 	fVec1c = IsClip(fVec1)
@@ -712,11 +716,11 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	fVec1 = fVec1c || !RefineMotion || !(maxTR > 0) ? fVec1 : srchSuper_us.MRecalculate(fVec1, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionradius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionradius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	fVec1 = fVec1c || !RefineMotion2 || !(maxTR > 0) ? fVec1 : srchSuper_us.MRecalculate(fVec1, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	fVec2c = IsClip(fVec2)
 	fVec2 = fVec2c ? fVec2 : \
@@ -726,11 +730,11 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	fVec2 = fVec2c || !RefineMotion || !(maxTR > 1) ? fVec2 : srchSuper_us.MRecalculate(fVec2, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false )
+											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false )
 
 	fVec2 = fVec2c || !RefineMotion2 || !(maxTR > 1) ? fVec2 : srchSuper_us.MRecalculate(fVec2, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 
 	fVec3c = IsClip(fVec3)
@@ -741,11 +745,11 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	fVec3 = fVec3c || !RefineMotion || !(maxTR > 2) ? fVec3 : srchSuper_us.MRecalculate(fVec3, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	fVec3 = fVec3c || !RefineMotion2 || !(maxTR > 2) ? fVec3 : srchSuper_us.MRecalculate(fVec3, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 
 	fVec4c = IsClip(fVec4)
@@ -756,11 +760,11 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	fVec4 = fVec4c || !RefineMotion || !(maxTR > 3) ? fVec4 : srchSuper_us.MRecalculate(fVec4, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	fVec4 = fVec4c || !RefineMotion2 || !(maxTR > 3) ? fVec4 : srchSuper_us.MRecalculate(fVec4, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	fVec5c = IsClip(fVec5)
 	fVec5 = fVec5c ? fVec5 : \
@@ -770,11 +774,11 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	fVec5 = fVec5c || !RefineMotion || !(maxTR > 4) ? fVec5 : srchSuper_us.MRecalculate(fVec5, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	fVec5 = fVec5c || !RefineMotion2 || !(maxTR > 4) ? fVec5 : srchSuper_us.MRecalculate(fVec5, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 
 	fVec6c = IsClip(fVec6)
@@ -785,11 +789,11 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	fVec6 = fVec6c || !RefineMotion || !(maxTR > 5) ? fVec6 : srchSuper_us.MRecalculate(fVec6, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	fVec6 = fVec6c || !RefineMotion2 || !(maxTR > 5) ? fVec6 : srchSuper_us.MRecalculate(fVec6, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
 											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	#if MEus - scale back MVs to required subpel
 	bVec1 = (MEus && maxTR > 0) ? MScaleVect(bVec1, scale=SubPel, mode=1, adjustSubPel=true) : bVec1
