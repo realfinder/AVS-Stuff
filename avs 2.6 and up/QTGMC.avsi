@@ -614,186 +614,119 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	# Calculate forward and backward motion vectors from motion search clip
 	
 	#if MEus=true - create SubPel_x upsized clip for process with pel=1, if false - pass standard srchClip
-	srchClip_us = (MEus) ? LanczosResize(srchClip, (srchClip.width)*SubPel, (srchClip.height)*SubPel, src_left=0.25, src_top=0.25, taps=10) : srchClip 
-	# or LanczosResize(.., 0.375, 0.375,) ?
-	# for SubPel = 4 are we need 0.125, 0.125 or other ?
-	SubPel_us = (MEus) ? SubPel : 1
+	srchClip_us = (MEus) && SubPel != 1 ? LanczosResize(srchClip, (srchClip.width)*SubPel, (srchClip.height)*SubPel, src_left=SubPel == 4 ? 0.375 : 0.25, src_top=SubPel == 4 ? 0.375 : 0.25, taps=10) : srchClip 
+	SubPel_us = (MEus) && SubPel != 1 ? SubPel : 1
 
 	srchSuper_us = IsClip(srchSuper_us) ? srchSuper_us : \
-	            (maxTR > 0) ? srchClip_us.MSuper( pel=(MEus) ? 1 : SubPel, sharp=SubPelInterp, hpad=hpad*SubPel_us, vpad=vpad*SubPel_us, chroma=ChromaMotion, mt=(defined(bomt)) ? bomt : false ) : NOP()
-	
+	            (maxTR > 0) ? defined(bomt) ? srchClip_us.MSuper( pel=(MEus) ? 1 : SubPel, sharp=SubPelInterp, hpad=hpad*SubPel_us, vpad=vpad*SubPel_us, chroma=ChromaMotion, mt=bomt ) : srchClip_us.MSuper( pel=(MEus) ? 1 : SubPel, sharp=SubPelInterp, hpad=hpad*SubPel_us, vpad=vpad*SubPel_us, chroma=ChromaMotion ) : NOP()
+
+	MAnalyseString = "blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
+	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
+	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany"
+
+	MRecalculateString = RefineMotion ? "overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
+											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
+											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew" : nop()
+
+	MRecalculateString2 = RefineMotion2 ? "overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
+											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
+											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew" : nop()
+
+	MTString = defined(bomt) ? ", mt=bomt)" : ")"
+
 	bVec6c = IsClip(bVec6)
 	bVec6 = bVec6c ? bVec6 : \
-	        (maxTR > 5)   ? srchSuper_us.MAnalyse( isb=true,  delta=6, blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
-	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
-	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany, mt=(defined(bomt)) ? bomt : false ) : NOP()
+	        (maxTR > 5)   ? eval("srchSuper_us.MAnalyse( isb=true,  delta=6, "+MAnalyseString+MTString) : NOP()
 
-	bVec6 = bVec6c || !RefineMotion || !(maxTR > 5) ? bVec6 : srchSuper_us.MRecalculate(bVec6, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+	bVec6 = bVec6c || !RefineMotion || !(maxTR > 5) ? bVec6 : eval("srchSuper_us.MRecalculate(bVec6, "+MRecalculateString+MTString)
+	bVec6 = bVec6c || !RefineMotion2 || !(maxTR > 5) ? bVec6 : eval("srchSuper_us.MRecalculate(bVec6, "+MRecalculateString2+MTString)
 
-	bVec6 = bVec6c || !RefineMotion2 || !(maxTR > 5) ? bVec6 : srchSuper_us.MRecalculate(bVec6, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	bVec5c = IsClip(bVec5)
 	bVec5 = bVec5c ? bVec5 : \
-	        (maxTR > 4)   ? srchSuper_us.MAnalyse( isb=true,  delta=5, blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
-	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
-	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany, mt=(defined(bomt)) ? bomt : false ) : NOP()
+	        (maxTR > 4)   ? eval("srchSuper_us.MAnalyse( isb=true,  delta=5, "+MAnalyseString+MTString) : NOP()
 
-	bVec5 = bVec5c || !RefineMotion || !(maxTR > 4) ? bVec5 : srchSuper_us.MRecalculate(bVec5, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false )
+	bVec5 = bVec5c || !RefineMotion || !(maxTR > 4) ? bVec5 : eval("srchSuper_us.MRecalculate(bVec5, "+MRecalculateString+MTString)
+	bVec5 = bVec5c || !RefineMotion2 || !(maxTR > 4) ? bVec5 : eval("srchSuper_us.MRecalculate(bVec5, "+MRecalculateString2+MTString)
 
-	bVec5 = bVec5c || !RefineMotion2 || !(maxTR > 4) ? bVec5 : srchSuper_us.MRecalculate(bVec5, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	bVec4c = IsClip(bVec4)
 	bVec4 = bVec4c ? bVec4 : \
-	        (maxTR > 3)   ? srchSuper_us.MAnalyse( isb=true,  delta=4, blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
-	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
-	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany, mt=(defined(bomt)) ? bomt : false) : NOP()
+	        (maxTR > 3)   ? eval("srchSuper_us.MAnalyse( isb=true,  delta=4, "+MAnalyseString+MTString) : NOP()
 
-	bVec4 = bVec4c || !RefineMotion || !(maxTR > 3) ? bVec4 : srchSuper_us.MRecalculate(bVec4, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+	bVec4 = bVec4c || !RefineMotion || !(maxTR > 3) ? bVec4 : eval("srchSuper_us.MRecalculate(bVec4, "+MRecalculateString+MTString)
+	bVec4 = bVec4c || !RefineMotion2 || !(maxTR > 3) ? bVec4 : eval("srchSuper_us.MRecalculate(bVec4, "+MRecalculateString2+MTString)
 
-	bVec4 = bVec4c || !RefineMotion2 || !(maxTR > 3) ? bVec4 : srchSuper_us.MRecalculate(bVec4, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	bVec3c = IsClip(bVec3)
 	bVec3 = bVec3c ? bVec3 : \
-	        (maxTR > 2)   ? srchSuper_us.MAnalyse( isb=true,  delta=3, blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
-	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
-	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany, mt=(defined(bomt)) ? bomt : false ) : NOP()
+	        (maxTR > 2)   ? eval("srchSuper_us.MAnalyse( isb=true,  delta=3, "+MAnalyseString+MTString) : NOP()
 
-	bVec3 = bVec3c || !RefineMotion || !(maxTR > 2) ? bVec3 : srchSuper_us.MRecalculate(bVec3, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+	bVec3 = bVec3c || !RefineMotion || !(maxTR > 2) ? bVec3 : eval("srchSuper_us.MRecalculate(bVec3, "+MRecalculateString+MTString)
+	bVec3 = bVec3c || !RefineMotion2 || !(maxTR > 2) ? bVec3 : eval("srchSuper_us.MRecalculate(bVec3, "+MRecalculateString2+MTString)
 
-	bVec3 = bVec3c || !RefineMotion2 || !(maxTR > 2) ? bVec3 : srchSuper_us.MRecalculate(bVec3, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	bVec2c = IsClip(bVec2)
 	bVec2 = bVec2c ? bVec2 : \
-	        (maxTR > 1)   ? srchSuper_us.MAnalyse( isb=true,  delta=2, blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
-	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
-	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany, mt=(defined(bomt)) ? bomt : false ) : NOP()
+	        (maxTR > 1)   ? eval("srchSuper_us.MAnalyse( isb=true,  delta=2, "+MAnalyseString+MTString) : NOP()
 
-	bVec2 = bVec2c || !RefineMotion || !(maxTR > 1) ? bVec2 : srchSuper_us.MRecalculate(bVec2, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false)
-
-	bVec2 = bVec2c || !RefineMotion2 || !(maxTR > 1) ? bVec2 : srchSuper_us.MRecalculate(bVec2, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+	bVec2 = bVec2c || !RefineMotion || !(maxTR > 1) ? bVec2 : eval("srchSuper_us.MRecalculate(bVec2, "+MRecalculateString+MTString)
+	bVec2 = bVec2c || !RefineMotion2 || !(maxTR > 1) ? bVec2 : eval("srchSuper_us.MRecalculate(bVec2, "+MRecalculateString2+MTString)
 
 
 	bVec1c = IsClip(bVec1)
 	bVec1 = bVec1c ? bVec1 : \
-	        (maxTR > 0)   ? srchSuper_us.MAnalyse( isb=true,  delta=1, blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
-	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
-	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany, mt=(defined(bomt)) ? bomt : false ) : NOP()
+	        (maxTR > 0)   ? eval("srchSuper_us.MAnalyse( isb=true,  delta=1, "+MAnalyseString+MTString) : NOP()
 
-	bVec1 = bVec1c || !RefineMotion || !(maxTR > 0) ? bVec1 : srchSuper_us.MRecalculate(bVec1, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
-
-	bVec1 = bVec1c || !RefineMotion2 || !(maxTR > 0) ? bVec1 : srchSuper_us.MRecalculate(bVec1, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+	bVec1 = bVec1c || !RefineMotion || !(maxTR > 0) ? bVec1 : eval("srchSuper_us.MRecalculate(bVec1, "+MRecalculateString+MTString)
+	bVec1 = bVec1c || !RefineMotion2 || !(maxTR > 0) ? bVec1 : eval("srchSuper_us.MRecalculate(bVec1, "+MRecalculateString2+MTString)
 
 
 	fVec1c = IsClip(fVec1)
 	fVec1 = fVec1c ? fVec1 : \
-	        (maxTR > 0)   ? srchSuper_us.MAnalyse( isb=false, delta=1, blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
-	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
-	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany, mt=(defined(bomt)) ? bomt : false ) : NOP()
+	        (maxTR > 0)   ? eval("srchSuper_us.MAnalyse( isb=false,  delta=1, "+MAnalyseString+MTString) : NOP()
 
-	fVec1 = fVec1c || !RefineMotion || !(maxTR > 0) ? fVec1 : srchSuper_us.MRecalculate(fVec1, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionradius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+	fVec1 = fVec1c || !RefineMotion || !(maxTR > 0) ? fVec1 : eval("srchSuper_us.MRecalculate(fVec1, "+MRecalculateString+MTString)
+	fVec1 = fVec1c || !RefineMotion2 || !(maxTR > 0) ? fVec1 : eval("srchSuper_us.MRecalculate(fVec1, "+MRecalculateString2+MTString)
 
-	fVec1 = fVec1c || !RefineMotion2 || !(maxTR > 0) ? fVec1 : srchSuper_us.MRecalculate(fVec1, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
 
 	fVec2c = IsClip(fVec2)
 	fVec2 = fVec2c ? fVec2 : \
-	        (maxTR > 1)   ? srchSuper_us.MAnalyse( isb=false, delta=2, blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
-	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
-	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany, mt=(defined(bomt)) ? bomt : false ) : NOP()
+	        (maxTR > 1)   ? eval("srchSuper_us.MAnalyse( isb=false,  delta=2, "+MAnalyseString+MTString) : NOP()
 
-	fVec2 = fVec2c || !RefineMotion || !(maxTR > 1) ? fVec2 : srchSuper_us.MRecalculate(fVec2, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false )
-
-	fVec2 = fVec2c || !RefineMotion2 || !(maxTR > 1) ? fVec2 : srchSuper_us.MRecalculate(fVec2, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+	fVec2 = fVec2c || !RefineMotion || !(maxTR > 1) ? fVec2 : eval("srchSuper_us.MRecalculate(fVec2, "+MRecalculateString+MTString)
+	fVec2 = fVec2c || !RefineMotion2 || !(maxTR > 1) ? fVec2 : eval("srchSuper_us.MRecalculate(fVec2, "+MRecalculateString2+MTString)
 
 
 	fVec3c = IsClip(fVec3)
 	fVec3 = fVec3c ? fVec3 : \
-	        (maxTR > 2)   ? srchSuper_us.MAnalyse( isb=false, delta=3, blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
-	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
-	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany, mt=(defined(bomt)) ? bomt : false ) : NOP()
+	        (maxTR > 2)   ? eval("srchSuper_us.MAnalyse( isb=false,  delta=3, "+MAnalyseString+MTString) : NOP()
 
-	fVec3 = fVec3c || !RefineMotion || !(maxTR > 2) ? fVec3 : srchSuper_us.MRecalculate(fVec3, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
-
-	fVec3 = fVec3c || !RefineMotion2 || !(maxTR > 2) ? fVec3 : srchSuper_us.MRecalculate(fVec3, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+	fVec3 = fVec3c || !RefineMotion || !(maxTR > 2) ? fVec3 : eval("srchSuper_us.MRecalculate(fVec3, "+MRecalculateString+MTString)
+	fVec3 = fVec3c || !RefineMotion2 || !(maxTR > 2) ? fVec3 : eval("srchSuper_us.MRecalculate(fVec3, "+MRecalculateString2+MTString)
 
 
 	fVec4c = IsClip(fVec4)
 	fVec4 = fVec4c ? fVec4 : \
-	        (maxTR > 3)   ? srchSuper_us.MAnalyse( isb=false, delta=4, blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
-	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
-	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany, mt=(defined(bomt)) ? bomt : false ) : NOP()
+	        (maxTR > 3)   ? eval("srchSuper_us.MAnalyse( isb=false,  delta=4, "+MAnalyseString+MTString) : NOP()
 
-	fVec4 = fVec4c || !RefineMotion || !(maxTR > 3) ? fVec4 : srchSuper_us.MRecalculate(fVec4, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
-
-	fVec4 = fVec4c || !RefineMotion2 || !(maxTR > 3) ? fVec4 : srchSuper_us.MRecalculate(fVec4, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+	fVec4 = fVec4c || !RefineMotion || !(maxTR > 3) ? fVec4 : eval("srchSuper_us.MRecalculate(fVec4, "+MRecalculateString+MTString)
+	fVec4 = fVec4c || !RefineMotion2 || !(maxTR > 3) ? fVec4 : eval("srchSuper_us.MRecalculate(fVec4, "+MRecalculateString2+MTString)
 
 	fVec5c = IsClip(fVec5)
 	fVec5 = fVec5c ? fVec5 : \
-	        (maxTR > 4)   ? srchSuper_us.MAnalyse( isb=false, delta=5, blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
-	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
-	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany, mt=(defined(bomt)) ? bomt : false ) : NOP()
+	        (maxTR > 4)   ? eval("srchSuper_us.MAnalyse( isb=false,  delta=5, "+MAnalyseString+MTString) : NOP()
 
-	fVec5 = fVec5c || !RefineMotion || !(maxTR > 4) ? fVec5 : srchSuper_us.MRecalculate(fVec5, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
-
-	fVec5 = fVec5c || !RefineMotion2 || !(maxTR > 4) ? fVec5 : srchSuper_us.MRecalculate(fVec5, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+	fVec5 = fVec5c || !RefineMotion || !(maxTR > 4) ? fVec5 : eval("srchSuper_us.MRecalculate(fVec5, "+MRecalculateString+MTString)
+	fVec5 = fVec5c || !RefineMotion2 || !(maxTR > 4) ? fVec5 : eval("srchSuper_us.MRecalculate(fVec5, "+MRecalculateString2+MTString)
 
 
 	fVec6c = IsClip(fVec6)
 	fVec6 = fVec6c ? fVec6 : \
-	        (maxTR > 5)   ? srchSuper_us.MAnalyse( isb=false, delta=6, blksize=BlockSize*SubPel_us, overlap=Overlap*SubPel_us, search=Search, searchparam=SearchParam, \
-	                                            pelsearch=PelSearch, truemotion=TrueMotion, lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel, \
-	                                            global=GlobalMotion, DCT=DCT, chroma=ChromaMotion, temporal=temporal, trymany=trymany, mt=(defined(bomt)) ? bomt : false ) : NOP()
+	        (maxTR > 5)   ? eval("srchSuper_us.MAnalyse( isb=false,  delta=6, "+MAnalyseString+MTString) : NOP()
 
-	fVec6 = fVec6c || !RefineMotion || !(maxTR > 5) ? fVec6 : srchSuper_us.MRecalculate(fVec6, overlap=halfoverlap*SubPel_us, blksize=halfblksize*SubPel_us, thSAD=halfthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d2, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
-
-	fVec6 = fVec6c || !RefineMotion2 || !(maxTR > 5) ? fVec6 : srchSuper_us.MRecalculate(fVec6, overlap=qoverlap*SubPel_us, blksize=qblksize*SubPel_us, thSAD=qthSAD, DCT=DCT, \
-											chroma=ChromaMotion, truemotion=TrueMotion, search=RefineMotionSearch,                \
-											searchparam=RefineMotionRadius, lambda=Lambda_d4, pnew=PNew, mt=(defined(bomt)) ? bomt : false) 
+	fVec6 = fVec5c || !RefineMotion || !(maxTR > 5) ? fVec6 : eval("srchSuper_us.MRecalculate(fVec6, "+MRecalculateString+MTString)
+	fVec6 = fVec5c || !RefineMotion2 || !(maxTR > 5) ? fVec6 : eval("srchSuper_us.MRecalculate(fVec6, "+MRecalculateString2+MTString)
 
 	#if MEus - scale back MVs to required subpel
 	bVec1 = (MEus && maxTR > 0) ? MScaleVect(bVec1, scale=SubPel, mode=1, adjustSubPel=true) : bVec1
