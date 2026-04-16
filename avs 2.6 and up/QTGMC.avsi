@@ -725,8 +725,8 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	fVec6 = fVec6c ? fVec6 : \
 	        (maxTR > 5)   ? eval("srchSuper_us.MAnalyse( isb=false,  delta=6, "+MAnalyseString+MTString) : NOP()
 
-	fVec6 = fVec5c || !RefineMotion || !(maxTR > 5) ? fVec6 : eval("srchSuper_us.MRecalculate(fVec6, "+MRecalculateString+MTString)
-	fVec6 = fVec5c || !RefineMotion2 || !(maxTR > 5) ? fVec6 : eval("srchSuper_us.MRecalculate(fVec6, "+MRecalculateString2+MTString)
+	fVec6 = fVec6c || !RefineMotion || !(maxTR > 5) ? fVec6 : eval("srchSuper_us.MRecalculate(fVec6, "+MRecalculateString+MTString)
+	fVec6 = fVec6c || !RefineMotion2 || !(maxTR > 5) ? fVec6 : eval("srchSuper_us.MRecalculate(fVec6, "+MRecalculateString2+MTString)
 
 	#if MEus - scale back MVs to required subpel
 	bVec1 = (MEus && maxTR > 0) ? MScaleVect(bVec1, scale=SubPel, mode=1, adjustSubPel=true) : bVec1
