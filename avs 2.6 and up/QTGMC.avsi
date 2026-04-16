@@ -634,6 +634,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 
 	MTString = defined(bomt) ? ", mt=bomt)" : ")"
 
+
 	bVec6c = IsClip(bVec6)
 	bVec6 = bVec6c ? bVec6 : \
 	        (maxTR > 5)   ? eval("srchSuper_us.MAnalyse( isb=true,  delta=6, "+MAnalyseString+MTString) : NOP()
