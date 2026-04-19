@@ -1,5 +1,5 @@
 #################################################################################################
-###### eedi3_resize16 v3.3.16 ###### by mawen1250 mod by A.SONY ######     2023.12.27      ######
+###### eedi3_resize16 v3.3.17 ###### by mawen1250 mod by A.SONY ######     2026.04.17      ######
 #################################################################################################
 ###### from v2.8 on, eedi3_resize16 only supports AviSynth v2.6+                           ######
 ###### Requirements: masktools v2.0a48, dither v1.25.1, eedi3 v0.9.2.3,                    ######
@@ -484,7 +484,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
         \                                            kernelh=yrh?kernel_u:kernel_d, kernelv=yrv?kernel_u:kernel_d,
 		\                                            fh=yrh?f_u:f_d, fv=yrv?f_u:f_d,
 		\                                            invksh=yrh?invks_u:invks_d, invksv=yrv?invks_u:invks_d,
-		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps, flt=true
 		\                                           ) :
 		\                           edgeedY.ResizeX(ow , oh , src_left *yhrf+yhfix        , src_top *yvrf+yvfix,
         \                                            src_width *yhrf, src_height *yvrf, luma=!(Y31!=3), chroma=sisprgb && (U32==3||V32==3),
@@ -509,7 +509,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
         \                                            kernelh=crh?kernel_u:kernel_d, kernelv=crv?kernel_u:kernel_d,
 		\                                            fh=crh?f_u:f_d, fv=crv?f_u:f_d,
 		\                                            invksh=crh?invks_u:invks_d, invksv=crv?invks_u:invks_d,
-		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps, flt=true
 		\                                           ) :
 		\                           edgeedU.ResizeX(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
         \                                            src_widthc*chrf, src_heightc*cvrf, luma=!(U31!=3), chroma=false,
@@ -531,7 +531,7 @@ Function eedi3_resize16(clip input, int "target_width", int "target_height", flo
         \                                            kernelh=crh?kernel_u:kernel_d, kernelv=crv?kernel_u:kernel_d,
 		\                                            fh=crh?f_u:f_d, fv=crv?f_u:f_d,
 		\                                            invksh=crh?invks_u:invks_d, invksv=crv?invks_u:invks_d,
-		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps, flt=true
 		\                                           ) :
 		\                           edgeedV.ResizeX(owc, ohc, src_leftc*chrf+chfix+cphfixe, src_topc*cvrf+cvfix,
         \                                            src_widthc*chrf, src_heightc*cvrf, luma=!(V31!=3), chroma=false,
@@ -572,7 +572,7 @@ flat16planes = string(Y32 == 3 ? "0, " : "") + string(U32 == 3 ? "1, " : "") + s
         \                                            kernelh=yh?kernel_u:kernel_d, kernelv=yv?kernel_u:kernel_d,
 		\                                            fh=yh?f_u:f_d, fv=yv?f_u:f_d,
 		\                                            invksh=yh?invks_u:invks_d, invksv=yv?invks_u:invks_d,
-		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps, flt=true
 		\                                           ).fmtc_bitdepth(sbpc, planes=flat16planes, fulls=!tv_range) : 
         \                                            flat16.      """ + resstf + """
 		\                                           (ow , oh , src_left                    , src_top            ,
@@ -602,7 +602,7 @@ flat16planes = string(Y32 == 3 ? "0, " : "") + string(U32 == 3 ? "1, " : "") + s
         \                                             kernelh=yh?kernel_u:kernel_d, kernelv=yv?kernel_u:kernel_d,
 		\                                            fh=yh?f_u:f_d, fv=yv?f_u:f_d,
 		\                                            invksh=yh?invks_u:invks_d, invksv=yv?invks_u:invks_d,
-		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps, flt=true
 		\                                           ).fmtc_bitdepth(sbpc, planes=!sisprgb ? Y32==3 ? "0" : "" : "all", fulls=!tv_range) : 
 		\                                           flatY          .""" + resstf + """
 		\                                           (ow , oh , src_left                    , src_top            ,
@@ -630,7 +630,7 @@ flat16planes = string(Y32 == 3 ? "0, " : "") + string(U32 == 3 ? "1, " : "") + s
         \                                            kernelh=ch?kernel_u:kernel_d, kernelv=cv?kernel_u:kernel_d,
 		\                                            fh=ch?f_u:f_d, fv=cv?f_u:f_d,
 		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
-		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps, flt=true
 		\                                           ).fmtc_bitdepth(sbpc, planes=string(U32==3 ? "0" : ""), fulls=!tv_range) :
 		\                                           input16.""" + suext + """().""" + resstf + """
 		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
@@ -655,7 +655,7 @@ flat16planes = string(Y32 == 3 ? "0, " : "") + string(U32 == 3 ? "1, " : "") + s
 		\                                            kernelh=ch?kernel_u:kernel_d, kernelv=cv?kernel_u:kernel_d,
 		\                                            fh=ch?f_u:f_d, fv=cv?f_u:f_d,
 		\                                            invksh=ch?invks_u:invks_d, invksv=cv?invks_u:invks_d,
-		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps
+		\                                            taps=taps, a1=a1, a2=a2, a3=a3, invkstaps=invkstaps, flt=true
 		\                                           ).fmtc_bitdepth(sbpc, planes=string(V32==3 ? "0" : ""), fulls=!tv_range) :
 		\                                           input16.""" + svext + """().""" + resstf + """
 		\                                           (owc, ohc, src_leftc           +cphfix , src_topc           ,
