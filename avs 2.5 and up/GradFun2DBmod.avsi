@@ -5,7 +5,7 @@
 ###                               v1.5 by "LaTo INV."                                ###
 ###                                                                                  ###
 ###                                30 December 2009                                  ###
-###                                 2026.04.17 mod                                   ###
+###                                 2026.04.18 mod                                   ###
 ###                                                                                  ###
 ########################################################################################
 ### 
@@ -180,15 +180,15 @@ screenW = default( screenW,          1280 )
 screenH = default( screenH,          1024 )
 uGF2DB3 = default( useGF2DB3,    sisavs26 )
 
-Assert( ( thr >= 1.0 )                   ? true : false, chr(10) + "'thr' have not a correct value! [>=1.0]" + chr(10))
-Assert( ( thrC >= 1.0 )                  ? true : false, chr(10) + "'thrC' have not a correct value! [>=1.0]" + chr(10))
-Assert( ( mode >= 0 && mode <= 3 )       ? true : false, chr(10) + "'mode' have not a correct value! [0,1,2,3]" + chr(10))
-Assert( ( str >= 0.0 )                   ? true : false, chr(10) + "'str' have not a correct value! [>=0.0]" + chr(10))
-Assert( ( strC >= 0.0 )                  ? true : false, chr(10) + "'strC' have not a correct value! [>=0.0]" + chr(10))
-Assert( ( temp >= -1 && temp <= 100 )    ? true : false, chr(10) + "'temp' have not a correct value! [-1,0...100]" + chr(10))
-Assert( ( adapt >= -1 && adapt <= 255 )  ? true : false, chr(10) + "'adapt' have not a correct value! [-1,0...255]" + chr(10))
-Assert( ( radius >= 1 )                  ? true : false, chr(10) + "'radius' have not a correct value! [>=1]" + chr(10))
-Assert( ( range >= 0 && range <= 255 )   ? true : false, chr(10) + "'range' have not a correct value! [0...255]" + chr(10))
+Assert( ( thr >= 1.0 )                   ? true : false, chr(10) + "GradFun2DBmod: 'thr' have not a correct value! [>=1.0]" + chr(10))
+Assert( ( thrC >= 1.0 )                  ? true : false, chr(10) + "GradFun2DBmod: 'thrC' have not a correct value! [>=1.0]" + chr(10))
+Assert( ( mode >= 0 && mode <= 3 )       ? true : false, chr(10) + "GradFun2DBmod: 'mode' have not a correct value! [0,1,2,3]" + chr(10))
+Assert( ( str >= 0.0 )                   ? true : false, chr(10) + "GradFun2DBmod: 'str' have not a correct value! [>=0.0]" + chr(10))
+Assert( ( strC >= 0.0 )                  ? true : false, chr(10) + "GradFun2DBmod: 'strC' have not a correct value! [>=0.0]" + chr(10))
+Assert( ( temp >= -1 && temp <= 100 )    ? true : false, chr(10) + "GradFun2DBmod: 'temp' have not a correct value! [-1,0...100]" + chr(10))
+Assert( ( adapt >= -1 && adapt <= 255 )  ? true : false, chr(10) + "GradFun2DBmod: 'adapt' have not a correct value! [-1,0...255]" + chr(10))
+Assert( ( radius >= 1 )                  ? true : false, chr(10) + "GradFun2DBmod: 'radius' have not a correct value! [>=1]" + chr(10))
+Assert( ( range >= 0 && range <= 255 )   ? true : false, chr(10) + "GradFun2DBmod: 'range' have not a correct value! [0...255]" + chr(10))
 
 chr    = strC > 0.0 ? true : false
 chroma = thrC > 1.0 || strC > 0.0 ? true : false
@@ -307,7 +307,7 @@ grain  = temp<=0   ? grain
 
 AGmask = adapt==0   ? input.removegrain(19,-1)
 \      : adapt==255 ? input.invert().removegrain(19,-1)
-\      :              input.mt_lut("x "+string(adapt)+" - abs 255 * "+string(adapt)+" 128 - abs 128 + /",u=1,v=1).removegrain(19,-1)
+\      :              sisavs26 ? input.mt_lut("x "+string(adapt)+" scalef - abs range_max * "+string(adapt)+" scalef range_half - abs range_half + /",use_expr=1,u=1,v=1).removegrain(19,-1) : input.mt_lut("x "+string(adapt)+" - abs 255 * "+string(adapt)+" 128 - abs 128 + /",u=1,v=1).removegrain(19,-1)
 
 deband = str==0.0 && strC==0.0 ? dither
 \      : adapt==-1             ? grain
@@ -315,8 +315,8 @@ deband = str==0.0 && strC==0.0 ? dither
 
 
 ### MASK
-GFmask = radius==1 ? input.mt_edge(mode="min/max",thY1=0,thY2=255,u=1,v=1).mt_lut(expr="255 x 1 "+string(range)+" / * 2 ^ /",u=1,v=1).removegrain(19,-1)
-\      :             mt_luts(input,input,mode="range",pixels=mt_square(radius),expr="y",u=1,v=1).mt_lut(expr="255 x 1 "+string(range)+" / * 2 ^ /",u=1,v=1).removegrain(19,-1)
+GFmask = radius==1 ? sisavs26 ? input.mt_edge(mode="min/max",thY1=0,thY2=255,u=1,v=1).mt_lut(expr="range_max x 1 "+string(range)+" scalef / * 2 ^ /",use_expr=1,u=1,v=1).removegrain(19,-1) : input.mt_edge(mode="min/max",thY1=0,thY2=255,u=1,v=1).mt_lut(expr="255 x 1 "+string(range)+" / * 2 ^ /",u=1,v=1).removegrain(19,-1)
+\      :             sisavs26 ? mt_luts(input,input,mode="range",pixels=mt_square(radius),expr="y",u=1,v=1).mt_lut(expr="range_max x 1 "+string(range)+" scalef / * 2 ^ /",use_expr=1,u=1,v=1).removegrain(19,-1) : mt_luts(input,input,mode="range",pixels=mt_square(radius),expr="y",u=1,v=1).mt_lut(expr="255 x 1 "+string(range)+" / * 2 ^ /",u=1,v=1).removegrain(19,-1)
 
 output = mask==true   ? mt_merge(input,deband,GFmask,luma=chroma?true:false,u=chroma?3:2,v=chroma?3:2)
 \      : chroma==true ? deband
@@ -347,7 +347,7 @@ output = mask==true   ? mt_merge(input,deband,GFmask,luma=chroma?true:false,u=ch
    b      = output.spline36resize(dest_x,dest_y)
    mkdiff = mt_makediff(a, b, chroma="process")
    c      = mkdiff.ColorYUV(analyze=true)
-   d      = mkdiff.Levels(112, 1.0, 144, 0, 255, coring=false)
+   d      = sisphbd ? mkdiff.LevelsPlus(112, 1.0, 144, 0, 255) : mkdiff.Levels(112, 1.0, 144, 0, 255, coring=false)
 
    a = scale_x > 0 ? a.addborders(scale_x/4,0,scale_x/4,0)
    \ : scale_x < 0 ? a.crop(-scale_x/4,0,scale_x/4,0)
