@@ -5,7 +5,7 @@
 ###                               v1.5 by "LaTo INV."                                ###
 ###                                                                                  ###
 ###                                30 December 2009                                  ###
-###                                 2020.06.27 mod                                   ###
+###                                 2026.04.17 mod                                   ###
 ###                                                                                  ###
 ########################################################################################
 ### 
@@ -428,8 +428,11 @@ output = show==false ? output
 return output
 }
 
+
+# now it will use SmoothGradPlus() from GradFun3plus.avsi by Dogway if you use newer avs+, the output is kinda better (less halos)
+# but if you want to get similar output to the original GradFun2DB()/SmoothGrad() then you should blame Dogway not me :) https://forum.doom9.org/showthread.php?p=1952893#post1952893
 Function GradFun2DB3(clip clip, float "thr")
 {
 thr     = default( thr,             1.2 )
-clip.Dither_convert_8_to_16().SmoothGrad(thr=thr*0.3,elast=5.5).DitherPost(mode=7)
+AvsPlusVersionNumber < 3382 ? clip.Dither_convert_8_to_16().SmoothGrad(thr=thr*0.3,elast=5.5).DitherPost(mode=7) : clip.SmoothGradPlus(thr=thr*0.3,elast=5.5)
 }
