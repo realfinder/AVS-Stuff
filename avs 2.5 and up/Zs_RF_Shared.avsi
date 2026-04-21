@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.162
+# V1.163
 
 ### Functions list:-
 # sh_StrReplace
@@ -433,7 +433,7 @@ function sh_Padding(clip c, int left, int top, int right, int bottom, int "threa
 threads = Default(threads, sh_GetUserGlobalIMTint(true))
 w = c.width()
 h = c.height()
-threads!=1 ? Eval("try { pointresizemt(w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom+0.0001, threads=threads) } catch(error_msg) { c.pointresize( w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom+0.0001 ) }") : c.pointresize( w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom+0.0001 )
+threads!=1 ? Eval("try { c.pointresizemt(w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom+0.0001, threads=threads) } catch(error_msg) { c.pointresize( w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom+0.0001 ) }") : c.pointresize( w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom+0.0001 )
 }
 
 
