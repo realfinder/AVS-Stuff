@@ -1,4 +1,4 @@
-# AutoBorderFiller – V1.0
+# AutoBorderFiller – V1.01
 # based on SmartCrop.avsi
 # will fill any black Border per-frame, should work with YUV 8-16 bits
 # it kill any aplha channel, and always add new alpha channel for the detected Borders
@@ -90,7 +90,7 @@ function ABFiller_Core(clip base, \
     ScriptClip(base.AddAlphaPlane(0), function [thr, mT, mB, mL, mR, sv, sh, rgbc, c8bit, mod2] () {
         top = c8bit.BFinder_TopM(thr, sv, mT, rgbc, mod2)
         bot = c8bit.BFinder_BotM(thr, sv, mB, rgbc, mod2)
-        lft = c8bit.BFinder_RightM(thr, sh, mL, top, bot, rgbc, mod2)
+        lft = c8bit.BFinder_LeftM(thr, sh, mL, top, bot, rgbc, mod2)
         rgt = c8bit.BFinder_RightM(thr, sh, mR, top, bot, rgbc, mod2)
         RemoveAlphaPlane().crop(lft,top,-rgt,-bot,align=true).ContinuityFixer(lft==0?0:3,top==0?0:3,rgt==0?0:3,bot==0?0:3,3).ConvertBits(32).bore_SinglePlane(lft==0?0:5,rgt==0?0:5,top==0?0:5,bot==0?0:5).Convertbits(BitsPerComponent()).sh_Padding(lft,top,rgt,bot,1).AddAlphaPlane(ExtractA().Letterbox(top, bot, x1=lft, x2=rgt, color_yuv =color_white))
     })
