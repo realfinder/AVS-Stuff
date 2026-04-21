@@ -1,6 +1,6 @@
 # AutoBorderFiller – V1.0
 # based on SmartCrop.avsi
-# will fill aby black Border per-frame, should work with YUV 8-16 bits
+# will fill any black Border per-frame, should work with YUV 8-16 bits
 # it kill any aplha channel, and always add new alpha channel for the detected Borders
 function AutoBorderFiller(clip c, \
                    int "threshold", \
