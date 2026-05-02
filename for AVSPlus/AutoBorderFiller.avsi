@@ -1,4 +1,4 @@
-# AutoBorderFiller – V1.02
+# AutoBorderFiller – V1.03
 # based on SmartCrop.avsi
 # will fill any black Border per-frame, should work with YUV 8-16 bits
 # it kill any aplha channel, and always add new alpha channel for the detected Borders
@@ -93,7 +93,9 @@ function ABFiller_Core(clip base, \
         lft = c8bit.BFinder_LeftM(thr, sh, mL, top, bot, rgbc, mod2)
         rgt = c8bit.BFinder_RightM(thr, sh, mR, top, bot, rgbc, mod2)
         AlphaBm=ExtractA().Letterbox(top, bot, x1=lft, x2=rgt, color_yuv =color_white)
-        RemoveAlphaPlane().crop(lft,top,-rgt,-bot,align=true).ContinuityFixer(lft==0?0:3,top==0?0:3,rgt==0?0:3,bot==0?0:3,3).ConvertBits(32).bore_SinglePlane(lft==0?0:6,rgt==0?0:6,top==0?0:5,bot==0?0:5).Convertbits(BitsPerComponent()).sh_Padding(lft,top,rgt,bot,1).FillBorders(lft==0?0:1+lft,top=top==0?0:1+top,right=rgt==0?0:1+rgt,bottom=bot==0?0:1+bot,mode=6,u=2,v=2).FillBorders(lft==0?0:2+lft,top=top==0?0:2+top,right=rgt==0?0:2+rgt,bottom=bot==0?0:2+bot,mode=6,y=2).AddAlphaPlane(AlphaBm)
+        RemoveAlphaPlane().crop(lft,top,-rgt,-bot,align=true).ContinuityFixer(lft==0?0:3,top==0?0:3,rgt==0?0:3,bot==0?0:3,3)
+        ConvertBits(32).bore_SinglePlane(lft==0?0:6,rgt==0?0:6,top==0?0:5,bot==0?0:5,plane=4).bore_SinglePlane(lft==0?0:6,rgt==0?0:6,top==0?0:5,bot==0?0:5,plane=1).bore_SinglePlane(lft==0?0:6,rgt==0?0:6,top==0?0:5,bot==0?0:5,plane=2).Convertbits(BitsPerComponent())
+        sh_Padding(lft,top,rgt,bot,1).FillBorders(lft==0?0:1+lft,top=top==0?0:1+top,right=rgt==0?0:1+rgt,bottom=bot==0?0:1+bot,mode=6,u=2,v=2).FillBorders(lft==0?0:2+lft,top=top==0?0:2+top,right=rgt==0?0:2+rgt,bottom=bot==0?0:2+bot,mode=6,y=2).AddAlphaPlane(AlphaBm)
         mt_merge(last,TemporalSoften(3, 255, 255, 10, 2),mt_inflate(AlphaBm),luma=true)
     })
 }
