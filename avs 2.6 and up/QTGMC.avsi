@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------#
 #                                                                   #
 #                     QTGMC 3.33 by Vit, 2012                       #
-#     QTGMC 3.392 2026 mod by A.SONY, based on v3.33d by Dogway     #
+#     QTGMC 3.393 2026 mod by A.SONY, based on v3.33d by Dogway     #
 #                                                                   #
 #   A high quality deinterlacer using motion-compensated temporal   #
 #  smoothing, with a range of features for quality and convenience  #
@@ -12,12 +12,15 @@
 # Full documentation is in the 'QTGMC' html file that may comes with this script, or even better see avisynth wiki
 #
 # --- LATEST CHANGES ---
-# v3.392s
+# v3.393s
+# - add PhosphorSoft bool
+#
+# v3.392s by DTL2020
 # - Add Refinemotion2 for second stage motion refining (1/4 of the initial block size)
 # - Fix lambda scaling for all stages motion refining 
 #   (see also comment at https://github.com/pinterf/mvtools/blob/a488b095c4bdc8d81abfd952ab534c015a9d45b7/Sources/PlaneOfBlocks.cpp#L3550)
 #
-# v3.391s
+# v3.391s by DTL2020
 # - Add MEus for Motion Estimation with upsized clip to simulate pel>1 with pel=1 processing in MAnalyse and MRecalculate.
 #
 # v3.390s
@@ -234,7 +237,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
                     val "BT", val "DetailRestore", val "MotionBlur", val "MBlurLimit", val "NoiseBypass", float "Str", float "Amp", bool "TV_range", int "useEdiExt", \
 	            int "DftDither", bool "lsbd", bool "lsb", bool "n16", bool "keep_tv_range", String "device_type", int "device_id", bool "n16d", bool "FastMA", \
 		    bool "ESearchP", bool "Refinemotion", bool "xflateMaTo", int "pscrn", bool "temporal", bool "trymany", bool "RefineMotionAll", int "RefineMotionSearch", \
-		    int "RefineMotionRadius", bool "MEus", bool "Refinemotion2")
+		    int "RefineMotionRadius", bool "MEus", bool "Refinemotion2", bool "PhosphorSoft")
 {
 	# EdiMode="RepcYadif"/"cYadif" require the Yadif plugin, which doesn't autoload. Typically the calling script would load it.
 
@@ -260,6 +263,7 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
     RefineMotionSearch = default (RefineMotionSearch, Search)
     RefineMotionRadius = default (RefineMotionRadius, SearchParam)
     MEus	  = default( MEus, false)
+    CRTSoft	  = default( PhosphorSoft, false)
 
 	
 	# Dogways Added Defaults
@@ -579,9 +583,10 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	# The bobbed clip will shimmer due to being derived from alternating fields. Temporally smooth over the neighboring frames using a binomial kernel. Binomial
 	# kernels give equal weight to even and odd frames and hence average away the shimmer. The two kernels used are [1 2 1] and [1 4 6 4 1] for radius 1 and 2.
 	# These kernels are approximately Gaussian kernels, which work well as a prefilter before motion analysis (hence the original name for this script)
-	# Create linear weightings of neighbors first                                                 -2    -1     0    1     2
-	ts1 = (!IsClip(srchClip) && TR0 > 0) ? bobbed.TemporalSoften( 1, 255,CMts, 28, 2 ) : NOP()  # 0.00  0.33  0.33  0.33  0.00
-	ts2 = (!IsClip(srchClip) && TR0 > 1) ? bobbed.TemporalSoften( 2, 255,CMts, 28, 2 ) : NOP()  # 0.20  0.20  0.20  0.20  0.20
+	# Create linear weightings of neighbors first                                                             -2    -1     0    1     2
+	ts1 = (!IsClip(srchClip) && TR0 > 0 && !CRTSoft) ? bobbed.TemporalSoften( 1, 255,CMts, 28, 2 ) : NOP()  # 0.00  0.33  0.33  0.33  0.00
+	ts2 = (!IsClip(srchClip) && TR0 > 1 && !CRTSoft) ? bobbed.TemporalSoften( 2, 255,CMts, 28, 2 ) : NOP()  # 0.20  0.20  0.20  0.20  0.20
+	ts1 = (!IsClip(srchClip) && TR0 > 0 && CRTSoft) ? bobbed.Overlay( bobbed.reduceflicker(strength=1), mode="Lighten" ) : ts1
 
 	# Combine linear weightings to give binomial weightings - TR0=0: (1), TR0=1: (1:2:1), TR0=2: (1:4:6:4:1)
 	domtr02 = TR0 == -2 && !(InputType == 0 && UseEdiExt > 1)
@@ -590,8 +595,8 @@ function QTGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
 	  domtr02 && defined(EdiExt) ? isyuy2(EdiExt) ? EdiExt.nonyuy2clipin(true).Vinverse() : EdiExt.Vinverse() : TR0 == -2 ? bobbed : \
 	  domtr01 && defined(EdiExt) ? isyuy2(EdiExt) ? EdiExt.nonyuy2clipin(true) : EdiExt : TR0 == -1 ? bobbed : \
 	            (TR0 == 0)       ? bobbed : \
-	            (TR0 == 1)       ? (ChromaMotion ? ts1.Merge( bobbed, 0.25 ) : ts1.MergeLuma( bobbed, 0.25 )) : \
-	                               (ChromaMotion ? ts1.Merge( ts2, 0.357 ).Merge( bobbed, 0.125 ) : ts1.MergeLuma( ts2, 0.357 ).MergeLuma( bobbed, 0.125 ))
+	            (TR0 == 1)       ? CRTSoft ? ts1 : (ChromaMotion ? ts1.Merge( bobbed, 0.25 ) : ts1.MergeLuma( bobbed, 0.25 )) : \
+	                               CRTSoft ? ts1 : (ChromaMotion ? ts1.Merge( ts2, 0.357 ).Merge( bobbed, 0.125 ) : ts1.MergeLuma( ts2, 0.357 ).MergeLuma( bobbed, 0.125 ))
 
 	# Remove areas of difference between temporal blurred motion search clip and bob that are not due to bob-shimmer - removes general motion blur
 	repair0 = (IsClip(srchClip) || Rep0 == 0) ? binomial0 : binomial0.QTGMC_KeepOnlyBobShimmerFixes( bobbed, Rep0, (RepChroma && ChromaMotion), xflateMaTo )
