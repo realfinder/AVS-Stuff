@@ -2,7 +2,7 @@
 # https://forum.doom9.org/showthread.php?t=182831&page=7
 # Fonction SpotDel
 /*
-SpotDel (Spotless+Delta Restore) 1.0, mod 1.1 in 2026 to add FastHBD parameter
+SpotDel (Spotless+Delta Restore) 1.0, mod 1.2 in 2026 to add FastHBD parameter
 
 Example
 
@@ -41,7 +41,7 @@ As Spotless tends to soften/degrain the image, parts brought back from the origi
 function SpotDel(clip input, int "RadT", float "dark2Brt", float "dark2BrtLimit", bool "RiskyBlur", bool "Rgr", int "Rgr1", int "Rgr2", \
                   int "Usharp_strength", int "Usharp_radius", int "Usharp_th", bool "Sharpen_it", bool "Slog", int "Pel", bool "Chroma", \
                   int "BlkSz", int "Olap", Int "SchParam", bool "Tm", int "DCT", int "SpotTH", float "Bblur", int "txt_sz",              \
-                  bool "ReturnRestored", bool "ReturnStacked" , bool "FastHBD"                                                           \  
+                  bool "ReturnRestored", bool "ReturnStacked", bool "FastHBD", bool "Anime"                                              \  
                   )
 {
     # VARIABLES 
@@ -78,11 +78,12 @@ function SpotDel(clip input, int "RadT", float "dark2Brt", float "dark2BrtLimit"
     RadT             = default(RadT, 1)                    # Removes Spots on up to RadT [Temporal Radius] consecutive frames. RadT > 2 will usually be overkill. Setting too high could possibly result in blurring.
                                                            # Each pixel in result frame is median pixel value of (2*RadT+1) motion compensated frames (including source, ie current_frame-RadT to current_frame+RadT).
     FastHB           = default(FastHBD, false)
+    Anime            = default(Anime, false)
 
     #Delta Restore variables
-    dark2Brt         = default(dark2Brt, 0.97)             # Default 0.97. Decrease if too many spots coming back 
-    dark2BrtLimit    = default(dark2BrtLimit, 0.86)        # Default 0.86. Same mask. Try to change it too.
-    Global RiskyBlur = default(RiskyBlur, True)            # True = use fastblur and risk some glitches.    False = Use Gblur and go stable, at the price of a  slower script
+    dark2Brt         = default(dark2Brt, Anime ? 5.17 : 0.97)             # Default 0.97. Decrease if too many spots coming back 
+    dark2BrtLimit    = default(dark2BrtLimit, Anime ? 5.06 : 0.86)        # Default 0.86. Same mask. Try to change it too.
+    Global RiskyBlur = default(RiskyBlur, True)                           # True = use fastblur and risk some glitches.    False = Use Gblur and go stable, at the price of a  slower script
     
     bi               = BitsPerComponent(input)
     source1          = input
@@ -103,14 +104,17 @@ function SpotDel(clip input, int "RadT", float "dark2Brt", float "dark2BrtLimit"
     #Sharpening
     #  -----------------------------------------------------------------------------------
     # Best results found by sharpening before (not after) cleaning.
-    source1_shp = Sharpen_it ? source1.UnsharpMask_avsi(Usharp_strength,Usharp_radius,Usharp_th) : source1
+    source1_shp = Sharpen_it && !Anime ? source1.UnsharpMask_avsi(Usharp_strength,Usharp_radius,Usharp_th) : source1
     # If Using Slog rushes, also sharpen the leveled clip
-    source1_lvl_shp = Sharpen_it ? source1_lvl.UnsharpMask_avsi(Usharp_strength,Usharp_radius,Usharp_th) : source1_lvl    
+    source1_lvl_shp = Sharpen_it && !Anime ? source1_lvl.UnsharpMask_avsi(Usharp_strength,Usharp_radius,Usharp_th) : source1_lvl    
     
     #Remove spots, Spotless, version 1.07
     # ------------------------------------------------------------------------------------
     source1_shp_spt = SpotLess107(source1_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,Bblur=Bblur,thsad=thsad,RadT=RadT,chroma=Chroma, DCT=DCT, SchParam=SchParam, FastHBD=FastHB)
     source1_lvl_shp_spt = Slog ? SpotLess107(source1_lvl_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,Bblur=Bblur,thsad=thsad,RadT=RadT,chroma=Chroma, DCT=DCT, SchParam=SchParam, FastHBD=FastHB) : source1_shp_spt
+
+    source1_shp_spt = Sharpen_it && Anime ? FineDehalo_contrasharp(source1_shp_spt,source1,1,true) : source1_shp_spt
+    source1_lvl_shp_spt = Sharpen_it && Anime && Slog ? FineDehalo_contrasharp(source1_shp_spt,source1,1,true) : source1_lvl_shp_spt
 
     # Delta Restore -------------------------------------------------------------
 
@@ -491,7 +495,7 @@ Function SpotLess107(clip c, int "RadT", int "ThSAD", int "ThSAD2", int "pel", b
     Assert(pel==1 || pel==2 || pel==4, myName + "pel==1 || pel==2 || pel==4")
     pad = max(BlkSz,8)
     sup = (HasDC ? dc : bBlur>0.0  ? c.blur(bBlur) : c )
-    sup = (FastHBD ? sup.convertbits(8) : sup ).MSuper(hpad=pad,vpad=pad,pel=pel, sharp=2)
+    sup = (FastHB ? sup.convertbits(8) : sup ).MSuper(hpad=pad,vpad=pad,pel=pel, sharp=2)
     # Only 1 Level required where not MAnalyse-ing.
     sup_rend = (HasDC||bBlur>0.0) ? c.MSuper(hpad=pad,vpad=pad,pel=pel, sharp=2,Levels=1) : sup
     MultiVec = sup.MAnalyse(multi=true, delta=RadT,blksize=BlkSz,overlap=OLap, searchparam=SchParam, chroma=Chroma,truemotion=Tm,global=Glob, DCT=DCT)
