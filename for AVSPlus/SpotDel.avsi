@@ -2,7 +2,7 @@
 # https://forum.doom9.org/showthread.php?t=182831&page=7
 # Fonction SpotDel
 /*
-SpotDel (Spotless+Delta Restore) 1.0, mod 1.2 in 2026 to add FastHBD parameter
+SpotDel (Spotless+Delta Restore) 1.0, mod 1.3 in 2026 to add FastHBD parameter
 
 Example
 
@@ -41,7 +41,7 @@ As Spotless tends to soften/degrain the image, parts brought back from the origi
 function SpotDel(clip input, int "RadT", float "dark2Brt", float "dark2BrtLimit", bool "RiskyBlur", bool "Rgr", int "Rgr1", int "Rgr2", \
                   int "Usharp_strength", int "Usharp_radius", int "Usharp_th", bool "Sharpen_it", bool "Slog", int "Pel", bool "Chroma", \
                   int "BlkSz", int "Olap", Int "SchParam", bool "Tm", int "DCT", int "SpotTH", float "Bblur", int "txt_sz",              \
-                  bool "ReturnRestored", bool "ReturnStacked", bool "FastHBD", bool "Anime"                                              \  
+                  bool "ReturnRestored", bool "ReturnStacked", bool "FastHBD", int "LessAggressive"                                      \  
                   )
 {
     # VARIABLES 
@@ -78,12 +78,12 @@ function SpotDel(clip input, int "RadT", float "dark2Brt", float "dark2BrtLimit"
     RadT             = default(RadT, 1)                    # Removes Spots on up to RadT [Temporal Radius] consecutive frames. RadT > 2 will usually be overkill. Setting too high could possibly result in blurring.
                                                            # Each pixel in result frame is median pixel value of (2*RadT+1) motion compensated frames (including source, ie current_frame-RadT to current_frame+RadT).
     FastHB           = default(FastHBD, false)
-    Anime            = default(Anime, false)
+    LessAggressive   = default(LessAggressive, 0)
 
     #Delta Restore variables
-    dark2Brt         = default(dark2Brt, Anime ? 5.17 : 0.97)             # Default 0.97. Decrease if too many spots coming back 
-    dark2BrtLimit    = default(dark2BrtLimit, Anime ? 5.06 : 0.86)        # Default 0.86. Same mask. Try to change it too.
-    Global RiskyBlur = default(RiskyBlur, True)                           # True = use fastblur and risk some glitches.    False = Use Gblur and go stable, at the price of a  slower script
+    dark2Brt         = default(dark2Brt, LessAggressive != 0 ? 1.17 : 0.97)      # Default 0.97. Decrease if too many spots coming back 
+    dark2BrtLimit    = default(dark2BrtLimit, LessAggressive != 0 ? 1.06 : 0.86) # Default 0.86. Same mask. Try to change it too.
+    Global RiskyBlur = default(RiskyBlur, True)                                  # True = use fastblur and risk some glitches.    False = Use Gblur and go stable, at the price of a  slower script
     
     bi               = BitsPerComponent(input)
     source1          = input
@@ -104,17 +104,17 @@ function SpotDel(clip input, int "RadT", float "dark2Brt", float "dark2BrtLimit"
     #Sharpening
     #  -----------------------------------------------------------------------------------
     # Best results found by sharpening before (not after) cleaning.
-    source1_shp = Sharpen_it && !Anime ? source1.UnsharpMask_avsi(Usharp_strength,Usharp_radius,Usharp_th) : source1
+    source1_shp = Sharpen_it && LessAggressive < 2 ? source1.UnsharpMask_avsi(Usharp_strength,Usharp_radius,Usharp_th) : source1
     # If Using Slog rushes, also sharpen the leveled clip
-    source1_lvl_shp = Sharpen_it && !Anime ? source1_lvl.UnsharpMask_avsi(Usharp_strength,Usharp_radius,Usharp_th) : source1_lvl    
+    source1_lvl_shp = Sharpen_it && LessAggressive < 2 ? source1_lvl.UnsharpMask_avsi(Usharp_strength,Usharp_radius,Usharp_th) : source1_lvl    
     
     #Remove spots, Spotless, version 1.07
     # ------------------------------------------------------------------------------------
-    source1_shp_spt = SpotLess107(source1_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,Bblur=Bblur,thsad=thsad,RadT=RadT,chroma=Chroma, DCT=DCT, SchParam=SchParam, FastHBD=FastHB)
-    source1_lvl_shp_spt = Slog ? SpotLess107(source1_lvl_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,Bblur=Bblur,thsad=thsad,RadT=RadT,chroma=Chroma, DCT=DCT, SchParam=SchParam, FastHBD=FastHB) : source1_shp_spt
+    source1_shp_spt = LessAggressive == 1 ? SpotLess_Mod(source1_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,thsad=thsad,RadT=RadT,chroma=Chroma, FastHBD=FastHB) : SpotLess107(source1_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,Bblur=Bblur,thsad=thsad,RadT=RadT,chroma=Chroma, DCT=DCT, SchParam=SchParam, FastHBD=FastHB, LessAggressive=LessAggressive != 0)
+    source1_lvl_shp_spt = Slog ? LessAggressive == 1 ? SpotLess_Mod(source1_lvl_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,thsad=thsad,RadT=RadT,chroma=Chroma, FastHBD=FastHB) : SpotLess107(source1_lvl_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,Bblur=Bblur,thsad=thsad,RadT=RadT,chroma=Chroma, DCT=DCT, SchParam=SchParam, FastHBD=FastHB, LessAggressive=LessAggressive != 0) : source1_shp_spt
 
-    source1_shp_spt = Sharpen_it && Anime ? FineDehalo_contrasharp(source1_shp_spt,source1,1,true) : source1_shp_spt
-    source1_lvl_shp_spt = Sharpen_it && Anime && Slog ? FineDehalo_contrasharp(source1_shp_spt,source1,1,true) : source1_lvl_shp_spt
+    source1_shp_spt = Sharpen_it && LessAggressive > 1 ? FineDehalo_contrasharp(source1_shp_spt,source1,1,true) : source1_shp_spt
+    source1_lvl_shp_spt = Sharpen_it && LessAggressive > 1 && Slog ? FineDehalo_contrasharp(source1_shp_spt,source1,1,true) : source1_lvl_shp_spt
 
     # Delta Restore -------------------------------------------------------------
 
@@ -473,7 +473,7 @@ function ExpandMask(clip mask, int amount, float "blur") {
 }
 
 
-Function SpotLess107(clip c, int "RadT", int "ThSAD", int "ThSAD2", int "pel", bool "chroma", int "BlkSz", Int "Olap", Int "SchParam", bool "tm", int "DCT", Bool "glob", Float "bBlur", clip "dc", bool "FastHBD" ) {
+Function SpotLess107(clip c, int "RadT", int "ThSAD", int "ThSAD2", int "pel", bool "chroma", int "BlkSz", Int "Olap", Int "SchParam", bool "tm", int "DCT", Bool "glob", Float "bBlur", clip "dc", bool "FastHBD", bool "LessAggressive" ) {
     myName   = "SpotLess107: "
     RadT     = Default(RadT,1)        # Temporal radius. (MCompensate arg)
     ThSAD    = Default(ThSAD,10000)   # SAD threshold at radius 1 (Default Nearly OFF).
@@ -489,6 +489,7 @@ Function SpotLess107(clip c, int "RadT", int "ThSAD", int "ThSAD2", int "pel", b
     bBlur    = Default(bblur,0.6)     # Default 0.6. Suggest about 0.6 for better motion analysis, but a bit slower.
     HasDC    = dc.Defined             # bblur ignored if HasDC, ie user already provided prefiltered clip.
     FastHB   = default(FastHBD, false)
+    LessAggressive   = default(LessAggressive, false)
     
     Assert(1 <= RadT,myName + " 1 <= RadT")
     Assert(0.0 <= bblur <= 1.58, myName + "0.0 <= bblur <= 1.58")
@@ -500,6 +501,9 @@ Function SpotLess107(clip c, int "RadT", int "ThSAD", int "ThSAD2", int "pel", b
     sup_rend = (HasDC||bBlur>0.0) ? c.MSuper(hpad=pad,vpad=pad,pel=pel, sharp=2,Levels=1) : sup
     MultiVec = sup.MAnalyse(multi=true, delta=RadT,blksize=BlkSz,overlap=OLap, searchparam=SchParam, chroma=Chroma,truemotion=Tm,global=Glob, DCT=DCT)
     c.MCompensate(sup_rend, MultiVec, tr=RadT, thSad=ThSAD, thSad2=ThSAD2)
+    cmoma=LessAggressive ? mt_logic(MMask(MultiVec.SelectEvery(RadT*2,0),kind=1,ml=44),MMask(MultiVec.SelectEvery(RadT*2,1),kind=1,ml=44),"min",u=3,v=3) : nop()
+    LessAggressive ? mt_merge(last,c.ChangeFPS(FrameRate()),cmoma.ChangeFPS(FrameRate()),u=3,v=3) : last
     MedianBlurTemporal(radiusY=0,radiusU=0,radiusV=0,temporalradius=RadT)  # Temporal median blur only [not spatial]
     SelectEvery(RadT*2+1,RadT)                                             # Return middle frame
+    LessAggressive ? RestoreMotionBlocks(last,Repair(c,1).Merge(last),c) : last
 }
