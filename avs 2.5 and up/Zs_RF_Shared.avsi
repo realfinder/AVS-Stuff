@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.163
+# V1.164
 
 ### Functions list:-
 # sh_StrReplace
@@ -1924,7 +1924,7 @@ function sbrV(clip o)
 sbrV_avsi(o)
 }
 
-function sbr(clip c) {
+function sbr(clip c)
 {
 sbr_avsi(c)
 }
