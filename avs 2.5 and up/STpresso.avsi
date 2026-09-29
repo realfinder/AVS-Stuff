@@ -1,7 +1,8 @@
-# STPresso by Didée, MC by SilaSurfer, r.f mod in 2020.08.17 for HBD
-function STPresso(clip clp, float "limit", float "bias", int "RGmode", int "tthr", float "tlimit", float "tbias", float "back", bool "mc", bool "HD", int "radius")
+# STPresso by Didée, MC by SilaSurfer, r.f mod in 2026.07.17 for HBD
+function STPresso(clip clp, float "limit", float "bias", int "RGmode", int "tthr", float "tlimit", float "tbias", float "back", bool "mc", bool "HD", int "radius", bool "FastHBD")
 {
 sisavs26 = !(VersionNumber() < 2.60)
+sisphbd = AvsPlusVersionNumber > 2294
 limit  = default( limit,   3 )  # spatial limit:  the spatial part won't change a pixel more than this
 bias   = default( bias,   24 )  # bias: the percentage of the spatial filter that will apply
 RGmode = default( RGmode,  4 )  # the spatial filter is RemoveGrain, this is its mode
@@ -14,6 +15,8 @@ h      = clp.height()
 ishd   = h > 720
 HD     = default( HD,  ishd )  # 
 radius = default( radius,  round(h/540.0) )  # 
+sischbd = sisphbd ? clp.BitsPerComponent() > 8 : false
+FastHB = default( FastHBD,  sischbd )  # 
 
 LIM1  = (limit>0) ? string( round(limit*100.0/bias-1.0) ) : string( round(100.0/bias) )
 LIM2  = (limit<0) ? "1" : string(limit)
@@ -36,23 +39,25 @@ texpr  = (limit<0) ?  sisavs26 ? "x y - abs "+TLIM1+" scalef < x x 1 x y - x y -
 
 bzz = HD ? clp.minblur(radius) : clp.removegrain(RGmode)
 sisavs26 ? mt_lutxy( clp, bzz, expr, scale_inputs=limit<0 ? "floatf" : "none", use_expr=1, U=3,V=3) : mt_lutxy( clp, bzz, expr, U=3,V=3)
-tthr==0 ? last : sisavs26 ? mt_lutxy(last,last.mt_makediff(mt_makediff(bzz,mc ? bzz.STPresso_FluxsmoothTMC(tthr) : bzz.fluxsmootht(tthr),U=3,V=3),U=3,V=3),texpr,scale_inputs=limit<0 ? "floatf" : "none",use_expr=1,U=3,V=3) : mt_lutxy(last,last.mt_makediff(mt_makediff(bzz,mc ? bzz.STPresso_FluxsmoothTMC(tthr) : bzz.fluxsmootht(tthr),U=3,V=3),U=3,V=3),texpr,U=3,V=3)
+tthr==0 ? last : sisavs26 ? mt_lutxy(last,last.mt_makediff(mt_makediff(bzz,mc ? bzz.STPresso_FluxsmoothTMC(tthr, FastHB) : bzz.fluxsmootht(tthr),U=3,V=3),U=3,V=3),texpr,scale_inputs=limit<0 ? "floatf" : "none",use_expr=1,U=3,V=3) : mt_lutxy(last,last.mt_makediff(mt_makediff(bzz,mc ? bzz.STPresso_FluxsmoothTMC(tthr, FastHB) : bzz.fluxsmootht(tthr),U=3,V=3),U=3,V=3),texpr,U=3,V=3)
 back==0 ? last : sisavs26 ? mt_lutxy(last,clp,"x "+BK+" scalef + y < x "+BK+" scalef + x "+BK+" scalef - y > x "+BK+" scalef - y ? ?",U=2,V=2) : mt_lutxy(last,clp,"x "+BK+" + y < x "+BK+" + x "+BK+" - y > x "+BK+" - y ? ?",U=2,V=2)
 }
 
 
-Function STPresso_FluxsmoothTMC(clip clp, int "tthr")
+Function STPresso_FluxsmoothTMC(clip clp, int "tthr", bool "FastHBD")
 {
 
 tthr = default( tthr, 12 )
+FastHB = default( FastHBD,  false )
 
-super = clp.MSuper(pel=2, sharp=1)
+super = FastHB ? clp.convertbits(8).MSuper(pel=2, sharp=1) : clp.MSuper(pel=2, sharp=1)
+hsuper = FastHB ? clp.MSuper(levels=1) : super
 
 bv1  = manalyse(super,isb=true, truemotion=false, delta=1,blksize=16,overlap=8)
 fv1  = manalyse(super,Isb=false, truemotion=false, delta=1,blksize=16,overlap=8)
 
-bc1  = mcompensate(clp, super,bv1)
-fc1  = mcompensate(clp, super,fv1)
+bc1  = mcompensate(clp, hsuper,bv1)
+fc1  = mcompensate(clp, hsuper,fv1)
 
 result=interleave(fc1, clp, bc1).FluxSmoothT(tthr).selectevery(3,1)
 

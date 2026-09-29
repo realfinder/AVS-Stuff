@@ -203,7 +203,7 @@ x2inp=cropnpad && subsampl ? int(round(x2o/2.0)*2) : x2
 y1inp=cropnpad && subsampl ? int(round(y1o/2.0)*2) : y1
 y2inp=cropnpad && subsampl ? int(round(y2o/2.0)*2) : y2
 
-PaCl = mskonly ? nop() : mirror && !ter ? c.crop(x1inp,y1inp,-x2inp,-y2inp,align=true).sh_Padding(x1inp,y1inp,x2inp,y2inp) : c
+PaCl = mskonly ? nop() : mirror && !ter ? c.crop(x1inp,y1inp,-x2inp,-y2inp,align=true).sh_Padding(x1inp,y1inp,x2inp,y2inp,1) : c
 
 sispLBox = AvsPlusVersionNumber > 3042
 msk  = sispLBox ? LetterBox(BlankClip(last, Color_yuv=$000000),y1,y2,x1,x2, Color_yuv=$ffffff) : LetterBox(BlankClip(last, Color_yuv=$000000),y1,y2,x1,x2,$ffffff)
