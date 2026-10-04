@@ -1,5 +1,5 @@
 # custom interlaced YV12<->YV16 functions for avs 2.6
-# 1.1
+# 1.12
 
 function YV16ToYV12i(clip c, bool "bic", bool "desample") {
 Assert(IsYV16(c), "YV16ToYV12i: input clip must be YV16")
@@ -50,5 +50,40 @@ Assert(Isyv12(c), "YV12ToYV24: input clip must be yv12")
   UV = bic ? Interleave(c.UToY8(), c.VToY8()).BicubicResize(c.width, c.height, src_left=0.25) : \
 Interleave(c.UToY8(), c.VToY8()).BilinearResize(c.width, c.height, src_left=0.25)
   YToUV(UV.SelectEven(), UV.SelectOdd(), c)
+}
+
+
+function YV16ToYV12(clip c, bool "bic", bool "desample") {
+Assert(IsYV16(c), "YV16ToYV12: input clip must be YV16")
+  bic    = default(bic, false)
+  desample = default(desample, false)
+  resizer = desample ? bic ? "DeBicubicResizeMT" : "DeBilinearResizeMT" : bic ? "BicubicResize" : "BilinearResize"
+  UVofframe = eval("Interleave(c.UToY8(), c.VToY8())."+resizer+"(c.width/2, c.height/2)")
+  U = UVofframe.SelectEven()
+  V = UVofframe.SelectOdd()
+  YToUV(U, V, c)
+}
+
+
+function YV12ToYV16(clip c, bool "bic") {
+Assert(Isyv12(c), "YV12ToYV16: input clip must be yv12")
+  bic    = default(bic, false)
+
+  UVofframe = bic ? Interleave(c.UToY8(), c.VToY8()).BicubicResize(c.width/2, c.height) : \
+Interleave(c.UToY8(), c.VToY8()).BilinearResize(c.width/2, c.height)
+  U = UVofframe.SelectEven()
+  V = UVofframe.SelectOdd()
+  YToUV(U, V, c)
+}
+
+function YUY2ToYV12(clip c, bool "bic", bool "desample") {
+Assert(IsYUY2(c), "YUY2ToYV12: input clip must be YUY2")
+ConverttoYV16(c).YV16ToYV12(bic,desample)
+}
+
+
+function YV12ToYUY2(clip c, bool "bic") {
+Assert(Isyv12(c), "YV12ToYUY2: input clip must be yv12")
+YV12ToYV16(c,bic).ConverttoYUY2()
 }
 
