@@ -1,6 +1,10 @@
-###### srestore v2.797 ######
+###### srestore v2.798 ######
 # ==================================================================================================================================
 # Change List
+#
+# 10/05/2026 AmjadSONY
+# - Update v2.797 -> v2.798
+#  HBD fixes, HBD independent dclip
 #
 # 07/11/2018 AmjadSONY
 # - Update v2.794 -> v2.795
@@ -101,10 +105,10 @@ sis444 = sisphbd ? sourceo.is444() : !sisavs26 ? false : sourceo.isyv24()
 			  \	 : "x range_half - y range_half - * 0 > x range_half - abs y range_half - abs < x range_half - range_half x - * y range_half - range_half y - * ? x y + range_size - dup * ? 0.25 * range_half +"
 		code1   = !sisavs26 ? "x y - 2 ^ 3 * x y + 256 - 2 ^ - 128 +" : "x y - dup * 3 * x y + range_size - 2 ^ - range_half +"
 		diff 	= mt_makediff(det, det.trim(1, 0), y=3, u=1, v=1)
-	bclp    = !bom ? !sisavs26 ? mt_lutxy(diff, diff.trim(1, 0), expr=code0, y=3, u=1, v=1).bilinearresize(bsize, bsize) : mt_lutxy(diff, diff.trim(1, 0), expr=code0, use_expr=2, y=3, u=1, v=1).bilinearresize(bsize, bsize) :
+	bclp    = !bom ? !sisavs26 ? mt_lutxy(diff, diff.trim(1, 0), expr=code0, y=3, u=1, v=1).bilinearresize(bsize, bsize) : mt_lutxy(diff, diff.trim(1, 0), expr=code0, scale_inputs="allf", use_expr=2, y=3, u=1, v=1).bilinearresize(bsize, bsize) :
 		       \ !sisavs26 ? mt_lutxy(diff.trim(1, 0), mt_adddiff(diff, diff.trim(2, 0), y=3, u=1, v=1), expr=code1, y=3, u=1, v=1).bilinearresize(bsize, bsize) : mt_lutxy(diff.trim(1, 0), mt_adddiff(diff, diff.trim(2, 0), y=3, u=1, v=1), expr=code1, use_expr=2, y=3, u=1, v=1).bilinearresize(bsize, bsize)
 	dclp    = !sisavs26 ? diff.trim(1, 0).mt_lut("x 128 - abs 1.1 ^ 1 -", y=3, u=1, v=1).bilinearresize(bsize, bsize)
-		  \	 : diff.trim(1, 0).mt_lut("x range_half - abs 1.1 ^ 1 scalef -", use_expr=2, y=3, u=1, v=1).bilinearresize(bsize, bsize)
+		  \	 : diff.trim(1, 0).mt_lut("x 128 - abs 1.1 ^ 1 -", scale_inputs="allf", use_expr=2, y=3, u=1, v=1).bilinearresize(bsize, bsize)
 
 	###### POSTPROCESSING ######
     unblend1    = bom ? average(out, 2.0, out.loop(2, 0, 0), -1.0) : nop()
@@ -164,37 +168,12 @@ sis444 = sisphbd ? sourceo.is444() : !sisavs26 ? false : sourceo.isyv24()
         # 3) Unique Runtime Function Definition
         #######################################
 		function srestore_inside_%%%(clip source, dm, om, bom, thr, frfac, numr, denm, mec, det, bclp, dclp, fin, sisphbd) {
-			ssIsVF  = sisphbd ? source.IsVideoFloat() : false
-			shbdbpc = sisphbd ? source.BitsPerComponent() : 8
-			sIshbd  = shbdbpc > 8
-			sdoscal = !ssIsVF && sIshbd
-			sscalva = sdoscal ? shbdbpc == 10 ? 4 : shbdbpc == 12 ? 16 : shbdbpc == 14 ? 64 : 256 : 1
-				ssIsVF ? eval("
-			v015625 = .0000612745098039
-			vp125   = .0004901960784314
-			vp01    = .0000392156862745
-			vp45    = .0017647058823529
-			vp55    = .002156862745098
-			vp51    = .002
-			vp35    = .0013725490196078
-			v0p5    = 0.0019607843137255
-			v1      = 0.003921568627451
-			v125    = 0.4901960784313725
-						") : \
-							eval("
-			v015625 = .015625
-			vp125   = .125
-			vp01    = .01
-			vp45    = .45
-			vp55    = .55
-			vp51    = .51
-			vp35    = .35
-			v0p5    = 0.5
-			v1      = 1
-			v125    = sdoscal ? 125*sscalva : 125
-								")
+			ssIsVF  = sisphbd ? det.IsVideoFloat() : false
+			shbdbpc = sisphbd ? det.BitsPerComponent() : 8
+			sdoscal = shbdbpc > 8
+			sscalva = sdoscal ? shbdbpc == 10 ? 4.0 : shbdbpc == 12 ? 16.0 : shbdbpc == 14 ? 64.0 : 256.0 : 1
+
 			svhalf  = ssIsVF ? 0.5 : sdoscal ? shbdbpc == 10 ? 512 : shbdbpc == 12 ? 2048 : shbdbpc == 14 ? 8192 : 32768 : 128
-			thr     = ssIsVF ? thr/255 : sdoscal ? thr*sscalva : thr
 
 			### preparation ###
 			cfr = current_frame
@@ -215,7 +194,7 @@ sis444 = sisphbd ? sourceo.is444() : !sisavs26 ? false : sourceo.isyv24()
 			global	Srestore_ldet%%%    = cfr+pos==Srestore_ldet%%% ? -1 : cfr+pos
 
 			## diff value shifting ##
-			d_v = yplanemax(dclp)+v015625
+			d_v = ssIsVF ? (yplanemax(dclp) * 255)+.015625 : (yplanemax(dclp) / (sdoscal ? sscalva : 1))+.015625
 			Srestore_d43%%% = jmp ? Srestore_d32%%% : d_v
 			global 	Srestore_d32%%% = jmp ? Srestore_d21%%% : d_v
 			global	Srestore_d21%%% = jmp ? Srestore_d10%%% : d_v
@@ -226,7 +205,7 @@ sis444 = sisphbd ? sourceo.is444() : !sisavs26 ? false : sourceo.isyv24()
 			global  Srestore_d34%%% = d_v
 
 			## diff value shifting ##
-			m_v = isfloat(om) && abs(om)>5 ? lumadifference(det, det.trim(2, 0))+v015625 : v1
+			m_v = isfloat(om) && abs(om)>5 ? ssIsVF ? (lumadifference(det, det.trim(2, 0)) * 255)+.015625 : (lumadifference(det, det.trim(2, 0)) / (sdoscal ? sscalva : 1))+.015625 : 1
 			Srestore_m53%%% = jmp ? Srestore_m42%%% : m_v
 			global 	Srestore_m42%%% = jmp ? Srestore_m31%%% : m_v
 			global  Srestore_m31%%% = jmp ? Srestore_m20%%% : m_v
@@ -237,10 +216,10 @@ sis444 = sisphbd ? sourceo.is444() : !sisavs26 ? false : sourceo.isyv24()
 			global  Srestore_m24%%% = m_v
 
 			## get blend and clear values ##
-			b_v = svhalf-yplanemin(bclp)
-			b_v = b_v<v1 ? vp125 : b_v
-			c_v = yplanemax(bclp)-svhalf
-			c_v = c_v<v1 ? vp125 : c_v
+			b_v = ssIsVF ? (svhalf-yplanemin(bclp)) * 255 : (svhalf-yplanemin(bclp)) / (sdoscal ? sscalva : 1)
+			b_v = b_v<1 ? .125 : b_v
+			c_v = ssIsVF ? (yplanemax(bclp)-svhalf) * 255 : (yplanemax(bclp)-svhalf) / (sdoscal ? sscalva : 1)
+			c_v = c_v<1 ? .125 : c_v
 
 			## blend value shifting ##
 			Srestore_bp3%%% = jmp ? Srestore_bp2%%% : bom ? b_v-c_v : b_v
@@ -279,7 +258,7 @@ sis444 = sisphbd ? sourceo.is444() : !sisavs26 ? false : sourceo.isyv24()
 			mb  = select(pos+2, Srestore_m42%%%, Srestore_m31%%%, Srestore_m20%%%, Srestore_m11%%%, Srestore_m02%%%)
 			mc  = select(pos+2, Srestore_m31%%%, Srestore_m20%%%, Srestore_m11%%%, Srestore_m02%%%, Srestore_m13%%%)
 			mn  = select(pos+2, Srestore_m20%%%, Srestore_m11%%%, Srestore_m02%%%, Srestore_m13%%%, Srestore_m24%%%)
-			mn1 = select(pos+2, Srestore_m11%%%, Srestore_m02%%%, Srestore_m13%%%, Srestore_m24%%%, vp01)
+			mn1 = select(pos+2, Srestore_m11%%%, Srestore_m02%%%, Srestore_m13%%%, Srestore_m24%%%, .01)
 
 
 			### basic calculation ###
@@ -288,11 +267,11 @@ sis444 = sisphbd ? sourceo.is444() : !sisavs26 ? false : sourceo.isyv24()
 					\ (mb<mb1 && mb<mc || mn<mn1 && mn<mc || (dbb+dnn)*4<dbc+dcn || (bb*cc*5<bc*cb || mb>thr) && (bn*cc*5<bc*cn || mn>thr) && bc>thr)
 
 			clear   = dbb+dbc>thr && dcn+dnn>thr && (bc<2*bb || bc<2*bn) && (dbb+dnn)*2>dbc+dcn && (mc<.96*mb && mc<.96*mn && (bb*2>cb || bn*2>cn) &&
-					\ cc>cb && cc>cn || frfac>vp45 && frfac<vp55 && .8*mc>mb1 && .8*mc>mn1 && mb>.8*mn && mn>.8*mb)
+					\ cc>cb && cc>cn || frfac>.45 && frfac<.55 && .8*mc>mb1 && .8*mc>mn1 && mb>.8*mn && mn>.8*mb)
 
 			highd   = dcn>5*dbc && dcn>5*dnn && dcn>thr && dbc<thr && dnn<thr
 
-			lowd    = dcn*5<dbc && dcn*5<dnn && dbc>thr && dnn>thr && dcn<thr && frfac>vp35 && (frfac<vp51 || dcn*5<dbb)
+			lowd    = dcn*5<dbc && dcn*5<dnn && dbc>thr && dnn>thr && dcn<thr && frfac>.35 && (frfac<.51 || dcn*5<dbb)
 
 			res     = (Srestore_d43%%%<thr
 					  \&& Srestore_d32%%%<thr
@@ -309,7 +288,7 @@ sis444 = sisphbd ? sourceo.is444() : !sisavs26 ? false : sourceo.isyv24()
 			### offset calculation ###
 			odm     = blend ? denm : clear ? 0 : highd ? denm-numr : lowd ? 2*denm-numr : cof
 			odm     = odm+round((cof-odm)/(2.*denm))*2*denm
-			odr     = (blend ? denm-numr : clear ? numr : highd ? numr : frfac<v0p5 ? 2*numr : 2*(denm-numr)) * .9
+			odr     = (blend ? denm-numr : clear ? numr : highd ? numr : frfac<0.5 ? 2*numr : 2*(denm-numr)) * .9
 
 			cof     = Srestore_ldet%%%<0
 						\? cof
@@ -347,15 +326,15 @@ sis444 = sisphbd ? sourceo.is444() : !sisavs26 ? false : sourceo.isyv24()
 					\ dcn*2<thr || dnn*9<dbc && dcn*3<dbc || dbb*9<dcn && dbc*3<dcn)
 
 			## deblend - doubleblend removal - postprocessing ##
-			add     = Srestore_bp1%%%*Srestore_cn2%%%>Srestore_bn2%%%*Srestore_cp1%%%*(v1+thr*.01)
-					  \&& Srestore_bn0%%%*Srestore_cn2%%%>Srestore_bn2%%%*Srestore_cn0%%%*(v1+thr*.01)
-					  \&& Srestore_cn2%%%*Srestore_bn1%%%>Srestore_cn1%%%*Srestore_bn2%%%*(v1+thr*.01)
+			add     = Srestore_bp1%%%*Srestore_cn2%%%>Srestore_bn2%%%*Srestore_cp1%%%*(1+thr*.01)
+					  \&& Srestore_bn0%%%*Srestore_cn2%%%>Srestore_bn2%%%*Srestore_cn0%%%*(1+thr*.01)
+					  \&& Srestore_cn2%%%*Srestore_bn1%%%>Srestore_cn1%%%*Srestore_bn2%%%*(1+thr*.01)
 			dup     = bom
 						\? (Srestore_bn0%%%>Srestore_bp2%%%
 							\&& Srestore_bn0%%%>=Srestore_bp1%%%
 							\&& Srestore_bn0%%%>Srestore_bn1%%%
 							\&& Srestore_bn0%%%>Srestore_bn2%%%
-							\&& Srestore_cn0%%%<v125
+							\&& Srestore_cn0%%%<125
 							\? (Srestore_d12%%%*Srestore_d12%%%<Srestore_d10%%%
 								\|| Srestore_d12%%%*9<Srestore_d10%%%)
 								\? 1
@@ -380,9 +359,9 @@ sis444 = sisphbd ? sourceo.is444() : !sisavs26 ? false : sourceo.isyv24()
 										\? -1
 										\: 1)
 								\: om==5
-									\? (Srestore_bp1%%%*Srestore_cp2%%%>Srestore_bp2%%%*Srestore_cp1%%%*(v1+thr*.01)
-										\&& Srestore_bn0%%%*Srestore_cp2%%%>Srestore_bp2%%%*Srestore_cn0%%%*(v1+thr*.01)
-										\&& Srestore_cp2%%%*Srestore_bn1%%%>Srestore_cn1%%%*Srestore_bp2%%%*(v1+thr*.01)
+									\? (Srestore_bp1%%%*Srestore_cp2%%%>Srestore_bp2%%%*Srestore_cp1%%%*(1+thr*.01)
+										\&& Srestore_bn0%%%*Srestore_cp2%%%>Srestore_bp2%%%*Srestore_cn0%%%*(1+thr*.01)
+										\&& Srestore_cp2%%%*Srestore_bn1%%%>Srestore_cn1%%%*Srestore_bp2%%%*(1+thr*.01)
 										\&& (add==false || Srestore_cp2%%%*Srestore_bn2%%%>Srestore_cn2%%%*Srestore_bp2%%%)
 										\? -2
 										\: add
