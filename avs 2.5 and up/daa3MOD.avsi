@@ -1,7 +1,7 @@
 #Motion-Compensated Anti-aliasing with contra-sharpening by A.SONY
 #some ideas was taken from Didée scripts daa and this http://forum.doom9.org/showthread.php?t=153219
 #created because when applied daa3 to fixed scenes, it could damage some details and other issues.
-# v3.63
+# v3.64
 
 function mcdaa3(clip input) {
 sup    = input.HQdn3d().sneo_FFT3D().MSuper(pel=2,sharp=1)
@@ -42,12 +42,12 @@ c = rescale ? threads!=1 ? Eval("""try { Eval("c1."+upsizer+"mt(c1.width, chr420
     nn      = issloi ? slow > 1 || slow < -2 ? c.sh_Padding(slow==2 || slow==-3 ? 0 : 4,4,slow==2 || slow==-3 ? 0 : 4,4).nnedi3(field=-2,threads=threads).crop(slow==2 || slow==-3 ? 0 : 4,4,slow==2 || slow==-3 ? 0 : -4,-4) : c.nnedi3(field=-2,threads=threads) : c.nnedi3(field=-2,threads=threads)
  c =isyuy2(c) && avs25 ? c.Interleaved2Planar() : isyuy2(c) ? c.converttoyv16() : c
  nn=isyuy2(nn) && avs25 ? nn.Interleaved2Planar() : isyuy2(nn) ? nn.converttoyv16() : nn
-    isslow4 = slowb && issloi ? (slow > 3 && slow != 5) || slow < -1 : false
+    isslow4 = slowb && issloi ? (slow > 3 && slow != 5) || (slow < -3 && slow != -5) : false
     istof   = isslow4 ? c1.getparity : nop()
     seto    = isslow4 ? istof ? selecteven(nn) : selectodd(nn) : selecteven(nn)
-    seto    = isslow4 ? threads!=1 ? Eval("""try { Eval("seto."+downsizer+"mt(c.width, c.height,src_top=-0.5,threads=threads)") } catch(error_msg) { Eval("seto."+downsizer+"(c.width, c.height,src_top=-0.5)") }""") : Eval("seto."+downsizer+"(c.width, c.height,src_top=-0.5)") : seto
+    seto    = isslow4 ? threads!=1 ? Eval("""try { Eval("seto."+downsizer+"mt(c.width, c.height,src_top=slow != -4 ? -0.25 : -0.5,threads=threads)") } catch(error_msg) { Eval("seto."+downsizer+"(c.width, c.height,src_top=slow != -4 ? -0.5 : -0.5)") }""") : Eval("seto."+downsizer+"(c.width, c.height,src_top=slow != -4 ? -0.25 : -0.5)") : seto
     sebo    = isslow4 ? istof ? selectodd(nn) : selecteven(nn) : selectodd(nn)
-    sebo    = isslow4 ? threads!=1 ? Eval("""try { Eval("sebo."+downsizer+"mt(c.width, c.height,src_top=0.5,threads=threads)") } catch(error_msg) { Eval("sebo."+downsizer+"(c.width, c.height,src_top=0.5)") }""") : Eval("sebo."+downsizer+"(c.width, c.height,src_top=0.5)") : sebo
+    sebo    = isslow4 ? threads!=1 ? Eval("""try { Eval("sebo."+downsizer+"mt(c.width, c.height,src_top=slow != -4 ? 0.25 : 0.5,threads=threads)") } catch(error_msg) { Eval("sebo."+downsizer+"(c.width, c.height,src_top=slow != -4 ? 0.25 : 0.5)") }""") : Eval("sebo."+downsizer+"(c.width, c.height,src_top=slow != -4 ? 0.25 : 0.5)") : sebo
 
     dbl     = mt_average(seto,sebo,U=3,V=3)
     dblD    = FDCS ? nop() : mt_makediff(c,dbl,U=3,V=3)
