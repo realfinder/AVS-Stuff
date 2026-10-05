@@ -1,4 +1,4 @@
-sPeculiarBlendmask=mt_lutspa(mode="relative", expr="y 255 *")
+sPeculiarBlendmask=mt_lutspa(mode="relative", expr="y 255 scalef *")
 sPeculiarBlendclipp=mt_merge(last,Loop(2,0,0).DeleteFrame(framecount-1),sPeculiarBlendmask,luma=true)
 sPeculiarBlendclipn=mt_merge(last,DeleteFrame(0).duplicateframe(framecount-1),sPeculiarBlendmask.Invert(),luma=true)
 Interleave(sPeculiarBlendclipp,last,sPeculiarBlendclipn)
