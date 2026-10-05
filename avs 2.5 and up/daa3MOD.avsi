@@ -1,7 +1,7 @@
 #Motion-Compensated Anti-aliasing with contra-sharpening by A.SONY
 #some ideas was taken from Didée scripts daa and this http://forum.doom9.org/showthread.php?t=153219
 #created because when applied daa3 to fixed scenes, it could damage some details and other issues.
-# v3.64
+# v3.65
 
 function mcdaa3(clip input) {
 sup    = input.HQdn3d().sneo_FFT3D().MSuper(pel=2,sharp=1)
@@ -45,7 +45,7 @@ c = rescale ? threads!=1 ? Eval("""try { Eval("c1."+upsizer+"mt(c1.width, chr420
     isslow4 = slowb && issloi ? (slow > 3 && slow != 5) || (slow < -3 && slow != -5) : false
     istof   = isslow4 ? c1.getparity : nop()
     seto    = isslow4 ? istof ? selecteven(nn) : selectodd(nn) : selecteven(nn)
-    seto    = isslow4 ? threads!=1 ? Eval("""try { Eval("seto."+downsizer+"mt(c.width, c.height,src_top=slow != -4 ? -0.25 : -0.5,threads=threads)") } catch(error_msg) { Eval("seto."+downsizer+"(c.width, c.height,src_top=slow != -4 ? -0.5 : -0.5)") }""") : Eval("seto."+downsizer+"(c.width, c.height,src_top=slow != -4 ? -0.25 : -0.5)") : seto
+    seto    = isslow4 ? threads!=1 ? Eval("""try { Eval("seto."+downsizer+"mt(c.width, c.height,src_top=slow != -4 ? -0.25 : -0.5,threads=threads)") } catch(error_msg) { Eval("seto."+downsizer+"(c.width, c.height,src_top=slow != -4 ? -0.25 : -0.5)") }""") : Eval("seto."+downsizer+"(c.width, c.height,src_top=slow != -4 ? -0.25 : -0.5)") : seto
     sebo    = isslow4 ? istof ? selectodd(nn) : selecteven(nn) : selectodd(nn)
     sebo    = isslow4 ? threads!=1 ? Eval("""try { Eval("sebo."+downsizer+"mt(c.width, c.height,src_top=slow != -4 ? 0.25 : 0.5,threads=threads)") } catch(error_msg) { Eval("sebo."+downsizer+"(c.width, c.height,src_top=slow != -4 ? 0.25 : 0.5)") }""") : Eval("sebo."+downsizer+"(c.width, c.height,src_top=slow != -4 ? 0.25 : 0.5)") : sebo
 
