@@ -1,0 +1,9 @@
+sPeculiarBlendmask=mt_lutspa(mode="relative", expr="y 255 *")
+sPeculiarBlendclipp=mt_merge(last,Loop(2,0,0).DeleteFrame(framecount-1),sPeculiarBlendmask,luma=true)
+sPeculiarBlendclipn=mt_merge(last,DeleteFrame(0).duplicateframe(framecount-1),sPeculiarBlendmask.Invert(),luma=true)
+Interleave(sPeculiarBlendclipp,last,sPeculiarBlendclipn)
+
+TDecimate(0,1,3,hybrid=1)
+srestore(omode=1, mode=-4, thresh=44).RequestLinear(90, 70, 30)
+TDecimate(0,1,2,hybrid=1)
+srestore(24/1.001, mode=-4, speed=-4).RequestLinear(50, 20, 15)
