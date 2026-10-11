@@ -1,11 +1,11 @@
 # SoftSharpen 8.8
-# mod 1.1
+# mod 1.12
 
 function min_ssh(float a, float b) { a<b ? a : b}
 function max_ssh(float a, float b) { a>b ? a : b}
 
 
-function Diff(clip vid, clip v1, clip v2, int color)
+function Diff_ssh(clip vid, clip v1, clip v2, int color)
 {
 sisavs25 = VersionNumber() < 2.60
   m = sisavs25 ? TheLutXY(v1,v2, "x y - abs 25 *") : mt_LutXY(v1,v2, "x y - abs 25 *", use_expr=1)
@@ -128,15 +128,15 @@ sisavs25 = VersionNumber() < 2.60
                                st_b + " 1 " + st_a + " 255 " + " 128 ? ?", y=3,u=1,v=1, scale_inputs="allf", use_expr=1)
 
 sisphbd = AvsPlusVersionNumber > 2294
-ssIsVF  = sisphbd ? IsVideoFloat() : false
-shbdbpc = sisphbd ? BitsPerComponent() : 8
+ssIsVF  = sisphbd ? IsVideoFloat(video) : false
+shbdbpc = sisphbd ? BitsPerComponent(video) : 8
 svhalf  = ssIsVF ? 0.5 : shbdbpc > 8 ? shbdbpc == 10 ? 512 : shbdbpc == 12 ? 2048 : shbdbpc == 14 ? 8192 : 32768 : 128
 svhalfm = svhalf-th
 svhalfp = svhalf+th
 svrsize = ssIsVF ? 1.0 : shbdbpc > 8 ? shbdbpc == 10 ? 1024 : shbdbpc == 12 ? 4096 : shbdbpc == 14 ? 16384 : 65536 : 256
 
   v_deblend = video.ScriptClip("""
-               ab = detect_b.AverageLuma(-1)
+               ab = detect.AverageLuma(-1)
                a = detect.AverageLuma()
                aa = detect.AverageLuma(1)
                a < svhalfm && ab+a < svrsize ? video_b :\
@@ -390,7 +390,7 @@ sisavs25 = VersionNumber() < 2.60
   Video = DeInt ? Video.TDeint(mode=2) : Video
   Video = Video.AssumeFrameBased
 
-  Video = Blend == 0 ? Video : Video.myDeblend(Blend)
+  Video = Blend == 0 ? Video : Video.myDeblend(int(Blend))
   Video = FPS < Video.FrameRate ? Video.TheDecimate(FPS,fast) : Video
 
   Resize = Height==h && Width==w ? false : true
@@ -439,7 +439,7 @@ sisavs25 = VersionNumber() < 2.60
            DeNoisT>9 || Fast || pr7==1 || pr7>4 ? Video1 :\
                                  Video1.mt_merge(Video0, Masq2, y=3,u=1,v=1)
 
-  Video = Show ? Video0.Diff(Video0, Video1, $FF0000) : nop
+  Video = Show ? Video0.Diff_ssh(Video0, Video1, $FF0000) : nop
 
   Video2 = Fast && Sharp<31 ? Video1.Sharpen(Sharp/30) :\ 
            Video1.ASharp(Sharp/9., 16*SharpW+(1-SharpW)*Sharp/3.5, 1, true)
@@ -462,18 +462,18 @@ sisavs25 = VersionNumber() < 2.60
                      Video1.mt_merge(Video2, Masq4, y=3,u=1,v=1) 
   #return Video0.mergeluma(Masq4,0.5)
   Video2 = Sharp==0 ? Video1 : Video2.TheClamp(Video1, Sharp/3)
-  Video = Show ? Video.Diff(Video2, Video1, $00FF00) : nop
+  Video = Show ? Video.Diff_ssh(Video2, Video1, $00FF00) : nop
 
 
-  Video2 = DeRin==0 ? Video2 : Video2.TheBlindPP(derin, "ooooxx")
+  Video2 = DeRin==0 ? Video2 : Video2.TheBlindPP(int(derin), "ooooxx")
 
 
   Masq = sisavs25 ? Masq.TheLutXY(Masq3, "y 128 < 50 x - 5 * 0 ?") : Masq.mt_LutXY(Masq3, "y range_half < 50 scalef x - 5 * 0 ?", use_expr=1)
   #return Video0.mergeluma(Masq,0.5)
-  Video3 = Fast ? Video1.Blur(blur/19) : Video1.myDeen("c2d",1,blur,blur)
+  Video3 = Fast ? Video1.Blur(blur/19) : Video1.myDeen("c2d",1,int(blur),int(blur))
   Video3 = Blur==0 || Move==0 ? Video2 :\
                     Video2.mt_merge(Video3, Masq, y=3, u=3, v=3)
-  Video = Show ? Video.Diff(Video2, Video3, $0000FF) : nop
+  Video = Show ? Video.Diff_ssh(Video2, Video3, $0000FF) : nop
 
 
   Video3 = Line==0 ? Video3 : Video3.DarkLines(Line, Fast, Masq3)
@@ -483,20 +483,20 @@ sisavs25 = VersionNumber() < 2.60
 
   mode = DeNois<3 ? 1 : DeNois<6 ? 2 : 27
   modeU = Denois<9 ? Denois/2 : 4 
-  Video4 = Video3.RemoveGrain(mode=mode, modeU=modeU)
+  Video4 = Video3.RemoveGrain(mode=int(mode), modeU=int(modeU))
   Video4 = DeNois<9 ? Video4 :\
-                      Video4.myDeen("c2d", DeNois/6, DeNois-7, DeNois-7)
+                      Video4.myDeen("c2d", int(DeNois/6), int(DeNois-7), int(DeNois-7))
 
   Masq2 = sisavs25 ? Masq2.TheLutXY(Masq, "y 0 == x 0 ?").mt_inflate(y=3,u=1,v=1) : Masq2.mt_LutXY(Masq, "y 0 == x 0 ?", use_expr=1).mt_inflate(y=3, u=1, v=1)
   #return Video0.mergeluma(Masq2,0.5)
   Video4 = DeNois==0 ? Video3 :\
            DeNois>9 || Fast || pr7==1 || pr7>4 ? Video4 :\
                                   Video4.mt_merge(Video3, Masq2, y=3,u=1,v=1)
-  Video = Show ? Video.Diff(Video4, Video3, $FF0000) : nop
+  Video = Show ? Video.Diff_ssh(Video4, Video3, $FF0000) : nop
 
   Video5 = DeBl==0 ? Video4 :\
-           Fast ? Video4.TheBlindPP(Debl, "xxxxoo") :\
-                  Video4.DeBlock(16+2*DeBl)
+           Fast ? Video4.TheBlindPP(int(Debl), "xxxxoo") :\
+                  Video4.DeBlock(int(16+2*DeBl))
 
   Video5 = DeBan==0 || DeNois<9 ? Video5 : Video5.GradFun2dbMod_Mod(DeBan,Fast)
 
@@ -507,7 +507,7 @@ sisavs25 = VersionNumber() < 2.60
           Fast ? Video.BilinearResize(Width,Height) :\
                  Video.BicubicResize(Width,Height,0,0.7-Denois/180.)
 
-  Video = DCT==0 ? Video : Video.dctFilterD(DCT)
+  Video = DCT==0 ? Video : Video.dctFilterD(int(DCT))
 
   Video = FPS > Video.FrameRate ? Video.ChangeFPS(FPS) : Video
 
@@ -615,12 +615,13 @@ function myDeen(clip clip, string "mode", int "rad", int "thrY", int "thrUV", in
   sisphbd = AvsPlusVersionNumber > 2294
 
   return !sisphbd ? clip.Deen(mode, rad, thrY, thrUV, tthY, tthUV, min, scd) : eval("""
-                    \ clip.neo_smo_Deen(
+                    p = clip.NumComponents()
+                    clip.neo_smo_Deen(
                     \   mode=mode, 
-                    \   radius=[rad, rad, rad], 
-                    \   threshold=[float(thrY), float(thrUV), float(thrUV)], 
-                    \   temporal_threshold=[float(tthY), float(tthUV), float(tthUV)], 
-                    \   minimum=[min, min, min], 
+                    \   radius=p==1 ? [rad] : [rad, rad, rad], 
+                    \   threshold=p==1 ? [float(thrY)] : [float(thrY), float(thrUV), float(thrUV)], 
+                    \   temporal_threshold=p==1 ? [float(tthY)] : [float(tthY), float(tthUV), float(tthUV)], 
+                    \   minimum=p==1 ? [min] : [min, min, min], 
                     \   scenechange=round(scd), 
                     \   scalep=true
                     \ )
