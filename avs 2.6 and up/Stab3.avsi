@@ -1,12 +1,15 @@
 ####################################
 ###
-### Stab3()
+### Stab3s()
 ###
-### same as Stab2 but with some changes
+### same as Dogway Stab2 but with some changes
 ###
 ####################################
 
-function Stab3 (clip clp, int "ts", int "range", int "dxmax", int "dymax", bool "UVfix", bool "FixFalPos", float "zoom", int "mirror", float "PAR", clip "Prefilter", int "Luma_Exp", int "FillBorder", clip "FalPosclip", bool "use_ExInpaint", bool "use_InpaintDelogo", bool "use_Feedback", bool "tstab") {
+function Stab3s (clip clp, int "ts", int "range", int "dxmax", int "dymax", bool "UVfix", bool "FixFalPos", float "zoom", int "mirror", float "PAR", clip "Prefilter", int "Luma_Exp", int "FillBorder", clip "FalPosclip", bool "use_ExInpaint", bool "use_InpaintDelogo", bool "use_Feedback", bool "tstab", int "useDePanAlpha") {
+
+sisphbd = AvsPlusVersionNumber > 2294
+sishasalpha  = sisphbd ? clp.hasalpha() : false
 
 ts     = default(ts, 7)        #frames to temporal average for better motion estimation (max. 7)
 range  = default(range, 1)     #frames before/after to estimate motion
@@ -14,13 +17,14 @@ dxmax  = default(dxmax, Round(clp.width()/180.0)) #maximum deviation in pixels
 dymax  = default(dymax, dxmax) #x, and y should be the same
 zoom   = default(zoom, 1)      #maximum zoom factor (1 disabled)
 u_feed = default(use_Feedback, false)
+uDPAl  = default(useDePanAlpha, sishasalpha || !sisphbd ? 0 : 1)
 mirror = default(mirror, u_feed ? 15 : 0)    #Edge filling. 0 off, 15 everything on
 PAR    = default(PAR, 1.0)     #PAR of your source
 UVfix  = default(UVfix, false)  # Fixes the bug of change of HUE in Depan, not need in depan 1.13.1 and up
 bfix   = default(FillBorder, u_feed ? 2 : 1) # 1=Fixes borders of 3 or less pixels wide.
 u_ExIn = default(use_ExInpaint, false)
-u_InDe = default(use_InpaintDelogo, u_feed)
-tstab  = default(tstab, false)
+u_InDe = default(use_InpaintDelogo, u_feed || uDPAl>0)
+tstab  = default(tstab, uDPAl>0)
 b3fix  = bfix > 0
 FixFalPos  = default(FixFalPos, true) # Fixes borders of 3 or more pixels wide. Use along crop(2,2,-2,-2)...
 									  # ...after stab3() to get rid of border issues entirely
@@ -39,10 +43,10 @@ Luma_Expa = Lumae==2 ? AutoAdjust(inter,temporal_radius=10,auto_balance=false,au
 
 mdata = DePanEstimate(Luma_Expa,range=range,pixaspect=PAR,trust=0,dxmax=dxmax,dymax=dymax,zoommax=zoom)
 
-DePan(Defined(Prefilter)?Interleave(rep,clp):inter,data=mdata,offset=-1,mirror=b3fix ? 0 : mirror,pixaspect=PAR,matchfields=false,subpixel=2)
+DePaninput = Defined(Prefilter)?Interleave(rep,clp):inter
+uDPAl>0 ? DePan(DePaninput.AddAlphaPlane(0),data=mdata,offset=-1,mirror=b3fix ? 0 : mirror,pixaspect=PAR,matchfields=false,subpixel=2,alphainvert=true) : DePan(DePaninput,data=mdata,offset=-1,mirror=b3fix ? 0 : mirror,pixaspect=PAR,matchfields=false,subpixel=2)
 SelectEvery(2,0)
 
-stabclip=last
 FalPosclip = !defined(FalPosclip) && FixFalPos && mirror==15 && b3fix ? clp : FalPosclip
 
 # from depansafe() function
@@ -51,24 +55,25 @@ thick = b3fix ? 3.0 : 2.0  # removing >2px wide borders
 cropx = dxmax*2
 ratiox = "YPlaneMax("+string(ceil(99-thick/cropx*100))+")"
 
-crop(0,0,0,cropx).conditionalfilter(last,clp,ratiox,">","0")
-crop(0,height-cropx,0,0).conditionalfilter(last,clp,ratiox,">","0")
-crop(0,0,cropx,0).conditionalfilter(last,clp,ratiox,">","0")
-crop(width-cropx,0,0,0).conditionalfilter(last,clp,ratiox,">","0")""") : last
+crop(0,0,0,cropx).conditionalfilter(last,uDPAl>0 ? clp.AddAlphaPlane(0) : clp,ratiox,">","0")
+crop(0,height-cropx,0,0).conditionalfilter(last,uDPAl>0 ? clp.AddAlphaPlane(0) : clp,ratiox,">","0")
+crop(0,0,cropx,0).conditionalfilter(last,uDPAl>0 ? clp.AddAlphaPlane(0) : clp,ratiox,">","0")
+crop(width-cropx,0,0,0).conditionalfilter(last,uDPAl>0 ? clp.AddAlphaPlane(0) : clp,ratiox,">","0")""") : last
 
-subsampl = b3fix ? AvsPlusVersionNumber > 2294 ? !(clp.is444() || clp.isy()) : VersionNumber() < 2.60 ? clp.isyv12() : !(clp.isyv24() || clp.isy8()) : nop()
+subsampl = uDPAl>0 ? nop() : b3fix ? AvsPlusVersionNumber > 2294 ? !(clp.is444() || clp.isy()) : VersionNumber() < 2.60 ? clp.isyv12() : !(clp.isyv24() || clp.isy8()) : nop()
 
-bfixc = bfix > 0 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, maskonly=bfix > 1) : last
+bfixc = uDPAl>0 ? ExtractA() : bfix > 0 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, maskonly=bfix > 1) : last
+stabclip=uDPAl>0 ? RemoveAlphaPlane() : last
 stabbclp = bfix > 1 && u_feed ? BlankClip(bfixc,color_yuv=$000000) : nop()
 stabclpa1 = bfix > 1 && u_feed ? stabclip.SCSelect(stabbclp,bfixc,bfixc).ExtractY().Invert() : nop()
 stabclpa2 = bfix > 1 && u_feed ? stabclip.SCSelect(stabbclp,stabbclp,bfixc).ExtractY().Invert() : nop()
 stabclip = bfix > 1 && u_feed ? Layer(stabclip.AddAlphaPlane(stabclpa1).FeedbackInput(), clp.AddAlphaPlane(stabclpa1)).FeedbackOutput() : stabclip
 stabclip = bfix > 1 && u_feed ? stabclip.RemoveAlphaPlane() : stabclip
-preclip = mt_merge(stabclip,clp,bfixc,luma=true)
+preclip = uDPAl>0 || bfix > 1 ? mt_merge(stabclip,clp,bfixc,luma=true) : nop()
 preclip = bfix > 1 && u_feed ? mt_merge(stabclip,preclip,stabclpa2,luma=true).repair(preclip) : preclip
-FillBorderscc = bfix > 1 ? u_ExIn ? preclip.ExInpaint(bfixc.mt_lut(u=-255,v=-255)) : u_InDe ? !isyv12(preclip) ? preclip.converttoyv12().InpaintDelogo(mask=bfixc, Loc="0,0,0,0",Inflate=0) : preclip.InpaintDelogo(mask=bfixc, Loc="0,0,0,0",Inflate=0) : preclip.InpaintLogo(bfixc) : nop()
+FillBorderscc = uDPAl>0 || bfix > 1 ? u_ExIn ? preclip.ExInpaint(bfixc.mt_lut(u=-255,v=-255)) : u_InDe ? !isyv12(preclip) ? preclip.converttoyv12().InpaintDelogo(mask=bfixc.converttoyv12(), Loc="0,0,0,0",Inflate=0) : preclip.InpaintDelogo(mask=bfixc, Loc="0,0,0,0",Inflate=0) : uDPAl>0 ? InpaintLogo(preclip,bfixc,PreBlur=1,ChromaWeight=0.1,ChromaTensor=true) : preclip.InpaintLogo(bfixc) : nop()
 FillBorderscc = bfix > 1 ? u_ExIn ? FillBorderscc : u_InDe && !isyv12(preclip) ? mt_merge(preclip,FillBorderscc.MatchColorFormat(preclip),bfixc,luma=true) : FillBorderscc : FillBorderscc
-bfix > 1 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, FillBordersc=FillBorderscc) : bfixc
+uDPAl>0 ? FillBorderscc : bfix > 1 ? stabclip.FillBorders_stabi(pad=subsampl && mirror!=15 ? 1 : 0,subsample=subsampl,FixFalPos=defined(FalPosclip) || FixFalPos ? last : Undefined, mirror=mirror==15,PAR=PAR, FillBordersc=FillBorderscc) : bfixc
 bfix > 1 && tstab ? mt_merge(last,TemporalSoften(3, 255, 255, 10, 2),bfixc,luma=true) : last
 bfix > 1 && u_feed ? mt_merge(stabclip,last,stabclpa2.sh_Padding(2,2,2,2).mt_expand().crop(2,2,-2,-2),luma=true).repair(preclip) : last
 
