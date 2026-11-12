@@ -1,5 +1,5 @@
 Function SpotLess_Mod(clip c, bool "DeGrain", int "RadT", int "ThSAD", int "ThSAD2", int "Pel", bool "Chroma",
-                   \ int "BlkSz", Int "Olap", bool "Tm", bool "Glob", string "Denoiser", bool "FastHBD") {
+                   \ int "BlkSz", Int "Olap", bool "Tm", bool "Glob", string "Denoiser", bool "FastMA") {
 DeGrain   = Default(DeGrain, false) # MDeGrain in MvTools
 RadT      = Default(RadT, 1)        # Temporal radius. (MCompensate arg)
 ThSAD     = Default(ThSAD, 10000)    # SAD threshold at radius 1 (Default Nearly OFF).
@@ -11,11 +11,11 @@ OLap      = Default(OLap, BlkSz/2)        # Default half of BlkSz.
 Tm        = Default(tm, true)       # TrueMotion, Some folk swear MAnalyse(truemotion=false) is better.
 Glob      = Default(glob, true)     # Default True, Allow set MAnalyse(global) independently of TrueMotion.
 Denoiser  = Default(Denoiser, Undefined)
-FastHB    = default(FastHBD, false)
+FastMA    = default(FastMA, false)
 
 pad = Max(BlkSz, 8)
 
-sup      = (FastHB ? c.Pre_Clip_Spotlessmod(blur=1.0, contrast=0, brightness=0).convertbits(8) : c.Pre_Clip_Spotlessmod(blur=1.0, contrast=0, brightness=0)).MSuper(hpad=pad, vpad=pad, pel=pel, sharp=2, chroma=Chroma)
+sup      = (FastMA ? c.Pre_Clip_Spotlessmod(blur=1.0, contrast=0, brightness=0).convertbits(8) : c.Pre_Clip_Spotlessmod(blur=1.0, contrast=0, brightness=0)).MSuper(hpad=pad, vpad=pad, pel=pel, sharp=2, chroma=Chroma)
 sup_rend = MSuper(c, hpad=pad, vpad=pad, pel=pel, sharp=2, levels=1, chroma=Chroma) # Only 1 Level required where not MAnalyse-ing.
 
 MultiVec = MAnalyse(sup, multi=true, delta=RadT, blksize=BlkSz, overlap=OLap, chroma=Chroma, truemotion=Tm, global=Glob, search=5, dct=7, divide=0, plevel=0)
@@ -40,7 +40,7 @@ mask_c3 = mt_lutxy(c0, c3, expr="x y - abs", Y=3, U=2, V=2, scale_inputs="allf",
 clear = mt_merge(c1, c, mask_c3, Y=3, U=2, V=2)
 
 Defined(Denoiser) || DeGrain ? Eval("""
-sup2      = MSuper((FastHB ? clear.convertbits(8) : clear), hpad=pad, vpad=pad, pel=pel, sharp=2, chroma=Chroma)
+sup2      = MSuper((FastMA ? clear.convertbits(8) : clear), hpad=pad, vpad=pad, pel=pel, sharp=2, chroma=Chroma)
 sup_rend2 = MSuper(clear, hpad=pad, vpad=pad, pel=pel, sharp=2, chroma=Chroma)
 bvec1  = MAnalyse(sup2, isb=true,  blksize=BlkSz, overlap=OLap, divide=0, delta=1, search=5, dct=7, plevel=0,
                 \ chroma=Chroma, truemotion=Tm, global=Glob) # backward vectors
