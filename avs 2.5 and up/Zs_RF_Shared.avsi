@@ -1,5 +1,5 @@
 # Shared Functions and utility
-# V1.164
+# V1.165
 
 ### Functions list:-
 # sh_StrReplace
@@ -1428,10 +1428,10 @@ tr2             = default (tr2, sisbob ? 3 : 1)
 usedaa3mod      = default (usedaa3mod, exfilclp ? 0 : sisbob ? 1 : 2)
 
 infiltr = usedaa3mod == 1 ? input.daa3mod(dslow,threads=threads) : input
-filclip = defined(filter) ? exfilclp ? filter : eval("infiltr." + filter) : infiltr.STGMC(InputType=1, tr0=0, tr1=sisbob ? undefined : 1, tr2=tr2, lsb=stgmc_lsb, n16=stgmc_n16, rep1=sisbob ? undefined : 11, rep2=sisbob ? undefined : 11, Sharpness=0.0, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads)
+filclip = defined(filter) ? exfilclp ? filter : eval("infiltr." + filter) : infiltr.STGMC(InputType=1, tr0=0, tr1=sisbob ? undefined : 1, tr2=tr2, lsb=stgmc_lsb, n16=stgmc_n16, rep1=sisbob ? undefined : 11, rep2=sisbob ? undefined : 11, Sharpness=0.0, FastMA=FastMA, TV_range=TV_range, Str=Str, Amp=Amp, EdiThreads=threads, PhosphorSoft=sisbob ? true : undefined)
 filclip = usedaa3mod == 2 ? filclip.daa3mod(dslow,threads=threads) : filclip
 
-momask  = !defined(motionmask) ? input.smam_mask(prefilter,pel,blksize,fastma=fastma) : motionmask #if you deal with YUY2 then it should be Planar YUY2 in avs2.5 and yv16 in avs2.6
+momask  = !defined(motionmask) ? input.smam_mask(prefilter,pel,blksize,FastMA=FastMA) : motionmask #if you deal with YUY2 then it should be Planar YUY2 in avs2.5 and yv16 in avs2.6
 isyuy2(input) && VersionNumber() < 2.60 ? mt_merge(input.Interleaved2Planar(),filclip.Interleaved2Planar(),momask,u=3,v=3).Planar2Interleaved() : isyuy2(input) ? mt_merge(input.converttoyv16(),filclip.converttoyv16(),momask,u=3,v=3).converttoyuy2() : mt_merge(input,filclip,momask,u=3,v=3)
 repblend ? isyuy2(input) && VersionNumber() < 2.60 ? Interleaved2Planar() : isyuy2(input) ? converttoyv16() : last : last
 repblend ? isyuy2(input) && VersionNumber() < 2.60 ? Repair(Repair(input.Interleaved2Planar(),16,Planar=true),12,Planar=true).Planar2Interleaved() : isyuy2(input) ? Repair(Repair(input.converttoyv16(),16),12).converttoyuy2() : Repair(Repair(input,16),12) : last

@@ -2,7 +2,7 @@
 # https://forum.doom9.org/showthread.php?t=182831&page=7
 # Fonction SpotDel
 /*
-SpotDel (Spotless+Delta Restore) 1.0, mod 1.31 in 2026 to add FastHBD parameter
+SpotDel (Spotless+Delta Restore) 1.0, mod 1.32 in 2026 to add FastMA parameter
 
 Example
 
@@ -41,7 +41,7 @@ As Spotless tends to soften/degrain the image, parts brought back from the origi
 function SpotDel(clip input, int "RadT", float "dark2Brt", float "dark2BrtLimit", bool "RiskyBlur", bool "Rgr", int "Rgr1", int "Rgr2", \
                   int "Usharp_strength", int "Usharp_radius", int "Usharp_th", bool "Sharpen_it", bool "Slog", int "Pel", bool "Chroma", \
                   int "BlkSz", int "Olap", Int "SchParam", bool "Tm", int "DCT", int "SpotTH", float "Bblur", int "txt_sz",              \
-                  bool "ReturnRestored", bool "ReturnStacked", bool "FastHBD", int "LessAggressive"                                      \  
+                  bool "ReturnRestored", bool "ReturnStacked", bool "FastMA", int "LessAggressive"                                       \  
                   )
 {
     # VARIABLES 
@@ -77,7 +77,7 @@ function SpotDel(clip input, int "RadT", float "dark2Brt", float "dark2BrtLimit"
     ThSAD            = default(SpotTH, 10000)              # [SAD, Sum of Absolute (pixelwise) Differences]  Default 10000=NEARLY OFF(ie ignore hardly any bad blocks), 0 < ThSAD < 16320(8*8*255). 8x8 block SAD threshold at radius 1 (ie at current_frame +- 1)
     RadT             = default(RadT, 1)                    # Removes Spots on up to RadT [Temporal Radius] consecutive frames. RadT > 2 will usually be overkill. Setting too high could possibly result in blurring.
                                                            # Each pixel in result frame is median pixel value of (2*RadT+1) motion compensated frames (including source, ie current_frame-RadT to current_frame+RadT).
-    FastHB           = default(FastHBD, false)
+    FastMA           = default(FastMA, false)
     LessAggressive   = default(LessAggressive, 0)
 
     #Delta Restore variables
@@ -110,8 +110,8 @@ function SpotDel(clip input, int "RadT", float "dark2Brt", float "dark2BrtLimit"
     
     #Remove spots, Spotless, version 1.07
     # ------------------------------------------------------------------------------------
-    source1_shp_spt = LessAggressive == 1 ? SpotLess_Mod(source1_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,thsad=thsad,RadT=RadT,chroma=Chroma, FastHBD=FastHB) : SpotLess107(source1_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,Bblur=Bblur,thsad=thsad,RadT=RadT,chroma=Chroma, DCT=DCT, SchParam=SchParam, FastHBD=FastHB, LessAggressive=LessAggressive != 0 ? LessAggressive-1 : LessAggressive)
-    source1_lvl_shp_spt = Slog ? LessAggressive == 1 ? SpotLess_Mod(source1_lvl_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,thsad=thsad,RadT=RadT,chroma=Chroma, FastHBD=FastHB) : SpotLess107(source1_lvl_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,Bblur=Bblur,thsad=thsad,RadT=RadT,chroma=Chroma, DCT=DCT, SchParam=SchParam, FastHBD=FastHB, LessAggressive=LessAggressive != 0 ? LessAggressive-1 : LessAggressive) : source1_shp_spt
+    source1_shp_spt = LessAggressive == 1 ? SpotLess_Mod(source1_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,thsad=thsad,RadT=RadT,chroma=Chroma, FastMA=FastMA) : SpotLess107(source1_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,Bblur=Bblur,thsad=thsad,RadT=RadT,chroma=Chroma, DCT=DCT, SchParam=SchParam, FastMA=FastMA, LessAggressive=LessAggressive != 0 ? LessAggressive-1 : LessAggressive)
+    source1_lvl_shp_spt = Slog ? LessAggressive == 1 ? SpotLess_Mod(source1_lvl_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,thsad=thsad,RadT=RadT,chroma=Chroma, FastMA=FastMA) : SpotLess107(source1_lvl_shp,blksz=BlkSz,OLap=Olap,pel=pel,Tm=Tm,Bblur=Bblur,thsad=thsad,RadT=RadT,chroma=Chroma, DCT=DCT, SchParam=SchParam, FastMA=FastMA, LessAggressive=LessAggressive != 0 ? LessAggressive-1 : LessAggressive) : source1_shp_spt
 
     source1_shp_spt = Sharpen_it && LessAggressive > 1 ? FineDehalo_contrasharp(source1_shp_spt,source1,1,true) : source1_shp_spt
     source1_lvl_shp_spt = Sharpen_it && LessAggressive > 1 && Slog ? FineDehalo_contrasharp(source1_shp_spt,source1,1,true) : source1_lvl_shp_spt
@@ -473,7 +473,7 @@ function ExpandMask(clip mask, int amount, float "blur") {
 }
 
 
-Function SpotLess107(clip c, int "RadT", int "ThSAD", int "ThSAD2", int "pel", bool "chroma", int "BlkSz", Int "Olap", Int "SchParam", bool "tm", int "DCT", Bool "glob", Float "bBlur", clip "dc", bool "FastHBD", int "LessAggressive" ) {
+Function SpotLess107(clip c, int "RadT", int "ThSAD", int "ThSAD2", int "pel", bool "chroma", int "BlkSz", Int "Olap", Int "SchParam", bool "tm", int "DCT", Bool "glob", Float "bBlur", clip "dc", bool "FastMA", int "LessAggressive" ) {
     myName   = "SpotLess107: "
     RadT     = Default(RadT,1)        # Temporal radius. (MCompensate arg)
     ThSAD    = Default(ThSAD,10000)   # SAD threshold at radius 1 (Default Nearly OFF).
@@ -488,7 +488,7 @@ Function SpotLess107(clip c, int "RadT", int "ThSAD", int "ThSAD2", int "pel", b
     Glob     = Default(glob,True)     # Default True, Allow set MAnalyse(global) independently of TrueMotion.
     bBlur    = Default(bblur,0.6)     # Default 0.6. Suggest about 0.6 for better motion analysis, but a bit slower.
     HasDC    = dc.Defined             # bblur ignored if HasDC, ie user already provided prefiltered clip.
-    FastHB   = default(FastHBD, false)
+    FastMA   = default(FastMA, false)
     LessAggressive   = default(LessAggressive, 0)
     
     Assert(1 <= RadT,myName + " 1 <= RadT")
@@ -496,7 +496,7 @@ Function SpotLess107(clip c, int "RadT", int "ThSAD", int "ThSAD2", int "pel", b
     Assert(pel==1 || pel==2 || pel==4, myName + "pel==1 || pel==2 || pel==4")
     pad = max(BlkSz,8)
     sup = (HasDC ? dc : bBlur>0.0  ? c.blur(bBlur) : c )
-    sup = (FastHB ? sup.convertbits(8) : sup ).MSuper(hpad=pad,vpad=pad,pel=pel, sharp=2)
+    sup = (FastMA ? sup.convertbits(8) : sup ).MSuper(hpad=pad,vpad=pad,pel=pel, sharp=2)
     # Only 1 Level required where not MAnalyse-ing.
     sup_rend = (HasDC||bBlur>0.0) ? c.MSuper(hpad=pad,vpad=pad,pel=pel, sharp=2,Levels=1) : sup
     MultiVec = sup.MAnalyse(multi=true, delta=RadT,blksize=BlkSz,overlap=OLap, searchparam=SchParam, chroma=Chroma,truemotion=Tm,global=Glob, DCT=DCT)

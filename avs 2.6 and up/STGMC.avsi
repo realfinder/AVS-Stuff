@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------#
 #                                                                   #
-#                           STGMC 3.387                             #
-#                       it need QTGMC 3.383                         #
+#                           STGMC 3.393                             #
+#                       it need QTGMC 3.393s                        #
 #                                                                   #
 #-------------------------------------------------------------------#
 
@@ -16,9 +16,22 @@ function STGMC( clip Input, string "Preset", int "TR0", int "TR1", int "TR2", in
                     float "NoiseRestore", string "NoiseDeint", bool "StabilizeNoise", int "InputType", float "ProgSADMask", int "FPSDivisor", \
                     int "ShutterBlur", float "ShutterAngleSrc", float "ShutterAngleOut", int "SBlurLimit", bool "Border", bool "Precise", string "Tuning", \
                     bool "ShowSettings", string "GlobalNames", string "PrevGlobals", int "ForceTR", \
-                    val "BT", val "DetailRestore", val "MotionBlur", val "MBlurLimit", val "NoiseBypass", float "Str", float "Amp", bool "TV_range", int "UseEdiExt", int "DftDither", bool "lsbd", bool "lsb", bool "n16", bool "keep_tv_range", String "device_type", int "device_id", bool "n16d", bool "FastMA", bool "ESearchP", bool "Refinemotion" )
+                    val "BT", val "DetailRestore", val "MotionBlur", val "MBlurLimit", val "NoiseBypass", float "Str", float "Amp", bool "TV_range", int "UseEdiExt", \
+                    int "DftDither", bool "lsbd", bool "lsb", bool "n16", bool "keep_tv_range", String "device_type", int "device_id", bool "n16d", bool "FastMA", \
+                    bool "ESearchP", bool "Refinemotion", bool "xflateMaTo", int "pscrn", bool "temporal", bool "trymany", bool "RefineMotionAll", int "RefineMotionSearch", \
+                    int "RefineMotionRadius", bool "MEus", bool "Refinemotion2", bool "PhosphorSoft", bool "STGMC2Def" )
 {
+    STGMC2Def     = default( STGMC2Def,          false) #some of my recommended settings (set it to true to feel like having STGMC2())
     TV_range      = default( TV_range, !(Isrgb(input)))
+STGMC2Def ? eval("""
+        sisphbd = AvsPlusVersionNumber > 2294
+	sischbd = sisphbd ? Input.BitsPerComponent() > 8 : false
+    n16d          = default( n16d,            !sischbd)
+    FastMA        = default( FastMA,              true)
+    xflateMaTo    = default( xflateMaTo,          true)
+    PhosphorSoft  = default( PhosphorSoft,        true)
+    EdiMode       = sischbd ? EdiMode : default( EdiMode, "BWDIF+EEDI3")
+""") : nop()
 QTGMC( Input, Preset, TR0, TR1, TR2, Rep0, Rep1, Rep2, EdiMode, RepChroma, \
                     NNSize, NNeurons, EdiQual, EdiMaxD, ChromaEdi, EdiThreads, EdiExt, Sharpness, \
                     SMode, SLMode, SLRad, SOvs, SVThin, Sbb, SrchClipPP, SubPel, SubPelInterp, \
@@ -30,5 +43,8 @@ QTGMC( Input, Preset, TR0, TR1, TR2, Rep0, Rep1, Rep2, EdiMode, RepChroma, \
                     NoiseRestore, NoiseDeint, StabilizeNoise, InputType, ProgSADMask, FPSDivisor, \
                     ShutterBlur, ShutterAngleSrc, ShutterAngleOut, SBlurLimit, Border, Precise, Tuning, \
                     ShowSettings, GlobalNames, PrevGlobals, ForceTR, \
-                    BT, DetailRestore, MotionBlur, MBlurLimit, NoiseBypass, Str, Amp, TV_range, UseEdiExt, DftDither, lsbd, lsb, n16, keep_tv_range, device_type, device_id, n16d, FastMA, ESearchP, Refinemotion )
+                    BT, DetailRestore, MotionBlur, MBlurLimit, NoiseBypass, Str, Amp, TV_range, UseEdiExt, \
+                    DftDither, lsbd, lsb, n16, keep_tv_range, device_type, device_id, n16d, FastMA, ESearchP, Refinemotion, \
+                    xflateMaTo, pscrn, temporal, trymany, RefineMotionAll, RefineMotionSearch, \
+                    RefineMotionRadius, MEus, Refinemotion2, PhosphorSoft )
 }
